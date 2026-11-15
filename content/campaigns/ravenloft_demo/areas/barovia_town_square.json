@@ -1,0 +1,135 @@
+{
+	"id": "barovia_town_square",
+	"name": "Village of Barovia — Town Square (E3)",
+	"ambient": "(SOURCE-GROUNDED AREA — PLACEHOLDER PROSE) Adapted from Expedition to Castle Ravenloft, Chapter 2, area E3. Fog, barricades, and a square holding against the dead. This is a bounded excerpt, not the full village.",
+	"tracker_quest": "lightbringers",
+	"entry_effects": [
+		{"type": "quest_start", "quest": "lightbringers"}
+	],
+	"rows": [
+		"###########",
+		"#.........#",
+		"#.........#",
+		"#.M..A..T.#",
+		"#.........#",
+		"#.........#",
+		"#....#....#",
+		"#.........#",
+		"#####.#####",
+		"#.........#",
+		"###########"
+	],
+	"start": {"pos": [5, 9], "facing": 0},
+	"doors": [],
+	"npcs": [
+		{
+			"id": "ashlyn",
+			"name": "Ashlyn, Undead Hunter",
+			"pos": [5, 3],
+			"dialogue": "ashlyn_town_square",
+			"look": "(SOURCE-ADAPTED, PLACEHOLDER PROSE) A human woman in shining half-plate stands near the square's center. A holy symbol is emblazoned on the armor; her longsword is still drawn.",
+			"sprite": "npc"
+		}
+	],
+	"objects": [
+		{
+			"id": "breach",
+			"name": "Breached Eastern Barricade",
+			"pos": [5, 8],
+			"look": "(SOURCE-ADAPTED, PLACEHOLDER PROSE) Repurposed doors, tables, and scrap lumber form a rough barricade. A ten-foot gap opens onto the eastern street.",
+			"interactions": [
+				{
+					"id": "repair",
+					"label": "Help repair the barricade",
+					"requires_flag": "town_square_saved",
+					"requires_flag_not": "barricade_repaired",
+					"once": true,
+					"success_text": "(SOURCE-ADAPTED) With the square clear, you brace the gap with fresh lumber and fallen boards. The barricade holds.",
+					"effects": [
+						{"type": "set_flag", "flag": "barricade_repaired", "value": true},
+						{"type": "narration", "text": "The eastern barricade is repaired. The square is no longer open to the street."}
+					]
+				},
+				{
+					"id": "study",
+					"label": "Study the breach",
+					"effects": [
+						{"type": "narration", "text": "(SOURCE-ADAPTED) The gap is wide enough for two zombies abreast. Beyond it, the fog hides the eastern street."}
+					]
+				}
+			]
+		},
+		{
+			"id": "well",
+			"name": "Village Well",
+			"pos": [5, 5],
+			"look": "(SOURCE-ADAPTED, PLACEHOLDER PROSE) A low stone wall surrounds the village well. The shaft drops into cold darkness.",
+			"interactions": [
+				{
+					"id": "study",
+					"label": "Study the well",
+					"effects": [
+						{"type": "narration", "text": "(SOURCE-ADAPTED) The well is still. A bucket rope hangs slack against the stone; no one has drawn water here today."}
+					]
+				}
+			]
+		},
+		{
+			"id": "mercantile",
+			"name": "Bildrath's Mercantile",
+			"pos": [2, 3],
+			"look": "(SOURCE-ADAPTED, PLACEHOLDER PROSE) A shop facing the square. Its windows are boarded; the door is shut and barred from within.",
+			"interactions": [
+				{
+					"id": "knock",
+					"label": "Knock at the mercantile",
+					"effects": [
+						{"type": "narration", "text": "(SOURCE-ADAPTED) No answer. Behind the boards, something heavy shifts, then stops. The shop stays closed while the square is unsafe."}
+					]
+				}
+			]
+		},
+		{
+			"id": "tavern",
+			"name": "Blood of the Vine Tavern",
+			"pos": [8, 3],
+			"look": "(SOURCE-ADAPTED, PLACEHOLDER PROSE) A rambling building on the square. The sign is askew, and the windows are shuttered. A thin line of smoke rises from the chimney.",
+			"interactions": [
+				{
+					"id": "knock",
+					"label": "Knock at the tavern",
+					"effects": [
+						{"type": "narration", "text": "(SOURCE-ADAPTED) A muffled voice tells you to wait. The door remains barred while the dead are in the square."}
+					]
+				}
+			]
+		},
+		{
+			"id": "staging_exit",
+			"name": "Demo Waystone (Developer Route)",
+			"pos": [9, 9],
+			"look": "(DEVELOPER DEMO ROUTE — NOT CANONICAL GEOGRAPHY) A chalk-marked waystone placed here so the demo can return to the staging map.",
+			"interactions": [
+				{
+					"id": "return",
+					"label": "DEMO: Return to the staging area",
+					"success_text": "(DEVELOPER DEMO) You step back to the non-canonical staging area.",
+					"effects": [
+						{"type": "travel", "area": "barovia_east_gate", "pos": [4, 7], "facing": 0}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [
+		{
+			"id": "town_square_breach",
+			"pos": [5, 8],
+			"encounter": "town_square_zombies",
+			"requires_flag_not": "town_square_saved",
+			"effects": [
+				{"type": "narration", "text": "(SOURCE-ADAPTED ENCOUNTER) The eastern barricade gives way. Ashlyn shouts for aid as the dead push through the gap."}
+			]
+		}
+	]
+}

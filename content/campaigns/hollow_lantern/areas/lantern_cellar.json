@@ -1,0 +1,47 @@
+{
+	"id": "lantern_cellar",
+	"name": "The Hollow Lantern — Cistern (Example)",
+	"ambient": "(EXAMPLE AREA — PLACEHOLDER PROSE) A brick cistern under the lighthouse. The water is low, and something has been dragging itself along the walls.",
+	"tracker_quest": "lantern_watch",
+	"rows": [
+		"#########",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#########"
+	],
+	"start": {"pos": [4, 1], "facing": 2},
+	"doors": [],
+	"npcs": [],
+	"objects": [
+		{
+			"id": "yard_stairs",
+			"name": "Stairs to the Yard",
+			"pos": [4, 5],
+			"look": "(EXAMPLE OBJECT) The stair back up to the yard. The lamp above is still dark.",
+			"interactions": [
+				{
+					"id": "climb",
+					"label": "Climb back to the yard",
+					"success_text": "(EXAMPLE) You climb back into the evening air.",
+					"effects": [
+						{"type": "travel", "area": "lantern_yard", "pos": [4, 5], "facing": 0}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [
+		{
+			"id": "cistern_wake",
+			"pos": [4, 3],
+			"encounter": "cistern_vermin",
+			"requires_flag_not": "cistern_cleared",
+			"effects": [
+				{"type": "narration", "text": "(EXAMPLE ENCOUNTER) The water breaks. Two drowned shapes pull themselves upright between you and the stairs."}
+			]
+		}
+	]
+}

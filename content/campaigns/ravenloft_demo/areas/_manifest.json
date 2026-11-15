@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"default": "old_gatehouse",
+	"areas": [
+		"barovia_east_gate",
+		"barovia_town_square"
+	],
+	"demo_only": [
+		"barovia_east_gate"
+	],
+	"source_grounded": [
+		"barovia_town_square"
+	]
+}

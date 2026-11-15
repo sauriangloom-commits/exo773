@@ -1,0 +1,69 @@
+{
+	"id": "barovia_east_gate",
+	"name": "Developer Demo — Village of Barovia Staging Area",
+	"ambient": "(DEVELOPER DEMO ROUTE — NOT CANONICAL GEOGRAPHY) A small staging map for reaching the source-grounded town square without claiming a canonical route from the invented gatehouse.",
+	"rows": [
+		"#########",
+		"#.......#",
+		"#.......#",
+		"#...#...#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#########"
+	],
+	"start": {"pos": [4, 7], "facing": 0},
+	"doors": [],
+	"npcs": [],
+	"objects": [
+		{
+			"id": "to_town_square",
+			"name": "Demo Waystone to the Town Square",
+			"pos": [4, 2],
+			"look": "(DEVELOPER DEMO ROUTE — NOT CANONICAL GEOGRAPHY) A chalk-marked waystone points north, toward the source-grounded E3 town-square excerpt.",
+			"interactions": [
+				{
+					"id": "travel",
+					"label": "DEMO: Continue to the Village of Barovia — Town Square (E3)",
+					"success_text": "(DEVELOPER DEMO) You leave the staging map and enter the source-grounded town square.",
+					"effects": [
+						{"type": "travel", "area": "barovia_town_square", "pos": [5, 9], "facing": 0}
+					]
+				}
+			]
+		},
+		{
+			"id": "gatehouse_road",
+			"name": "Road to the Gatehouse",
+			"pos": [4, 6],
+			"look": "(DEVELOPER DEMO ROUTE — NOT CANONICAL GEOGRAPHY) A chalk-marked return path to the invented gatehouse demo.",
+			"interactions": [
+				{
+					"id": "return",
+					"label": "DEMO: Return to the Old Gatehouse",
+					"success_text": "(DEVELOPER DEMO) You return to the non-canonical gatehouse demonstration.",
+					"effects": [
+						{"type": "travel", "area": "old_gatehouse", "pos": [5, 10], "facing": 3}
+					]
+				}
+			]
+		},
+		{
+			"id": "barovia_gate",
+			"name": "Demo Gate Marker",
+			"pos": [7, 4],
+			"look": "(DEVELOPER DEMO — NOT A CANONICAL MAP) A marker for the staging area. The source-grounded location is the town square beyond the north waystone.",
+			"interactions": [
+				{
+					"id": "study",
+					"label": "Study the village gate",
+					"effects": [
+						{"type": "narration", "text": "(DEVELOPER DEMO) This staging marker is not a canonical description. The E3 town square is the source-grounded excerpt."}
+					]
+				}
+			]
+		}
+	],
+	"triggers": []
+}

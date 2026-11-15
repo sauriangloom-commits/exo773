@@ -1,0 +1,54 @@
+{
+	"id": "ashlyn_town_square",
+	"speaker": "Ashlyn, Undead Hunter",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "npc",
+			"speaker_name": "Ashlyn, Undead Hunter",
+			"text": "(SOURCE-ADAPTED DIALOGUE) The woman in half-plate lowers her sword. \"You came through the breach. I am Ashlyn, a Lightbringer. The square holds — for now. What do you want to know?\"",
+			"effects": [
+				{"type": "quest_start", "quest": "lightbringers"},
+				{"type": "set_flag", "flag": "ashlyn_met", "value": true}
+			],
+			"choices": [
+				{"text": "What happened here?", "next": "square"},
+				{"text": "Who are the Lightbringers?", "next": "lightbringers"},
+				{"text": "What do you need?", "next": "plea"},
+				{"text": "We will hold the square.", "next": "thanks"},
+				{"text": "We should keep moving.", "next": ""}
+			]
+		},
+		"square": {
+			"speaker": "npc",
+			"speaker_name": "Ashlyn, Undead Hunter",
+			"text": "\"The eastern barricade was breached. The dead came through the gap and kept coming. I was the only one still standing in the square when you arrived.\" She looks toward the northwest. \"The infection is in the church. That is where this began.\"",
+			"next": "root"
+		},
+		"lightbringers": {
+			"speaker": "npc",
+			"speaker_name": "Ashlyn, Undead Hunter",
+			"text": "\"We hunt undead. My companions Thendrick and Mathilda went to the church three days ago and have not returned. Madam Eva, west of town, may know more. I am also looking for the Sunsword — a weapon that may be our best hope against the master of this valley.\"",
+			"next": "root"
+		},
+		"plea": {
+			"speaker": "npc",
+			"speaker_name": "Ashlyn, Undead Hunter",
+			"text": "\"Find my companions at the church, or learn what happened to them. Then we can speak with Madam Eva. If the Sunsword is real, we will need it before this is over.\"",
+			"effects": [
+				{"type": "set_flag", "flag": "ashlyn_asked", "value": true},
+				{"type": "narration", "text": "Ashlyn asks you to search the church for Thendrick and Mathilda."}
+			],
+			"next": "root"
+		},
+		"thanks": {
+			"speaker": "npc",
+			"speaker_name": "Ashlyn, Undead Hunter",
+			"text": "\"Good. I will not forget it.\" She wipes her blade and looks toward the barricade. \"The square is ours. The church is another matter.\"",
+			"choices": [
+				{"text": "What is at the church?", "next": "square"},
+				{"text": "We will return.", "next": ""}
+			]
+		}
+	}
+}

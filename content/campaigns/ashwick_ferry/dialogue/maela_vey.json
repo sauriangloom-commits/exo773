@@ -1,0 +1,951 @@
+{
+	"id": "maela_vey",
+	"speaker": "Maela Vey",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "(ORIGINAL PLACEHOLDER DIALOGUE) Maela keeps one hand on the dead bell rope. \"The ferry went out with my brother Ivo. It came back empty. The bell has not rung since.\"",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_spoken",
+					"value": true
+				},
+				{
+					"type": "quest_start",
+					"quest": "ashwick_ferry"
+				}
+			],
+			"choices": [
+				{
+					"text": "What happened to the last crossing?",
+					"next": "crossing"
+				},
+				{
+					"text": "[Sense Motive DC 15] You are not telling me everything.",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_trust"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_refused"
+						}
+					],
+					"check": {
+						"skill": "sense_motive",
+						"dc": 15,
+						"success": "trust",
+						"failure": "dodge"
+					}
+				},
+				{
+					"text": "I will find Ivo and bring the ferry home.",
+					"next": "task",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_spoken_once"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "maela_spoken_once",
+							"value": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) Maela looks at you for the first time. \"The boathouse ledger will tell you what I cannot.\""
+						}
+					]
+				},
+				{
+					"text": "Tell her what the ledger shows about Ivo's last fare.",
+					"next": "account_decision",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "ledger_found"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				},
+				{
+					"text": "Show her the page you found.",
+					"next": "truth_page_late",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "last_page_found"
+						},
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						},
+						{
+							"type": "not_flag",
+							"flag": "last_page_shared"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "last_page_shared",
+							"value": true
+						}
+					]
+				},
+				{
+					"text": "Keep the last page to yourself.",
+					"next": "mercy_page_late",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "last_page_found"
+						},
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						},
+						{
+							"type": "not_flag",
+							"flag": "last_page_shared"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "last_page_shared",
+							"value": true
+						}
+					]
+				},
+				{
+					"text": "I found Ivo's token. We can ring the bell.",
+					"next": "aftermath_trust",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "drowned_cleared"
+						},
+						{
+							"type": "flag",
+							"flag": "maela_trust"
+						}
+					]
+				},
+				{
+					"text": "I found Ivo's token. I kept my word.",
+					"next": "aftermath_refused",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "drowned_cleared"
+						},
+						{
+							"type": "flag",
+							"flag": "maela_refused"
+						}
+					]
+				},
+				{
+					"text": "Tell me how the crossing ended at the bell.",
+					"next": "epilogue_rest",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "flag",
+							"flag": "ivo_rested"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_epilogue"
+						}
+					]
+				},
+				{
+					"text": "Tell me what answered the second ring.",
+					"next": "epilogue_answer",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "flag",
+							"flag": "bell_answer_survived"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_epilogue"
+						}
+					]
+				},
+				{
+					"text": "Tell me what the silence means for the ferry.",
+					"next": "epilogue_silent",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "flag",
+							"flag": "bell_silenced"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_epilogue"
+						}
+					]
+				},
+				{
+					"text": "How is the landing now?",
+					"next": "after_ending",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_epilogue"
+						}
+					]
+				},
+				{
+					"text": "Not yet.",
+					"next": ""
+				}
+			]
+		},
+		"account_decision": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela keeps one hand on the rope and waits. Whatever you tell her now is the account she will keep about Ivo's last crossing. You can still say nothing and step back.",
+			"choices": [
+				{
+					"text": "Tell her the ledger is Ivo's: he took a fare after the bell.",
+					"next": "account_truth_confirm",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "ledger_found"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				},
+				{
+					"text": "Show her the last page and tell her all of it.",
+					"next": "account_page_confirm",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "ledger_found"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_found"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				},
+				{
+					"text": "Tell her Ivo died bringing a passenger home. Let her keep that.",
+					"next": "account_mercy_confirm",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "ledger_found"
+						},
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				},
+				{
+					"text": "Not yet - say nothing about the ledger.",
+					"next": "root"
+				}
+			]
+		},
+		"account_truth_confirm": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You would tell her the ledger is Ivo's: the noon crossing struck through, and below it his own hand taking a fare after the bell. You would also tell her the book does not say how many times it rang.\n\nTell her, and that becomes the account she keeps.",
+			"choices": [
+				{
+					"text": "Tell her. This commits the account she keeps.",
+					"next": "truth_account",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "maela_decision",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "maela_truth",
+							"value": true
+						},
+						{
+							"type": "quest_start",
+							"quest": "maela_truth"
+						}
+					]
+				},
+				{
+					"text": "Not yet - step back.",
+					"next": "account_decision",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				}
+			]
+		},
+		"account_page_confirm": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You would show her the page and tell her all of it: one passage paid in silver, the bell to be rung twice, and her own draught named in Ivo's hand. She would read the rest herself.\n\nShow her, and that becomes the account she keeps.",
+			"choices": [
+				{
+					"text": "Show her. This commits the account she keeps.",
+					"next": "truth_page",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "maela_decision",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "maela_truth",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "last_page_shared",
+							"value": true
+						},
+						{
+							"type": "quest_start",
+							"quest": "maela_truth"
+						}
+					]
+				},
+				{
+					"text": "Not yet - step back.",
+					"next": "account_decision",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				}
+			]
+		},
+		"account_mercy_confirm": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You would tell her the last fare was a passenger Ivo was bringing home, and that he died trying. It is not what the ledger says. She would have no other account of that night.\n\nTell her, and that becomes the account she keeps.",
+			"choices": [
+				{
+					"text": "Tell her. This commits the account she keeps.",
+					"next": "mercy_account",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "maela_decision",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "maela_mercy",
+							"value": true
+						},
+						{
+							"type": "quest_start",
+							"quest": "maela_mercy"
+						}
+					]
+				},
+				{
+					"text": "Not yet - step back.",
+					"next": "account_decision",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "maela_decision"
+						}
+					]
+				}
+			]
+		},
+		"crossing": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "\"Ivo took the noon crossing. The bell rang once, late. Then the skiff came back by itself, and the tack room was locked from the inside.\" She stops. \"I have not opened it.\"",
+			"next": "root"
+		},
+		"task": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "\"Search the boathouse desk. Ivo kept the ledger there. If the drowned have him, his token will be with them. Ring the bell only when you have both.\"",
+			"choices": [
+				{
+					"text": "Why not ring it now?",
+					"next": "warning"
+				},
+				{
+					"text": "I will return.",
+					"next": ""
+				}
+			]
+		},
+		"warning": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "\"Because the bell remembers who is owed. Ring it wrong and the far bank will send something back.\" She touches the cut rope. \"I would rather owe the dead than feed them.\"",
+			"next": "root"
+		},
+		"trust": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela is quiet for a long moment. \"I let Ivo take the crossing alone. I was afraid of the water.\" She presses a key and a stoppered vial into your hand. \"The tack room. Take the spare route if you have to. Do not make me bury another ferryman.\"",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_trust",
+					"value": true
+				},
+				{
+					"type": "give_item",
+					"item": "ashwick_tack_room_key",
+					"qty": 1,
+					"only_if_missing": true
+				},
+				{
+					"type": "give_item",
+					"item": "potion_of_cure_light_wounds",
+					"qty": 1
+				},
+				{
+					"type": "narration",
+					"text": "(ORIGINAL PLACEHOLDER) Maela trusts you with the tack-room key and a potion."
+				}
+			],
+			"next": "root"
+		},
+		"dodge": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela's jaw sets. \"You want the truth? The truth is that I am still here, and Ivo is not. Take the water route. I have nothing else to give you.\"",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_refused",
+					"value": true
+				},
+				{
+					"type": "narration",
+					"text": "(ORIGINAL PLACEHOLDER) Maela withholds the tack-room key and the potion. The spare key or Sera's lockpicks remain possible routes."
+				}
+			],
+			"next": "root"
+		},
+		"aftermath_trust": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "\"You found him.\" Maela's hand shakes on the rope. \"I gave you the key because I thought I would have to do this alone. Ring it. I will stand here until the far bank answers.\"",
+			"next": "root"
+		},
+		"aftermath_refused": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "\"You found him anyway.\" She does not look at the token. \"I kept the key. You kept your word. That will have to be enough.\"",
+			"next": "root"
+		},
+		"truth_account": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the ledger is Ivo's: the noon crossing is struck through, and below it he wrote that he took a fare after the bell. He broke the crossing law. Maela asks whether he rang twice. You tell her the ledger does not say. She looks at the bell. \"Then I have been mourning a half-truth.\"",
+			"choices": [
+				{
+					"text": "Let her have the rest.",
+					"next": "root"
+				}
+			]
+		},
+		"truth_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You show her the last page. One passage paid in silver; the bell to be rung twice; Ivo's note: \"Maela's draught. One more fare and the debt is done. The second ring will keep them on the far bank.\" She reads it twice. \"He did it for me. And the second ring was not for a passenger at all.\"",
+			"choices": [
+				{
+					"text": "Let her have the rest.",
+					"next": "root"
+				}
+			]
+		},
+		"mercy_account": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the last fare was a passenger Ivo was bringing home; he died trying. It is not what the ledger says. Maela believes it. \"Then he was himself at the end.\" She will keep the landing.",
+			"choices": [
+				{
+					"text": "Let her keep it.",
+					"next": "root"
+				}
+			]
+		},
+		"truth_page_late": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You show her the page you found after she had already heard your account. It does not change what you told her; it makes it exact. One passage paid in silver, two rings, and her draught named in Ivo's hand. She folds the receipt into the ledger without a word.",
+			"choices": [
+				{
+					"text": "Let her keep the page.",
+					"next": "root"
+				}
+			]
+		},
+		"mercy_page_late": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You keep the page folded. Maela never sees the toll receipt or the line about her draught. The story you gave her holds, and the silence is yours to carry.",
+			"choices": [
+				{
+					"text": "Leave it folded.",
+					"next": "root"
+				}
+			]
+		},
+		"epilogue_rest": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "The token sat in the socket. One note crossed the water and did not return. Maela sets the rope down. \"Ask me what you need to ask.\"",
+			"choices": [
+				{
+					"text": "What will you tell the village?",
+					"next": "epilogue_rest_truth",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						}
+					]
+				},
+				{
+					"text": "Let her keep the story she has.",
+					"next": "epilogue_rest_mercy",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						}
+					]
+				},
+				{
+					"text": "What did the last page change?",
+					"next": "epilogue_rest_truth_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				},
+				{
+					"text": "What will you do with the page?",
+					"next": "epilogue_rest_mercy_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				}
+			]
+		},
+		"epilogue_answer": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "The second note came back wrong. Something climbed the landing stones and did not leave until you put it down. Maela has the rope in both hands. \"Ask me what you need to ask.\"",
+			"choices": [
+				{
+					"text": "What will you tell the village?",
+					"next": "epilogue_answer_truth",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						}
+					]
+				},
+				{
+					"text": "Let her keep the story she has.",
+					"next": "epilogue_answer_mercy",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						}
+					]
+				},
+				{
+					"text": "What did the last page change?",
+					"next": "epilogue_answer_truth_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				},
+				{
+					"text": "What will you do with the page?",
+					"next": "epilogue_answer_mercy_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				}
+			]
+		},
+		"epilogue_silent": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "The token is broken. The socket stays empty. Maela does not ask you to ring. \"Ask me what you need to ask.\"",
+			"choices": [
+				{
+					"text": "What will you tell the village?",
+					"next": "epilogue_silent_truth",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						}
+					]
+				},
+				{
+					"text": "Let her keep the story she has.",
+					"next": "epilogue_silent_mercy",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						}
+					]
+				},
+				{
+					"text": "What did the last page change?",
+					"next": "epilogue_silent_truth_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_truth"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				},
+				{
+					"text": "What will you do with the page?",
+					"next": "epilogue_silent_mercy_page",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_mercy"
+						},
+						{
+							"type": "flag",
+							"flag": "last_page_shared"
+						}
+					]
+				}
+			]
+		},
+		"epilogue_rest_truth": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the ledger is Ivo's confession: a fare after the bell, the crossing law broken, and no clean death to soften it. Maela packs the toll book. At dawn she gives the landing to the village and leaves the bell to the water. The ferry will not cross again, but Ivo's name is honest.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_rest_truth_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the page is the receipt: one passage paid in silver, two rings, and her draught named in Ivo's hand. Maela folds it into the ledger. At dawn she gives the landing to the village and leaves the bell to the water. The ferry closes; nothing is softened.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_rest_mercy": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela will tell the village Ivo died bringing a passenger home. The ferry opens at first light. You keep the page and the truth; the lie keeps the landing.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_rest_mercy_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela keeps the story. You keep the page folded. The ferry opens at first light, and the village remembers a man who died trying to bring someone home. The truth stays with you.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_answer_truth": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her what answered the second ring was not a passenger. Maela reads the ledger again, then wraps the bell in tarred cloth. The landing closes. The far bank keeps its claim; she keeps no lie.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_answer_truth_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the receipt paid for two rings, and that the thing which answered was what Ivo called. Maela wraps the bell and closes the landing. The far bank keeps its claim; she keeps no lie.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_answer_mercy": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela believes Ivo rang twice to bring a passenger home. She stays. The ferry does not cross, because the far bank has answered once. You keep the truth and the silence.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_answer_mercy_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela believes the story. You keep the page folded. The ferry does not cross, because the far bank has answered once. The lie holds the landing together; the truth stays with you.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_silent_truth": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the silence was a choice, not a mercy. Maela closes the landing and leaves the bell to the water. No one crosses, but no one is lied to.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_silent_truth_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "You tell her the page names the debt and the two rings she never heard. Maela closes the landing and leaves the bell to the water. No one crosses, but no one is lied to.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_silent_mercy": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela believes Ivo died trying to bring someone home. She keeps the landing as a memorial, though no ferry crosses. The silence is yours to carry.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"epilogue_silent_mercy_page": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela keeps the story and the landing. You keep the page folded. No ferry crosses; the silence is yours to carry.",
+			"effects": [
+				{
+					"type": "set_flag",
+					"flag": "maela_epilogue",
+					"value": true
+				}
+			],
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		},
+		"after_ending": {
+			"speaker": "npc",
+			"speaker_name": "Maela Vey",
+			"text": "Maela keeps the rope where it is. The landing is quiet, and she has said all she will say about Ivo. The water is still.",
+			"choices": [
+				{
+					"text": "Leave her to the landing.",
+					"next": ""
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"drowned_bell": {
+		"id": "drowned_bell",
+		"title": "The Drowned Bell",
+		"summary": "(EXAMPLE QUEST) The gatehouse bell has not rung in years. Ring it to warn the village — if the gatehouse will let you.",
+		"objectives": [
+			{"id": "speak_miruna", "text": "Speak with Miruna at the gatehouse.", "flag": "met_miruna"},
+			{"id": "recover_clapper", "text": "Recover the bell clapper from the flooded stores.", "flag": "found_clapper"},
+			{"id": "warden", "text": "Face or parley with the thing in the crypt.", "flag": "warden_resolved"},
+			{"id": "ring_bell", "text": "Ring the gate bell.", "flag": "bell_rung"}
+		]
+	},
+	"lightbringers": {
+		"id": "lightbringers",
+		"title": "The Lightbringers",
+		"summary": "(SOURCE-ADAPTED QUEST) Ashlyn and her companions came to Barovia to fight the dead. Help her hold the town square, then learn what happened at the church.",
+		"objectives": [
+			{"id": "hold_square", "text": "Help Ashlyn hold the town square.", "flag": "town_square_saved"},
+			{"id": "speak_ashlyn", "text": "Speak with Ashlyn after the battle.", "flag": "ashlyn_met"}
+		]
+	}
+}

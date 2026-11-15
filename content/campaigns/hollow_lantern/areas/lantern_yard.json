@@ -1,0 +1,69 @@
+{
+	"id": "lantern_yard",
+	"name": "The Hollow Lantern — Yard (Example)",
+	"ambient": "(EXAMPLE AREA — PLACEHOLDER PROSE) A salt-stained lighthouse yard at dusk. The lamp above is dark, and the cistern grate below breathes cold air.",
+	"tracker_quest": "lantern_watch",
+	"rows": [
+		"#########",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#########"
+	],
+	"start": {"pos": [4, 7], "facing": 0},
+	"doors": [],
+	"npcs": [
+		{
+			"id": "keeper_ivy",
+			"name": "Ivy, the Lantern Keeper",
+			"pos": [3, 2],
+			"dialogue": "keeper_ivy",
+			"look": "(EXAMPLE NPC) A weathered woman in an oilskin coat trims the wick of a dead lamp. She does not look up when you approach.",
+			"sprite": "npc"
+		}
+	],
+	"objects": [
+		{
+			"id": "yard_notice",
+			"name": "Watch Notice",
+			"pos": [3, 6],
+			"look": "(EXAMPLE OBJECT) A nailed-up notice, its ink running in the damp: the lamp must be lit by full dark, and the cistern must not be opened after sunset.",
+			"interactions": [
+				{
+					"id": "read",
+					"label": "Read the watch notice",
+					"once": false,
+					"success_text": "(EXAMPLE) You read the notice. The last line has been scratched out and rewritten: 'It is already open.'",
+					"effects": [
+						{"type": "set_flag", "flag": "lantern_notice_read", "value": true},
+						{"type": "narration", "text": "(EXAMPLE) The notice names three keepers. Only Ivy's name is not struck through."}
+					]
+				}
+			]
+		},
+		{
+			"id": "cistern_stairs",
+			"name": "Cistern Stairs",
+			"pos": [4, 4],
+			"look": "(EXAMPLE OBJECT) A stone stair spirals down through the yard to the cistern. The air rising from it is colder than the evening.",
+			"interactions": [
+				{
+					"id": "descend",
+					"label": "Descend into the cistern",
+					"success_text": "(EXAMPLE) You take the stairs down.",
+					"effects": [
+						{"type": "travel", "area": "lantern_cellar", "pos": [4, 1], "facing": 2}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [],
+	"entry_effects": [
+		{"type": "narration", "text": "(EXAMPLE CAMPAIGN) The yard gate closes behind you. Somewhere below, water moves."}
+	]
+}

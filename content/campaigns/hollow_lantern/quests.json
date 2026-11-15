@@ -1,0 +1,12 @@
+{
+	"lantern_watch": {
+		"id": "lantern_watch",
+		"title": "The Hollow Lantern",
+		"summary": "(EXAMPLE QUEST) Keep the light one more night. Speak with Ivy, read the watch notice, and clear whatever is moving in the cistern.",
+		"objectives": [
+			{"id": "meet_keeper", "text": "Speak with Ivy, the lantern keeper.", "flag": "lantern_met_keeper"},
+			{"id": "read_notice", "text": "Read the watch notice in the yard.", "flag": "lantern_notice_read"},
+			{"id": "clear_cistern", "text": "Clear the cistern below the yard.", "flag": "cistern_cleared"}
+		]
+	}
+}

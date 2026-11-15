@@ -1,0 +1,64 @@
+{
+	"id": "miruna",
+	"speaker": "Miruna",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "(EXAMPLE DIALOGUE) \"You came up the road. You actually came up the road.\" The woman's lantern shakes. \"The bell is dead. When the bell is dead, they come down out of the woods. Please — do not let it stay dead.\"",
+			"choices": [
+				{"text": "What happened to the gatehouse?", "next": "story"},
+				{"text": "[Sense Motive DC 12] You are not telling me everything.", "conditions": [{"type": "not_flag", "flag": "miruna_trusts"}], "check": {"skill": "sense_motive", "dc": 12, "success": "secret", "failure": "denial"}},
+				{"text": "We will find the clapper and ring the bell.", "next": "accept", "conditions": [{"type": "not_flag", "flag": "met_miruna"}]},
+				{"text": "Is there somewhere safe to rest?", "next": "rest_hint"},
+				{"text": "We have work to do. Stay here.", "next": ""}
+			]
+		},
+		"story": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "\"The old warden kept the gate. When the fever came, he would not leave it. Now the stores are drowned, the crypt is shut, and the bell has no tongue.\" She looks toward the dark. \"I do not go past the shrine anymore.\"",
+			"next": "root"
+		},
+		"secret": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "\"...You hear it too, then.\" She lowers her voice. \"Something in the crypt still talks. It knows my name. It calls me 'little bell.'\" She presses a coin into your hand as if paying a debt.",
+			"effects": [
+				{"type": "set_flag", "flag": "miruna_trusts", "value": true},
+				{"type": "gold", "amount": 5},
+				{"type": "narration", "text": "Miruna trusts you with what she knows about the crypt."}
+			],
+			"next": "root"
+		},
+		"denial": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "\"I am telling you what I can.\" Her jaw sets. \"You want the truth? The truth is that I am still here, and everyone else is not.\"",
+			"next": "root"
+		},
+		"rest_hint": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "\"The shrine of the Morninglord, west of the middle hall. It is cold, but nothing has ever come through that door.\"",
+			"choices": [
+				{"text": "Thank you.", "next": "root"}
+			]
+		},
+		"accept": {
+			"speaker": "npc",
+			"speaker_name": "Miruna",
+			"text": "\"The warden hid the clapper when the fever took him. Search the flooded stores. And if the crypt is open — \" She stops. \"Do not let it ring the bell first.\" She presses a potion into your hands.",
+			"effects": [
+				{"type": "set_flag", "flag": "met_miruna", "value": true},
+				{"type": "quest_start", "quest": "drowned_bell"},
+				{"type": "give_item", "item": "potion_of_cure_light_wounds", "qty": 1},
+				{"type": "narration", "text": "Quest updated: The Drowned Bell. Search the flooded stores for the clapper."}
+			],
+			"choices": [
+				{"text": "Stay here. We will return.", "next": ""}
+			]
+		}
+	}
+}

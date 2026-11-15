@@ -1,0 +1,240 @@
+{
+	"storeroom_dead": {
+		"id": "storeroom_dead",
+		"name": "The Flooded Stores",
+		"rows": [
+			"#########",
+			"#.......#",
+			"#.##.##.#",
+			"#.......#",
+			"#.##.##.#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [
+			[
+				1,
+				5
+			],
+			[
+				2,
+				5
+			],
+			[
+				3,
+				5
+			],
+			[
+				4,
+				5
+			]
+		],
+		"monsters": [
+			"zombie",
+			"zombie"
+		],
+		"monster_cells": [
+			[
+				6,
+				1
+			],
+			[
+				7,
+				1
+			]
+		],
+		"xp": 300,
+		"intro": "(EXAMPLE ENCOUNTER) The drowned stores heave. Two bloated shapes rise from the floodwater, water pouring from their mouths.",
+		"victory_effects": [
+			{
+				"type": "set_flag",
+				"flag": "storeroom_cleared",
+				"value": true
+			},
+			{
+				"type": "narration",
+				"text": "The dead collapse into the flood. The storeroom is quiet, except for the drip of water and your own breathing."
+			}
+		]
+	},
+	"crypt_warden": {
+		"id": "crypt_warden",
+		"name": "The Gate-Warden's Crypt",
+		"rows": [
+			"#########",
+			"#...#...#",
+			"#.......#",
+			"#.......#",
+			"#...#...#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [
+			[
+				1,
+				5
+			],
+			[
+				2,
+				5
+			],
+			[
+				3,
+				5
+			],
+			[
+				4,
+				5
+			]
+		],
+		"monsters": [
+			"ghoul",
+			"zombie"
+		],
+		"monster_cells": [
+			[
+				3,
+				1
+			],
+			[
+				6,
+				1
+			]
+		],
+		"xp": 450,
+		"intro": "(EXAMPLE ENCOUNTER) Corvin's courtesy ends. He comes over the bier with his mouth open, and something answers him from the dark.",
+		"victory_effects": [
+			{
+				"type": "set_flag",
+				"flag": "warden_resolved",
+				"value": true
+			},
+			{
+				"type": "set_flag",
+				"flag": "warden_destroyed",
+				"value": true
+			},
+			{
+				"type": "narration",
+				"text": "The Gate-Warden comes apart like wet parchment. The crypt is still. Whatever held the bell's memory here has let go."
+			}
+		]
+	},
+	"town_square_zombies": {
+			"id": "town_square_zombies",
+			"name": "Zombies in Town Square (E3, adapted)",
+			"rows": [
+				"#########",
+				"#.......#",
+				"#.......#",
+				"#.......#",
+				"#.......#",
+				"#.......#",
+				"#########"
+			],
+			"party_cells": [
+				[2, 5],
+				[3, 5],
+				[4, 5],
+				[5, 5]
+			],
+			"monsters": [
+				"infected_zombie",
+				"infected_zombie"
+			],
+			"monster_cells": [
+				[3, 1],
+				[5, 1]
+			],
+			"xp": 600,
+			"intro": "(SOURCE-ADAPTED ENCOUNTER) The eastern barricade gives way. Ashlyn is hard-pressed at the center of the square as infected dead push through the gap.",
+			"victory_effects": [
+				{
+					"type": "quest_start",
+					"quest": "lightbringers"
+				},
+				{
+					"type": "set_flag",
+					"flag": "town_square_saved",
+					"value": true
+				},
+				{
+					"type": "set_flag",
+					"flag": "ashlyn_survived",
+					"value": true
+				},
+				{
+					"type": "narration",
+					"text": "The last infected zombie falls. The square is quiet. Ashlyn lowers her sword and looks toward the church."
+				}
+			]
+	},
+	"qa_turn_undead": {
+		"id": "qa_turn_undead",
+		"name": "QA: Turning the Dead (not campaign content)",
+		"rows": [
+			"#########",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [
+			[2, 5],
+			[3, 5],
+			[4, 5],
+			[5, 5]
+		],
+		"monsters": [
+			"ghoul",
+			"zombie",
+			"infected_zombie"
+		],
+		"monster_cells": [
+			[2, 1],
+			[4, 1],
+			[6, 1]
+		],
+		"xp": 0,
+		"intro": "(QA SCENARIO — isolated from campaign content) A ghoul and a drowned dead lurch forward. Behind them, an infected zombie keeps coming: six Hit Dice, beyond a 3rd-level cleric's turning check unless the roll is exceptional.",
+		"victory_effects": [
+			{
+				"type": "narration",
+				"text": "QA scenario complete."
+			}
+		]
+	},
+	"qa_victory": {
+		"id": "qa_victory",
+		"name": "QA: Reward Smoke (not campaign content)",
+		"rows": [
+			"#########",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [
+			[2, 3],
+			[3, 3],
+			[4, 3],
+			[5, 3]
+		],
+		"monsters": [
+			"zombie"
+		],
+		"monster_cells": [
+			[2, 2]
+		],
+		"xp": 150,
+		"intro": "(QA SCENARIO — isolated from campaign content) A single drowned dead blocks the way; the party begins adjacent so victory can be observed in a few actions.",
+		"victory_effects": [
+			{
+				"type": "narration",
+				"text": "QA victory scenario complete."
+			}
+		]
+	}
+}

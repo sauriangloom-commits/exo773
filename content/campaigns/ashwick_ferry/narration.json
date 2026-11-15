@@ -1,0 +1,17 @@
+{
+	"intro": [
+		"(ORIGINAL PLACEHOLDER CAMPAIGN) The Ashwick ferry has not crossed in three days. The landing is empty except for Maela Vey and a bell with no tongue.",
+		"(ORIGINAL PLACEHOLDER) Find out what happened to the last crossing. The boathouse ledger may explain why the bell went silent.",
+		"(PLACEHOLDER PRESENTATION) This is an original, non-canonical scenario built from content files. Prose, maps and art are stand-ins."
+	],
+	"defeat": [
+		"(ORIGINAL PLACEHOLDER) The black water takes another ferryman. The bell stays silent.",
+		"(PLACEHOLDER DEFEAT STATE) Load a save or begin again."
+	],
+	"victory": [
+		"(ORIGINAL PLACEHOLDER) The crossing is settled. The bell, the token and the water have had their say.",
+		"(ORIGINAL PLACEHOLDER) Maela has the last account. The landing will keep it, or it will not.",
+		"(PLACEHOLDER PRESENTATION) The objective is complete. You can keep exploring, inspect the party, or save."
+	],
+	"controls_hint": "Move: W/S or ↑/↓ • Strafe: A/D • Turn: Q/E or ←/→ • Interact: F or Space • Take 10/20: action bar • Party: Tab • Sheet: C • Inventory: I • Journal: J • Pause: Esc"
+}

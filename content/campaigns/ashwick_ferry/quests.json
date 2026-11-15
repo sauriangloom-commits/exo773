@@ -1,0 +1,68 @@
+{
+	"ashwick_ferry": {
+		"id": "ashwick_ferry",
+		"title": "The Ashwick Ferry",
+		"summary": "(ORIGINAL PLACEHOLDER QUEST) The ferry bell has gone silent. Speak with Maela, read the ferryman's ledger, clear the tack room, recover Ivo's token, decide what Maela will know, and hear how the crossing ended.",
+		"objectives": [
+			{
+				"id": "speak_maela",
+				"text": "Speak with Maela Vey at the landing.",
+				"flag": "maela_spoken"
+			},
+			{
+				"id": "find_ledger",
+				"text": "Find and read the ferryman's ledger.",
+				"flag": "ledger_found"
+			},
+			{
+				"id": "clear_tack_room",
+				"text": "Clear the drowned dead from the tack room.",
+				"flag": "drowned_cleared"
+			},
+			{
+				"id": "recover_token",
+				"text": "Recover Ivo's bell token.",
+				"flag": "ivo_token_found"
+			},
+			{
+				"id": "hear_epilogue",
+				"text": "Hear Maela's account of the crossing.",
+				"flag": "maela_epilogue"
+			}
+		]
+	},
+	"maela_truth": {
+		"id": "maela_truth",
+		"title": "What Ivo Owed",
+		"summary": "(ORIGINAL PLACEHOLDER SIDE QUEST) You told Maela what the ledger shows. See the crossing settled without softening it.",
+		"objectives": [
+			{
+				"id": "tell_truth",
+				"text": "Tell Maela what the ledger shows.",
+				"flag": "maela_truth"
+			},
+			{
+				"id": "see_it_through",
+				"text": "Hear how Maela will carry the truth.",
+				"flag": "maela_epilogue"
+			}
+		]
+	},
+	"maela_mercy": {
+		"id": "maela_mercy",
+		"title": "The Passenger's Story",
+		"summary": "(ORIGINAL PLACEHOLDER SIDE QUEST) You gave Maela a story she can live with. See the crossing settled without taking it back.",
+		"objectives": [
+			{
+				"id": "spare_her",
+				"text": "Tell Maela Ivo died bringing a passenger home.",
+				"flag": "maela_mercy"
+			},
+			{
+				"id": "see_it_through",
+				"text": "Hear how Maela will keep the landing.",
+				"flag": "maela_epilogue"
+			}
+		]
+	}
+}

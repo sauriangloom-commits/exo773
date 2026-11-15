@@ -1,0 +1,16 @@
+{
+	"intro": [
+		"(EXAMPLE CAMPAIGN — PLACEHOLDER PROSE) The Hollow Lantern stands where the road meets the salt marsh. Its lamp has been dark for three nights, and the keeper has stopped asking travellers to stay.",
+		"(EXAMPLE CAMPAIGN) You have agreed to keep the light until dawn: read the notice, speak with Ivy, and make sure nothing comes up out of the cistern.",
+		"(PLACEHOLDER) This is a small demonstration campaign built entirely from content files. The prose and art are stand-ins."
+	],
+	"defeat": [
+		"The cold water closes over the yard. Above, the lamp stays dark.",
+		"(This is a defeat state. Load a save or begin again.)"
+	],
+	"victory": [
+		"(EXAMPLE) Before dawn, the wick catches. The light goes out across the marsh in a long, steady sweep.",
+		"(The example objective is complete. You can keep exploring, inspect your party, or save.)"
+	],
+	"controls_hint": "Move: W/S or ↑/↓ • Strafe: A/D • Turn: Q/E or ←/→ • Interact: F or Space • Party: Tab • Sheet: C • Inventory: I • Journal: J • Pause: Esc"
+}

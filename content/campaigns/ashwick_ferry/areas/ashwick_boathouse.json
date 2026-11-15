@@ -1,0 +1,187 @@
+{
+	"id": "ashwick_boathouse",
+	"name": "The Ashwick Ferry — Boathouse (Original Placeholder)",
+	"ambient": "(ORIGINAL PLACEHOLDER AREA) A low boathouse that smells of tar, wet rope and old grain. A brick tack room has been sealed behind a single locked door.",
+	"tracker_quest": "ashwick_ferry",
+	"rows": [
+		"#########",
+		"#.......#",
+		"#.......#",
+		"###D#####",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#...@...#",
+		"#########"
+	],
+	"start": {
+		"pos": [
+			4,
+			7
+		],
+		"facing": 0
+	},
+	"doors": [
+		{
+			"id": "tack_room_door",
+			"pos": [
+				3,
+				3
+			],
+			"name": "Tack-Room Door",
+			"locked": true,
+			"lock_dc": 20,
+			"key_item": "ashwick_tack_room_key",
+			"open_flag": "tack_room_door_open",
+			"description": "(ORIGINAL PLACEHOLDER DOOR) A narrow door reinforced with a cross-brace. The lock is newer than the wood, and the keyhole is bright with use."
+		}
+	],
+	"npcs": [],
+	"objects": [
+		{
+			"id": "boathouse_ledger",
+			"name": "Ferryman's Ledger",
+			"pos": [
+				4,
+				5
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) A ledger lies open on the desk, its pages swollen with damp. Most of the last entry has been blotted out.",
+			"interactions": [
+				{
+					"id": "search",
+					"label": "Search the desk and read the ledger",
+					"skill": "search",
+					"dc": 10,
+					"once": true,
+					"success_text": "(ORIGINAL PLACEHOLDER CLUE) Under the blotter you find the last page intact. The noon crossing is entered and struck through. Below it, in Ivo's hand: \"One fare after the bell. The token is with the drowned. Do not ring without it.\"",
+					"failure_text": "The damp has glued the pages together. You cannot make out the last entry yet.",
+					"success_effects": [
+						{
+							"type": "set_flag",
+							"flag": "ledger_found",
+							"value": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) The ledger places Ivo on the water after the last lawful crossing. The bell was not rung for a passenger."
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "spare_key_nail",
+			"name": "Nail Behind the Desk",
+			"pos": [
+				6,
+				5
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) A bent nail behind the desk, half hidden by a hanging coil of rope. Something metal catches the light.",
+			"interactions": [
+				{
+					"id": "search",
+					"label": "Search behind the desk",
+					"skill": "search",
+					"dc": 10,
+					"success_text": "(ORIGINAL PLACEHOLDER) A spare tack-room key hangs from a tarred cord. The tag is blank, but the cut matches the bright lock.",
+					"failure_text": "The rope and old netting are tangled together. You cannot reach the nail.",
+					"success_effects": [
+						{
+							"type": "give_item",
+							"item": "ashwick_tack_room_key",
+							"qty": 1,
+							"only_if_missing": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) The spare key is yours. Maela need not give up hers."
+						}
+					],
+					"once": true
+				}
+			]
+		},
+		{
+			"id": "boathouse_skiff",
+			"name": "Boathouse Steps",
+			"pos": [
+				7,
+				7
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) Wet steps lead back down to the moored skiff. The landing light is a small yellow smudge across the water.",
+			"interactions": [
+				{
+					"id": "return",
+					"label": "Row back to the landing",
+					"success_text": "(ORIGINAL PLACEHOLDER) You push off and row back through the fog.",
+					"effects": [
+						{
+							"type": "travel",
+							"area": "ashwick_landing",
+							"pos": [
+								4,
+								7
+							],
+							"facing": 0
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "boathouse_strongbox",
+			"name": "Ferryman's Strongbox",
+			"pos": [
+				7,
+				5
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) A small iron strongbox is wedged behind the desk, its lid scuffed by repeated use. The lock is newer than the box.",
+			"interactions": [
+				{
+					"id": "pick_lock",
+					"label": "Pick the strongbox lock",
+					"skill": "open_lock",
+					"dc": 15,
+					"requires_flag": "ledger_found",
+					"once": true,
+					"success_text": "(ORIGINAL PLACEHOLDER) The lock gives. Inside is a folded toll receipt and a page torn from the ledger.",
+					"failure_text": "The lock is stiff with river damp. You can try again, but the box has not opened.",
+					"success_effects": [
+						{
+							"type": "set_flag",
+							"flag": "last_page_found",
+							"value": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) The receipt names one passage paid in silver, the bell to be rung twice, and a note in Ivo's hand: \"Maela's draught. One more fare and the debt is done. The second ring will keep them on the far bank.\""
+						}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [
+		{
+			"id": "tack_room_drowned",
+			"pos": [
+				3,
+				2
+			],
+			"encounter": "ashwick_tack_room_dead",
+			"requires_flag_not": "drowned_cleared",
+			"effects": [
+				{
+					"type": "narration",
+					"text": "(ORIGINAL PLACEHOLDER ENCOUNTER) The tack room stinks of river mud. Two drowned shapes unfold from the harness racks, still wearing ferrymen's coats."
+				}
+			]
+		}
+	],
+	"entry_effects": [
+		{
+			"type": "narration",
+			"text": "(ORIGINAL PLACEHOLDER) The boathouse is empty. A locked tack room waits at the north wall, and the desk has been left as if someone meant to return."
+		}
+	]
+}

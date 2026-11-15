@@ -1,0 +1,49 @@
+{
+	"id": "corvin",
+	"speaker": "Corvin, the Gate-Warden",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "creature",
+			"speaker_name": "Corvin, the Gate-Warden",
+			"text": "(EXAMPLE DIALOGUE) The thing in the tabard does not rise. \"Little bells. Little living bells.\" Its voice is almost courteous. \"I kept the gate. I keep it still. Say why you have come into my house, and say it well.\"",
+			"choices": [
+				{"text": "Who are you?", "next": "lore"},
+				{"text": "[Diplomacy DC 18] We did not come to rob the dead. We came to ring the bell.", "conditions": [{"type": "not_flag", "flag": "warden_resolved"}], "check": {"skill": "diplomacy", "dc": 18, "success": "pact", "failure": "insult"}},
+				{"text": "[Intimidate DC 20] Stand aside. The bell will ring tonight.", "conditions": [{"type": "not_flag", "flag": "warden_resolved"}], "check": {"skill": "intimidate", "dc": 20, "success": "pact", "failure": "insult"}},
+				{"text": "Destroy it.", "conditions": [{"type": "not_flag", "flag": "warden_resolved"}], "effects": [{"type": "start_combat", "encounter": "crypt_warden"}], "next": ""},
+				{"text": "Withdraw quietly.", "next": ""}
+			]
+		},
+		"lore": {
+			"speaker": "creature",
+			"speaker_name": "Corvin, the Gate-Warden",
+			"text": "\"Corvin. Warden of this gate. When the fever came I locked the doors and would not let the village in.\" A dry click, perhaps a laugh. \"They were right to fear me. I was already dead by then, I think. I only kept the shape of the office.\"",
+			"next": "root"
+		},
+		"pact": {
+			"speaker": "creature",
+			"speaker_name": "Corvin, the Gate-Warden",
+			"text": "The warden is silent for a long moment. \"Take the tongue of the bell. Ring it. I will not stop you.\" He sets something iron on the bier. \"When it rings, say the warden's name. Someone should.\"",
+			"effects": [
+				{"type": "set_flag", "flag": "warden_resolved", "value": true},
+				{"type": "set_flag", "flag": "warden_pact", "value": true},
+				{"type": "give_item", "item": "bell_clapper", "qty": 1, "only_if_missing": true},
+				{"type": "xp", "amount": 200},
+				{"type": "narration", "text": "Corvin yields the crypt without a fight."}
+			],
+			"choices": [
+				{"text": "I will say your name, Corvin.", "next": ""}
+			]
+		},
+		"insult": {
+			"speaker": "creature",
+			"speaker_name": "Corvin, the Gate-Warden",
+			"text": "\"You came to ring the bell.\" The courtesy drains out of the voice. \"Then let the bell ring with your bones in it.\"",
+			"choices": [
+				{"text": "Attack!", "effects": [{"type": "start_combat", "encounter": "crypt_warden"}], "next": ""},
+				{"text": "Back away, slowly.", "next": ""}
+			]
+		}
+	}
+}

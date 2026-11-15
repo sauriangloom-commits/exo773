@@ -1,0 +1,68 @@
+{
+	"id": "keeper_ivy",
+	"speaker": "Ivy, the Lantern Keeper",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "(EXAMPLE DIALOGUE) Ivy turns the dead wick between her fingers. \"The lamp needs a keeper who will stay awake. The last three did not.\"",
+			"choices": [
+				{"text": "Who keeps this light?", "next": "lore"},
+				{
+					"text": "I will take the watch tonight.",
+					"conditions": [{"type": "not_flag", "flag": "lantern_met_keeper"}],
+					"effects": [
+						{"type": "set_flag", "flag": "lantern_met_keeper", "value": true},
+						{"type": "quest_start", "quest": "lantern_watch"},
+						{"type": "narration", "text": "(EXAMPLE) Ivy hands you the watch key. \"Read the notice. Then decide what to do about the cistern.\""}
+					],
+					"next": "watch"
+				},
+				{
+					"text": "[Sense Motive DC 12] You are not telling me everything.",
+					"conditions": [{"type": "not_flag", "flag": "lantern_trusted"}],
+					"check": {"skill": "sense_motive", "dc": 12, "success": "trust", "failure": "dodge"}
+				},
+				{"text": "Leave her to the light.", "next": ""}
+			]
+		},
+		"lore": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "\"My family kept it before me. Now it is only me, and the cistern has been louder every night.\" She sets the wick down. \"If the light goes out again, the marsh comes up the road.\"",
+			"next": "root"
+		},
+		"watch": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "\"The notice says the cistern stays shut. It does not say what to do when it opens by itself.\"",
+			"choices": [
+				{"text": "What is down in the cistern?", "next": "cistern"},
+				{"text": "I will come back when it is done.", "next": ""}
+			]
+		},
+		"cistern": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "\"Drowned things. They come up when the lamp is dark, and they go back when it burns.\" She looks at the cold grate. \"I have not had the nerve to go down since the last keeper.\"",
+			"next": "root"
+		},
+		"trust": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "Ivy is quiet for a moment. \"The last keeper was my brother. I let him go down alone.\" She presses a stoppered vial into your hand. \"Take this. I would rather not lose another.\"",
+			"effects": [
+				{"type": "set_flag", "flag": "lantern_trusted", "value": true},
+				{"type": "give_item", "item": "potion_of_cure_light_wounds", "qty": 1, "only_if_missing": true}
+			],
+			"next": "root"
+		},
+		"dodge": {
+			"speaker": "npc",
+			"speaker_name": "Ivy, the Lantern Keeper",
+			"text": "\"You are asking the wrong questions for someone who wants to keep a light.\" She goes back to the wick.",
+			"next": "root"
+		}
+	}
+}

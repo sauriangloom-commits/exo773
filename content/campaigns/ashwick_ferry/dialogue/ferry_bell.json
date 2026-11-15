@@ -1,0 +1,214 @@
+{
+	"id": "ferry_bell",
+	"speaker": "The Ferry Bell",
+	"start": "root",
+	"nodes": {
+		"root": {
+			"speaker": "npc",
+			"speaker_name": "The Ferry Bell",
+			"text": "(ORIGINAL PLACEHOLDER) The bell waits with its empty socket. The notice gives three answers, and none of them is free.",
+			"choices": [
+				{
+					"text": "Ring once for passage.",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_decision"
+						},
+						{
+							"type": "has_item",
+							"item": "ivo_token"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_called"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "ferry_bell_rung",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "bell_resolved",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "ivo_rested",
+							"value": true
+						},
+						{
+							"type": "remove_item",
+							"item": "ivo_token",
+							"qty": 1
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) The token settles into the socket. You pull once. One clear note crosses the water and does not return. The token is gone. Maela is waiting at the landing; speak with her before you call the crossing finished."
+						}
+					],
+					"next": "once"
+				},
+				{
+					"text": "Ring twice for the dead.",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_decision"
+						},
+						{
+							"type": "has_item",
+							"item": "ivo_token"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_called"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "bell_called",
+							"value": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) You fit the token and pull twice. The first note dies over the water. The second comes back wrong. Something answers the second ring."
+						},
+						{
+							"type": "start_combat",
+							"encounter": "ashwick_bell_answer"
+						}
+					],
+					"next": ""
+				},
+				{
+					"text": "Break the token and leave the bell silent.",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "maela_decision"
+						},
+						{
+							"type": "has_item",
+							"item": "ivo_token"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_called"
+						}
+					],
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "bell_resolved",
+							"value": true
+						},
+						{
+							"type": "set_flag",
+							"flag": "bell_silenced",
+							"value": true
+						},
+						{
+							"type": "remove_item",
+							"item": "ivo_token",
+							"qty": 1
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) You set the token against the stone and break it. The socket stays empty. The bell has nothing to say. Maela is waiting at the landing; speak with her before you call the crossing finished."
+						}
+					],
+					"next": "silence"
+				},
+				{
+					"text": "Inspect the waiting bell.",
+					"conditions": [
+						{
+							"type": "not_flag",
+							"flag": "bell_resolved"
+						},
+						{
+							"type": "not_flag",
+							"flag": "bell_called"
+						}
+					],
+					"next": "waiting"
+				},
+				{
+					"text": "Inspect the silent bell.",
+					"conditions": [
+						{
+							"type": "flag",
+							"flag": "bell_resolved"
+						}
+					],
+					"next": "resolved"
+				},
+				{
+					"text": "Step away.",
+					"next": ""
+				}
+			]
+		},
+		"once": {
+			"speaker": "npc",
+			"speaker_name": "The Ferry Bell",
+			"text": "(ORIGINAL PLACEHOLDER) The note fades. The socket is empty, and the bell will not speak again for you.",
+			"choices": [
+				{
+					"text": "Step away.",
+					"next": ""
+				}
+			]
+		},
+		"silence": {
+			"speaker": "npc",
+			"speaker_name": "The Ferry Bell",
+			"text": "(ORIGINAL PLACEHOLDER) The broken token lies in the socket. The silence is a decision, not a peace.",
+			"choices": [
+				{
+					"text": "Step away.",
+					"next": ""
+				}
+			]
+		},
+		"waiting": {
+			"speaker": "npc",
+			"speaker_name": "The Ferry Bell",
+			"text": "(ORIGINAL PLACEHOLDER) The bell waits. It needs the token, and it needs to know Maela has been told what the crossing was.",
+			"choices": [
+				{
+					"text": "Step away.",
+					"next": ""
+				}
+			]
+		},
+		"resolved": {
+			"speaker": "npc",
+			"speaker_name": "The Ferry Bell",
+			"text": "(ORIGINAL PLACEHOLDER) The bell is cold and quiet. Whatever it was owed, it has been paid or refused. Maela is waiting at the landing.",
+			"choices": [
+				{
+					"text": "Step away.",
+					"next": ""
+				}
+			]
+		}
+	}
+}

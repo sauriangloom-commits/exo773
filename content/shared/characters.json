@@ -1,0 +1,429 @@
+{
+	"kaelen": {
+		"id": "kaelen",
+		"name": "Kaelen Dorn",
+		"race": "Human",
+		"class": "Fighter",
+		"level": 3,
+		"abilities": {
+			"str": 16,
+			"dex": 13,
+			"con": 14,
+			"int": 10,
+			"wis": 12,
+			"cha": 8
+		},
+		"base_attack": 3,
+		"base_saves": {
+			"fort": 3,
+			"ref": 1,
+			"will": 1
+		},
+		"max_hp": 28,
+		"hp": 28,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"skill_ranks": {
+			"climb": 4,
+			"listen": 2,
+			"spot": 2
+		},
+		"feats": [
+			"Iron Will",
+			"Weapon Focus (longsword)"
+		],
+		"proficiencies": [
+			"simple",
+			"martial",
+			"longsword",
+			"light_armor",
+			"medium_armor",
+			"heavy_armor",
+			"shield"
+		],
+		"equipment": {
+			"weapon": "masterwork_longsword",
+			"armor": "chain_shirt",
+			"shield": "heavy_steel_shield"
+		},
+		"inventory": [
+			{
+				"id": "potion_of_cure_light_wounds",
+				"qty": 1
+			},
+			{
+				"id": "torch",
+				"qty": 2
+			},
+			{
+				"id": "trail_rations",
+				"qty": 2
+			}
+		],
+		"spells": {},
+		"tags": [
+			"human"
+		],
+		"portrait_hint": "fighter",
+		"notes": "Front-line fighter. Example pregen, 3rd level, average HP after 1st.",
+		"xp": 3000
+	},
+	"sera": {
+		"id": "sera",
+		"name": "Sera Vane",
+		"race": "Human",
+		"class": "Rogue",
+		"level": 3,
+		"abilities": {
+			"str": 12,
+			"dex": 17,
+			"con": 12,
+			"int": 14,
+			"wis": 10,
+			"cha": 13
+		},
+		"base_attack": 2,
+		"base_saves": {
+			"fort": 1,
+			"ref": 3,
+			"will": 1
+		},
+		"max_hp": 17,
+		"hp": 17,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"skill_ranks": {
+			"open_lock": 6,
+			"search": 6,
+			"spot": 6,
+			"listen": 6,
+			"move_silently": 6,
+			"disable_device": 6,
+			"diplomacy": 2,
+			"climb": 2
+		},
+		"feats": [
+			"Dodge",
+			"Weapon Finesse"
+		],
+		"proficiencies": [
+			"simple",
+			"short_sword",
+			"rapier",
+			"hand_crossbow",
+			"shortbow",
+			"light_armor",
+			"shield"
+		],
+		"sneak_attack_dice": "2d6",
+		"equipment": {
+			"weapon": "short_sword",
+			"armor": "leather_armor"
+		},
+		"inventory": [
+			{
+				"id": "light_crossbow",
+				"qty": 1
+			},
+			{
+				"id": "dagger",
+				"qty": 2
+			},
+			{
+				"id": "potion_of_cure_light_wounds",
+				"qty": 1
+			}
+		],
+		"spells": {},
+		"tags": [
+			"human"
+		],
+		"portrait_hint": "rogue",
+		"notes": "Scout and lockpick. Sneak attack +2d6 when flanking or attacking a helpless or flat-footed target; undead are immune in 3.5.",
+		"xp": 3000
+	},
+	"aldric": {
+		"id": "aldric",
+		"name": "Brother Aldric",
+		"race": "Human",
+		"class": "Cleric",
+		"level": 3,
+		"abilities": {
+			"str": 14,
+			"dex": 10,
+			"con": 13,
+			"int": 10,
+			"wis": 16,
+			"cha": 12
+		},
+		"base_attack": 2,
+		"base_saves": {
+			"fort": 3,
+			"ref": 1,
+			"will": 3
+		},
+		"max_hp": 21,
+		"hp": 21,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"skill_ranks": {
+			"heal": 6,
+			"diplomacy": 4,
+			"sense_motive": 4,
+			"listen": 2,
+			"spot": 2
+		},
+		"feats": [
+			"Iron Will"
+		],
+		"proficiencies": [
+			"simple",
+			"heavy_mace",
+			"light_armor",
+			"medium_armor",
+			"heavy_armor",
+			"shield"
+		],
+		"equipment": {
+			"weapon": "heavy_mace",
+			"armor": "scale_mail",
+			"shield": "heavy_steel_shield"
+		},
+		"inventory": [
+			{
+				"id": "holy_symbol",
+				"qty": 1
+			},
+			{
+				"id": "potion_of_cure_light_wounds",
+				"qty": 1
+			},
+			{
+				"id": "trail_rations",
+				"qty": 2
+			}
+		],
+		"spells": {
+			"ability": "wis",
+			"caster_level": 3,
+			"spontaneous": false,
+			"slots": {
+				"1": {
+					"max": 3,
+					"used": 0
+				},
+				"2": {
+					"max": 2,
+					"used": 0
+				}
+			},
+			"daily_prepared": {
+				"1": [
+					"cure_light_wounds",
+					"cure_light_wounds",
+					"bless"
+				],
+				"2": [
+					"aid",
+					"aid"
+				]
+			},
+			"prepared": {
+				"1": [
+					"cure_light_wounds",
+					"cure_light_wounds",
+					"bless"
+				],
+				"2": [
+					"aid",
+					"aid"
+				]
+			},
+			"known": []
+		},
+		"tags": [
+			"human"
+		],
+		"portrait_hint": "cleric",
+		"notes": "Cleric of the Morninglord (EXAMPLE). Turn undead is implemented; orisons are not in this slice.",
+		"xp": 3000
+	},
+	"ysolde": {
+		"id": "ysolde",
+		"name": "Ysolde",
+		"race": "Elf",
+		"class": "Wizard",
+		"level": 3,
+		"abilities": {
+			"str": 8,
+			"dex": 14,
+			"con": 12,
+			"int": 17,
+			"wis": 12,
+			"cha": 10
+		},
+		"base_attack": 1,
+		"base_saves": {
+			"fort": 1,
+			"ref": 1,
+			"will": 3
+		},
+		"max_hp": 13,
+		"hp": 13,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"skill_ranks": {
+			"search": 4,
+			"spot": 2,
+			"listen": 2,
+			"diplomacy": 2
+		},
+		"feats": [
+			"Dodge"
+		],
+		"proficiencies": [
+			"club",
+			"dagger",
+			"heavy_crossbow",
+			"light_crossbow",
+			"quarterstaff"
+		],
+		"equipment": {
+			"weapon": "dagger"
+		},
+		"inventory": [
+			{
+				"id": "spellbook",
+				"qty": 1
+			},
+			{
+				"id": "potion_of_cure_light_wounds",
+				"qty": 1
+			}
+		],
+		"spells": {
+			"ability": "int",
+			"caster_level": 3,
+			"spontaneous": false,
+			"slots": {
+				"1": {
+					"max": 3,
+					"used": 0
+				},
+				"2": {
+					"max": 2,
+					"used": 0
+				}
+			},
+			"daily_prepared": {
+				"1": [
+					"magic_missile",
+					"magic_missile",
+					"mage_armor"
+				],
+				"2": [
+					"scorching_ray",
+					"scorching_ray"
+				]
+			},
+			"prepared": {
+				"1": [
+					"magic_missile",
+					"magic_missile",
+					"mage_armor"
+				],
+				"2": [
+					"scorching_ray",
+					"scorching_ray"
+				]
+			},
+			"known": []
+		},
+		"tags": [
+			"elf"
+		],
+		"portrait_hint": "wizard",
+		"notes": "Elf wizard; immune to sleep effects and ghoul paralysis (MM p.119). Orisons are outside this slice.",
+		"xp": 3000
+	},
+	"mira": {
+		"id": "mira",
+		"name": "Mira Vane",
+		"race": "Human",
+		"class": "Sorcerer",
+		"level": 3,
+		"abilities": {
+			"str": 8,
+			"dex": 14,
+			"con": 12,
+			"int": 10,
+			"wis": 10,
+			"cha": 16
+		},
+		"base_attack": 1,
+		"base_saves": {
+			"fort": 1,
+			"ref": 1,
+			"will": 3
+		},
+		"max_hp": 13,
+		"hp": 13,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"skill_ranks": {
+			"search": 2,
+			"spot": 2,
+			"listen": 2,
+			"diplomacy": 4
+		},
+		"feats": [
+			"Dodge"
+		],
+		"proficiencies": [
+			"simple",
+			"dagger"
+		],
+		"equipment": {
+			"weapon": "dagger"
+		},
+		"inventory": [
+			{
+				"id": "potion_of_cure_light_wounds",
+				"qty": 1
+			}
+		],
+		"spells": {
+			"ability": "cha",
+			"caster_level": 3,
+			"spontaneous": true,
+			"slots": {
+				"1": {
+					"max": 6,
+					"used": 0
+				}
+			},
+			"daily_prepared": {},
+			"prepared": {},
+			"known": [
+				"magic_missile",
+				"mage_armor"
+			]
+		},
+		"tags": [
+			"human"
+		],
+		"portrait_hint": "sorcerer",
+		"notes": "Alternative arcane caster. Spontaneous casting; knows two of the implemented spells.",
+		"xp": 3000
+	}
+}

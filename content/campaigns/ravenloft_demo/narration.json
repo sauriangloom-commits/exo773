@@ -1,0 +1,16 @@
+{
+	"intro": [
+		"(EXAMPLE CONTENT) Rain has been falling on the Old Svalich Road for three days. The gatehouse before you is a black shape in the mist: two towers, one broken, and a gate that stands open because there is no one left to close it.",
+		"(EXAMPLE CONTENT) A bell hangs somewhere above. It has not rung in years. In the village below, they say the dead walk when the bell is silent.",
+		"(EXAMPLE CONTENT) The Old Gatehouse and East Gate staging map are invented test locations. The Village of Barovia town square (E3) is a small source-adapted excerpt with placeholder prose; the full adventure is not implemented."
+	],
+	"defeat": [
+		"The mist takes the last of your lantern light. Somewhere above, the bell does not ring.",
+		"(This is a defeat state. Load a save or begin again.)"
+	],
+	"victory": [
+		"(EXAMPLE) The bell's note fades. Lights move in the village. For tonight, at least, the gatehouse is only stone.",
+		"(The example objective is complete. You can keep exploring, inspect your party, or save.)"
+	],
+	"controls_hint": "Move: W/S or ↑/↓ • Strafe: A/D • Turn: Q/E or ←/→ • Interact: F or Space • Party: Tab • Sheet: C • Inventory: I • Journal: J • Pause: Esc"
+}

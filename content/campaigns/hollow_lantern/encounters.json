@@ -1,0 +1,24 @@
+{
+	"cistern_vermin": {
+		"id": "cistern_vermin",
+		"name": "The Cistern Wakes",
+		"rows": [
+			"#########",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [[1, 5], [2, 5], [3, 5], [4, 5]],
+		"monsters": ["zombie", "zombie"],
+		"monster_cells": [[6, 1], [7, 1]],
+		"xp": 200,
+		"intro": "(EXAMPLE ENCOUNTER) The cistern water heaves. Two drowned things rise, trailing weed and brick dust.",
+		"victory_effects": [
+			{"type": "set_flag", "flag": "cistern_cleared", "value": true},
+			{"type": "narration", "text": "(EXAMPLE) The cistern is quiet. Above, the lamp is still waiting to be lit."}
+		]
+	}
+}

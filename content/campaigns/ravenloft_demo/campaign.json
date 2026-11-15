@@ -1,0 +1,16 @@
+{
+	"format_version": 1,
+	"id": "ravenloft_demo",
+	"title": "Ravenloft — Foundation Demo",
+	"description": "(SOURCE-ADAPTED DEMO) The existing gatehouse slice and the Village of Barovia town square excerpt, packaged as a campaign on the shared platform. Bounded, placeholder prose; this is not the full adventure.",
+	"status": "ravenloft-derived",
+	"version": 1,
+	"content_root": "res://content/campaigns/ravenloft_demo",
+	"start_quest": "drowned_bell",
+	"completion_quest": "drowned_bell",
+	"entry": {"area": "old_gatehouse", "pos": [5, 10], "facing": 3},
+	"party": {"default": ["kaelen", "sera", "aldric", "ysolde"], "min": 1, "max": 4},
+	"requires": {
+		"capabilities": ["exploration", "dialogue", "combat", "quests", "saves", "skills", "feats", "travel", "narration"]
+	}
+}

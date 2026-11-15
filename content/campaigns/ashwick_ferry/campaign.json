@@ -1,0 +1,41 @@
+{
+	"format_version": 1,
+	"id": "ashwick_ferry",
+	"title": "The Ashwick Ferry (Original Scenario)",
+	"description": "(ORIGINAL PLACEHOLDER SCENARIO - NOT CANONICAL RAVENLOFT) A two-area ferry landing tale about a silenced bell, an unlawful last fare, and the account a sister can bear. Designed for a party of three or four adventurers. All prose, maps and names are original placeholders.",
+	"status": "original-ravenloft-compatible",
+	"version": 2,
+	"content_root": "res://content/campaigns/ashwick_ferry",
+	"start_quest": "ashwick_ferry",
+	"completion_quest": "ashwick_ferry",
+	"entry": {
+		"area": "ashwick_landing",
+		"pos": [
+			4,
+			7
+		],
+		"facing": 0
+	},
+	"party": {
+		"default": [
+			"kaelen",
+			"sera",
+			"aldric",
+			"ysolde"
+		],
+		"min": 3,
+		"max": 4
+	},
+	"requires": {
+		"capabilities": [
+			"exploration",
+			"dialogue",
+			"combat",
+			"quests",
+			"saves",
+			"skills",
+			"travel",
+			"narration"
+		]
+	}
+}

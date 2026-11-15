@@ -1,0 +1,177 @@
+{
+	"id": "old_gatehouse",
+	"name": "Example Location — The Old Gatehouse",
+	"ambient": "Cold air, wet stone, and the smell of rust. This is invented example geography for the vertical slice, not a canonical Ravenloft map.",
+	"rows": [
+		"###########",
+		"#....#....#",
+		"#.C..#.B..#",
+		"#....D....#",
+		"####.######",
+		"#.....#...#",
+		"#.S...#.R.#",
+		"#.....D...#",
+		"####.######",
+		"#.M.......#",
+		"#....@....#",
+		"###########"
+	],
+	"start": {"pos": [5, 10], "facing": 3},
+	"doors": [
+		{
+			"id": "crypt_door",
+			"pos": [5, 3],
+			"name": "Crypt Door",
+			"locked": true,
+			"lock_dc": 15,
+			"key_item": "gatehouse_key",
+			"open_flag": "crypt_door_open",
+			"description": "(EXAMPLE) A black oak door bound in iron. The lock is old but sturdy; the iron keyhole is choked with rust."
+		},
+		{
+			"id": "store_door",
+			"pos": [6, 7],
+			"name": "Storeroom Door",
+			"locked": false,
+			"open_flag": "store_door_open",
+			"description": "(EXAMPLE) A sagging door, swollen with damp. It is not locked."
+		}
+	],
+	"npcs": [
+		{
+			"id": "miruna",
+			"name": "Miruna",
+			"pos": [2, 9],
+			"dialogue": "miruna",
+			"look": "(EXAMPLE) A villager in a wet shawl stands pressed against the wall, holding a cold lantern. She is breathing hard.",
+			"sprite": "npc"
+		},
+		{
+			"id": "corvin",
+			"name": "Corvin, the Gate-Warden",
+			"pos": [2, 1],
+			"dialogue": "corvin",
+			"look": "(EXAMPLE) A gaunt figure in a rotted gatehouse tabard kneels over the bier. Its eyes catch the torchlight like wet coins.",
+			"sprite": "ghoul"
+		}
+	],
+	"objects": [
+		{
+			"id": "east_road",
+			"name": "Demo Waystone (Developer Route)",
+			"pos": [4, 10],
+			"look": "(DEVELOPER DEMO ROUTE — NOT CANONICAL GEOGRAPHY) A chalk-marked waystone added for testing. It does not represent a real road from the invented gatehouse to Barovia.",
+			"interactions": [
+				{
+					"id": "travel",
+					"label": "DEMO: Travel to the Village of Barovia staging area",
+					"success_text": "(DEVELOPER DEMO) You leave the non-canonical gatehouse demonstration and enter a staging map for the source-grounded area.",
+					"effects": [
+						{"type": "travel", "area": "barovia_east_gate", "pos": [4, 7], "facing": 0}
+					]
+				}
+			]
+		},
+		{
+			"id": "bell",
+			"name": "Gate Bell",
+			"pos": [7, 2],
+			"look": "(EXAMPLE) A great bronze bell hangs from a cracked beam. Its clapper is missing; the rope is still knotted where someone cut it.",
+			"interactions": [
+				{
+					"id": "ring",
+					"label": "Ring the gate bell",
+					"requires_item": "bell_clapper",
+					"requires_flag_not": "bell_rung",
+					"blocked_text": "The bell has no clapper. Somewhere in this gatehouse, someone hid it.",
+					"effects": [
+						{"type": "set_flag", "flag": "bell_rung", "value": true},
+						{"type": "xp", "amount": 500},
+						{"type": "narration", "text": "(EXAMPLE) You fit the clapper and pull. The bell speaks once — a low, carrying note that rolls out over the mist and the dead road beyond the gate. Answering lights kindle in the village below."}
+					]
+				}
+			]
+		},
+		{
+			"id": "shrine",
+			"name": "Shrine of the Morninglord",
+			"pos": [2, 6],
+			"look": "(EXAMPLE) A small stone niche holds a cracked sun-disc. Someone has left dry tinder and a stub of candle here. The air is marginally warmer.",
+			"interactions": [
+				{
+					"id": "rest",
+					"label": "Rest at the shrine",
+					"effects": [
+						{"type": "rest"},
+						{"type": "set_flag", "flag": "rested_at_shrine", "value": true},
+						{"type": "narration", "text": "(EXAMPLE) You make a cold camp under the sun-disc. Eight hours pass without interruption. Hit points and prepared spells are restored."}
+					]
+				},
+				{
+					"id": "look",
+					"label": "Study the sun-disc",
+					"effects": [
+						{"type": "narration", "text": "(EXAMPLE) The disc is the Morninglord's sun, defaced and then patiently re-carved. The work is recent. Someone here still prays."}
+					]
+				}
+			]
+		},
+		{
+			"id": "supply_crate",
+			"name": "Supply Crate",
+			"pos": [8, 6],
+			"look": "(EXAMPLE) A waterlogged crate of gatehouse stores, half-submerged. Something metal glints beneath the floating grain.",
+			"interactions": [
+				{
+					"id": "search",
+					"label": "Search the crate",
+					"skill": "search",
+					"dc": 12,
+					"once": true,
+					"success_text": "(EXAMPLE) You find a waxed pouch: an iron key, a heavy clapper wrapped in oilcloth, and a potion.",
+					"failure_text": "You find only ruined grain and cold water. There may be something deeper in the crate.",
+					"success_effects": [
+						{"type": "give_item", "item": "bell_clapper", "qty": 1, "only_if_missing": true},
+						{"type": "give_item", "item": "gatehouse_key", "qty": 1, "only_if_missing": true},
+						{"type": "give_item", "item": "potion_of_cure_light_wounds", "qty": 1},
+						{"type": "gold", "amount": 15},
+						{"type": "set_flag", "flag": "found_clapper", "value": true}
+					]
+				}
+			]
+		},
+		{
+			"id": "bier",
+			"name": "Stone Bier",
+			"pos": [3, 2],
+			"look": "(EXAMPLE) A stone slab, older than the gatehouse. The name carved into it has been worn away by hands that kept touching it.",
+			"interactions": [
+				{
+					"id": "search",
+					"label": "Search the bier",
+					"skill": "search",
+					"dc": 14,
+					"once": true,
+					"success_text": "(EXAMPLE) Beneath the slab: a folded prayer, a purse of old coins, and a stoppered vial that smells of myrrh.",
+					"failure_text": "The slab will not move easily, and the carving gives you nothing.",
+					"success_effects": [
+						{"type": "give_item", "item": "potion_of_cure_light_wounds", "qty": 1},
+						{"type": "gold", "amount": 25},
+						{"type": "narration", "text": "(EXAMPLE) The prayer names the Gate-Warden as Corvin, and asks the Morninglord to forgive what he became."}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [
+		{
+			"id": "storeroom_ambush",
+			"pos": [7, 7],
+			"encounter": "storeroom_dead",
+			"requires_flag_not": "storeroom_cleared",
+			"effects": [
+				{"type": "narration", "text": "(EXAMPLE) The floor of the storeroom is a shallow black pool. Something under the water turns toward you."}
+			]
+		}
+	]
+}

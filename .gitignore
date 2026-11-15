@@ -1,0 +1,32 @@
+# Godot editor cache and imported artifacts
+.godot/
+
+# Local Windows build output (produced by export_presets.cfg, not source)
+builds/
+*.exe
+*.pck
+
+# Local QA captures written by the acceptance harness
+.qa_*
+
+# Local QA run logs
+qa_*.log
+
+# Save/temp artifacts written beside a save file
+*.tmp
+*.bak
+
+# Godot user data if APPDATA/XDG_DATA_HOME is ever pointed inside this tree
+/profile/
+
+# Private reference material and archives kept out of version control
+*.pdf
+*.zip
+
+# Local run logs (no log file is part of the source tree today)
+*.log
+
+# OS metadata noise
+.DS_Store
+Thumbs.db
+desktop.ini

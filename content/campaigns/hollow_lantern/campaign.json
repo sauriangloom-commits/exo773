@@ -1,0 +1,16 @@
+{
+	"format_version": 1,
+	"id": "hollow_lantern",
+	"title": "The Hollow Lantern (Neutral Example)",
+	"description": "(EXAMPLE CAMPAIGN — PLACEHOLDER CONTENT) A one-night watch at a roadside lighthouse: two areas, one branching conversation, one fight and one persistent consequence. It exists to prove that a second campaign can be authored as data without touching the engine.",
+	"status": "example",
+	"version": 1,
+	"content_root": "res://content/campaigns/hollow_lantern",
+	"start_quest": "lantern_watch",
+	"completion_quest": "lantern_watch",
+	"entry": {"area": "lantern_yard", "pos": [4, 7], "facing": 0},
+	"party": {"default": ["kaelen", "sera", "aldric", "ysolde"], "min": 1, "max": 4},
+	"requires": {
+		"capabilities": ["exploration", "dialogue", "combat", "quests", "saves", "skills", "travel", "narration"]
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"ashwick_tack_room_key": {
+		"id": "ashwick_tack_room_key",
+		"name": "Tack-Room Key",
+		"kind": "quest",
+		"key_id": "tack_room_door",
+		"weight_lb": 0.1,
+		"value_gp": 0,
+		"description": "(ORIGINAL PLACEHOLDER ITEM) An iron key tagged for the boathouse tack room. Maela carries one; a spare may be hidden in the boathouse."
+	},
+	"ivo_token": {
+		"id": "ivo_token",
+		"name": "Ivo's Bell Token",
+		"kind": "quest",
+		"weight_lb": 0.1,
+		"value_gp": 0,
+		"description": "(ORIGINAL PLACEHOLDER ITEM) A palm-sized bronze token stamped with a ferry oar. The bell rope will accept it."
+	}
+}

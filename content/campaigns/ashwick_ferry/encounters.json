@@ -1,0 +1,139 @@
+{
+	"ashwick_tack_room_dead": {
+		"id": "ashwick_tack_room_dead",
+		"name": "The Drowned Ferrymen",
+		"rows": [
+			"#########",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#.......#",
+			"#########"
+		],
+		"party_cells": [
+			[
+				2,
+				5
+			],
+			[
+				3,
+				5
+			],
+			[
+				4,
+				5
+			],
+			[
+				5,
+				5
+			]
+		],
+		"monsters": [
+			"zombie",
+			"zombie"
+		],
+		"monster_cells": [
+			[
+				3,
+				1
+			],
+			[
+				5,
+				1
+			]
+		],
+		"xp": 200,
+		"intro": "(ORIGINAL PLACEHOLDER ENCOUNTER) The two drowned ferrymen come forward with the patience of the river. Their coats are still buttoned.",
+		"victory_effects": [
+			{
+				"type": "set_flag",
+				"flag": "drowned_cleared",
+				"value": true
+			},
+			{
+				"type": "set_flag",
+				"flag": "ivo_token_found",
+				"value": true
+			},
+			{
+				"type": "give_item",
+				"item": "ivo_token",
+				"qty": 1,
+				"only_if_missing": true
+			},
+			{
+				"type": "narration",
+				"text": "(ORIGINAL PLACEHOLDER) The last drowned ferryman folds into the mud. In his fist is a bronze token stamped with an oar."
+			}
+		]
+	},
+	"ashwick_bell_answer": {
+		"id": "ashwick_bell_answer",
+		"name": "The Answer at the Landing",
+		"rows": [
+			"#######",
+			"#.....#",
+			"#.....#",
+			"#.....#",
+			"#.....#",
+			"#.....#",
+			"#######"
+		],
+		"party_cells": [
+			[
+				2,
+				5
+			],
+			[
+				3,
+				5
+			],
+			[
+				4,
+				5
+			],
+			[
+				5,
+				5
+			]
+		],
+		"monsters": [
+			"ghoul",
+			"zombie"
+		],
+		"monster_cells": [
+			[
+				2,
+				1
+			],
+			[
+				4,
+				1
+			]
+		],
+		"xp": 300,
+		"intro": "(ORIGINAL PLACEHOLDER ENCOUNTER) The second note draws something up the landing stones: a drowned thing with a ferryman's coat and a mouth full of river mud.",
+		"victory_effects": [
+			{
+				"type": "set_flag",
+				"flag": "bell_answer_survived",
+				"value": true
+			},
+			{
+				"type": "set_flag",
+				"flag": "bell_resolved",
+				"value": true
+			},
+			{
+				"type": "remove_item",
+				"item": "ivo_token",
+				"qty": 1
+			},
+			{
+				"type": "narration",
+				"text": "(ORIGINAL PLACEHOLDER) The answer comes apart on the stones. The token is gone. Maela is waiting at the landing. Speak with her before you call the crossing finished."
+			}
+		]
+	}
+}

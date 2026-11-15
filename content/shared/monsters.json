@@ -1,0 +1,247 @@
+{
+	"zombie": {
+		"id": "zombie",
+		"name": "Drowned Dead",
+		"race": "Human (zombie)",
+		"class": "",
+		"level": 2,
+		"hit_dice": 2,
+		"turn_resistance": 0,
+		"is_monster": true,
+		"monster_type": "Undead (zombie)",
+		"challenge_rating": "1/2",
+		"abilities": {
+			"str": 12,
+			"dex": 8,
+			"con": 10,
+			"int": 10,
+			"wis": 10,
+			"cha": 1
+		},
+		"base_attack": 1,
+		"base_saves": {
+			"fort": 0,
+			"ref": 0,
+			"will": 3
+		},
+		"max_hp": 16,
+		"hp": 16,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"natural_armor": 2,
+		"skill_ranks": {},
+		"feats": [],
+		"equipment": {},
+		"inventory": [],
+		"spells": {},
+		"attacks": [
+			{
+				"name": "slam",
+				"damage": "1d6",
+				"crit_range": 20,
+				"crit_mult": 2,
+				"damage_type": "bludgeoning"
+			}
+		],
+		"damage_reduction": {
+			"amount": 5,
+			"bypass": [
+				"slashing"
+			]
+		},
+		"immunities": [
+			"paralysis",
+			"sleep",
+			"poison",
+			"disease",
+			"mind_affecting",
+			"nonlethal",
+			"ability_damage",
+			"energy_drain",
+			"fatigue",
+			"exhaustion"
+		],
+		"single_actions_only": true,
+		"tags": [
+			"undead"
+		],
+		"xp": 150,
+		"portrait_hint": "zombie",
+		"notes": "MM p.266 human commoner zombie: 2d12+3 hp, AC 11, slam +2 (1d6+1), DR 5/slashing, single actions only. Cannot run (not simulated beyond single actions).",
+		"destroyed_at_zero": true
+	},
+	"infected_zombie": {
+		"id": "infected_zombie",
+		"name": "Infected Zombie",
+		"race": "Human (infected zombie)",
+		"class": "",
+		"level": 6,
+		"hit_dice": 6,
+		"turn_resistance": 0,
+		"is_monster": true,
+		"monster_type": "Undead (zombie)",
+		"challenge_rating": "2",
+		"abilities": {
+			"str": 17,
+			"dex": 10,
+			"con": 10,
+			"int": 10,
+			"wis": 10,
+			"cha": 1
+		},
+		"base_attack": 3,
+		"base_saves": {
+			"fort": 2,
+			"ref": 2,
+			"will": 5
+		},
+		"max_hp": 39,
+		"hp": 39,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"natural_armor": 6,
+		"skill_ranks": {},
+		"feats": [
+			"Toughness"
+		],
+		"equipment": {},
+		"inventory": [],
+		"spells": {},
+		"attacks": [
+			{
+				"name": "slam",
+				"damage": "1d6",
+				"damage_bonus": 1,
+				"crit_range": 20,
+				"crit_mult": 2,
+				"damage_type": "bludgeoning"
+			}
+		],
+		"damage_reduction": {
+			"amount": 5,
+			"bypass": [
+				"slashing"
+			]
+		},
+		"immunities": [
+			"paralysis",
+			"sleep",
+			"poison",
+			"disease",
+			"mind_affecting",
+			"nonlethal",
+			"ability_damage",
+			"energy_drain",
+			"fatigue",
+			"exhaustion"
+		],
+		"single_actions_only": true,
+		"tags": [
+			"undead"
+		],
+		"xp": 600,
+		"portrait_hint": "zombie",
+		"notes": "ECR E3 infected zombie, CR 2: 42 hp including Toughness (39 base + 3), AC 16, slam +6 (1d6+4), DR 5/slashing, plodding. The disease and entomb mechanics are deferred; this bounded encounter uses two infected zombies rather than the source's nine plus entomber.",
+		"destroyed_at_zero": true
+	},
+	"ghoul": {
+		"id": "ghoul",
+		"name": "Corvin, the Gate-Warden",
+		"race": "Ghoul",
+		"class": "",
+		"level": 2,
+		"hit_dice": 2,
+		"turn_resistance": 2,
+		"is_monster": true,
+		"monster_type": "Undead (ghoul)",
+		"challenge_rating": "1",
+		"abilities": {
+			"str": 13,
+			"dex": 15,
+			"con": 10,
+			"int": 13,
+			"wis": 14,
+			"cha": 12
+		},
+		"base_attack": 1,
+		"base_saves": {
+			"fort": 0,
+			"ref": 0,
+			"will": 3
+		},
+		"max_hp": 13,
+		"hp": 13,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"natural_armor": 2,
+		"skill_ranks": {
+			"listen": 4,
+			"spot": 4
+		},
+		"feats": [
+			"Multiattack"
+		],
+		"equipment": {},
+		"inventory": [],
+		"spells": {},
+		"attacks": [
+			{
+				"name": "bite",
+				"damage": "1d6",
+				"crit_range": 20,
+				"crit_mult": 2,
+				"damage_type": "piercing",
+				"attack_bonus": 0,
+				"paralysis_dc": 12,
+				"use_dexterity": false
+			},
+			{
+				"name": "claw",
+				"damage": "1d3",
+				"crit_range": 20,
+				"crit_mult": 2,
+				"damage_type": "slashing",
+				"paralysis_dc": 12,
+				"attack_bonus": 0,
+				"use_dexterity": false,
+				"secondary": true
+			},
+			{
+				"name": "claw",
+				"damage": "1d3",
+				"crit_range": 20,
+				"crit_mult": 2,
+				"damage_type": "slashing",
+				"paralysis_dc": 12,
+				"attack_bonus": 0,
+				"use_dexterity": false,
+				"secondary": true
+			}
+		],
+		"immunities": [
+			"paralysis",
+			"sleep",
+			"poison",
+			"disease",
+			"mind_affecting",
+			"nonlethal",
+			"ability_damage",
+			"energy_drain",
+			"fatigue",
+			"exhaustion"
+		],
+		"tags": [
+			"undead"
+		],
+		"xp": 300,
+		"portrait_hint": "ghoul",
+		"notes": "MM p.119 ghoul: 2d12 (13 hp), AC 14, bite +2 (1d6+1) and 2 claws +0 (1d3), paralysis DC 12 for 1d4+1 rounds (elves immune), ghoul fever. Special Qualities include +2 turn resistance, so turning treats the ghoul as 4 HD. The Multiattack feat is implemented, so the secondary claw penalty is applied by Rules.attack_bonus rather than authored into the attack data; ghoul fever is not implemented.",
+		"destroyed_at_zero": true
+	}
+}

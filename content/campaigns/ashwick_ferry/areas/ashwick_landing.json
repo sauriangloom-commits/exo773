@@ -1,0 +1,116 @@
+{
+	"id": "ashwick_landing",
+	"name": "The Ashwick Ferry — Landing (Original Placeholder)",
+	"ambient": "(ORIGINAL PLACEHOLDER AREA) A gravel landing above black water. The ferry bell hangs silent under a tarred shed, and the skiff is pulled up where the last crossing should have returned.",
+	"tracker_quest": "ashwick_ferry",
+	"rows": [
+		"#########",
+		"#.......#",
+		"#.......#",
+		"#...M...#",
+		"#.......#",
+		"#.......#",
+		"#.......#",
+		"#...@...#",
+		"#########"
+	],
+	"start": {
+		"pos": [
+			4,
+			7
+		],
+		"facing": 0
+	},
+	"doors": [],
+	"npcs": [
+		{
+			"id": "maela_vey",
+			"name": "Maela Vey",
+			"pos": [
+				4,
+				3
+			],
+			"dialogue": "maela_vey",
+			"look": "(ORIGINAL PLACEHOLDER NPC) A ferrywoman in a patched oilskin stands with her back to the water. She keeps looking toward the boathouse and does not let go of the bell rope.",
+			"sprite": "npc"
+		},
+		{
+			"id": "ferry_bell",
+			"name": "Ferry Bell",
+			"pos": [
+				2,
+				7
+			],
+			"dialogue": "ferry_bell",
+			"look": "(ORIGINAL PLACEHOLDER) A bronze bell under a tarred hood. The clapper is gone; a shallow bronze socket waits beneath the rope. The notice still says: RING ONCE FOR PASSAGE. RING TWICE FOR THE DEAD.",
+			"sprite": "bell"
+		}
+	],
+	"objects": [
+		{
+			"id": "ferry_notice",
+			"name": "Ferry Notice",
+			"pos": [
+				2,
+				5
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) A nailed-up notice, faded by spray: THE ASHWICK FERRY CROSSES AT FIRST LIGHT. RING ONCE FOR PASSAGE. RING TWICE FOR THE DEAD.",
+			"interactions": [
+				{
+					"id": "read",
+					"label": "Read the ferry notice",
+					"success_text": "(ORIGINAL PLACEHOLDER) The second line has been scratched over and written again. Someone wanted the warning remembered.",
+					"effects": [
+						{
+							"type": "set_flag",
+							"flag": "ashwick_notice_read",
+							"value": true
+						},
+						{
+							"type": "narration",
+							"text": "(ORIGINAL PLACEHOLDER) Beyond the landing, the boathouse windows are dark. The bell rope is still knotted where it was cut."
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "ashwick_skiff",
+			"name": "Moored Skiff",
+			"pos": [
+				7,
+				7
+			],
+			"look": "(ORIGINAL PLACEHOLDER OBJECT) A shallow skiff, pulled hard against the landing. A second mooring ring waits across the water at the boathouse.",
+			"interactions": [
+				{
+					"id": "cross",
+					"label": "Take the skiff to the boathouse",
+					"success_text": "(ORIGINAL PLACEHOLDER) You cast off and row across the black water. The oars make no sound.",
+					"effects": [
+						{
+							"type": "travel",
+							"area": "ashwick_boathouse",
+							"pos": [
+								4,
+								7
+							],
+							"facing": 0
+						}
+					]
+				}
+			]
+		}
+	],
+	"triggers": [],
+	"entry_effects": [
+		{
+			"type": "narration",
+			"text": "(ORIGINAL PLACEHOLDER CAMPAIGN) The Ashwick ferry has not crossed in three days. The landing is empty except for Maela Vey and the bell that will not ring."
+		},
+		{
+			"type": "quest_start",
+			"quest": "ashwick_ferry"
+		}
+	]
+}

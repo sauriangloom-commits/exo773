@@ -1,0 +1,2608 @@
+# Test Report
+
+Date of latest verification: **2026-11-14**
+Project: `C:\Users\Noot Goblin\Downloads\Ravenloft\RL_Edit` (editable copy, no
+Git repository). The original tree is untouched.
+Godot: `4.7.2.stable.official.ed1daf0bf`
+GUT: **9.6.1** (vendored). GUT prints a notice that 9.7.1 is available; that
+version was not installed or tested.
+
+## Ashwick Second Ring content milestone — 2026-11-14
+
+Bounded Ashwick content expansion; no shared runtime, UI, rules or other
+campaign changed. Content version 1 → 2, with no save-format change or
+migration. The final main objective is Maela's `maela_epilogue` conversation.
+
+- Full suite: **517/517 tests, 5,963 assertions, 42 scripts, exit 0**.
+- New `tests/test_ashwick_second_ring.gd`: **11 tests, 389 assertions**, exit 0.
+  Covers both persistent account choices and their exclusive side quests; all
+  three bell outcomes (one ring, two rings plus victory, token broken/silent);
+  optional page present, absent, and found after commitment; attempts to repeat
+  or contradict a committed choice; ring-twice defeat leaving the token and
+  ending incomplete, with a supported retry; save/load after the account
+  decision and after each ending; one ordinary entry-to-epilogue path; and a v1
+  save refused with its bytes unchanged. Values are read back from the real
+  session/save data, not flags alone.
+- Adapted `tests/test_ashwick_ferry.gd`: **7 tests, 318 assertions**;
+  `tests/test_journal_panel.gd`: **6 tests, 90 assertions**. Existing assertions
+  were updated for the new five-objective main quest and content version rather
+  than weakened.
+- `--validate-campaigns`: **PASS** for `ravenloft_demo`, `hollow_lantern` and
+  `ashwick_ferry`. `--validate-diagnostics`: **PASS**, no content problems.
+- Candidate `builds/qa/candidates/ashwick_second_ring_2026-11-14/RavenloftFoundationEdit.exe`:
+  110,611,128 bytes, SHA-256
+  `457e3b887e9105a565a7da25d6a82374e0fe7c9dbd045a87d91cff75034c3253`.
+  Additive; the foundation candidate is preserved unchanged.
+- Package audit with `tools/qa/pck_paths.py`: **146 packed paths**. Runtime,
+  shared content and all Ashwick areas/dialogue/encounters/quests are present;
+  no `tests/`, `docs/`, `tools/`, `addons/`, `builds/`, `workspace/`, Markdown,
+  PDF, ZIP, QA-profile or `qa_gui.log` path is packed.
+- Ordinary exported-window route: fresh isolated `APPDATA`, OS mouse input with
+  `--campaign=ashwick_ferry`. Reached the truth account, rang once, returned to
+  Maela, scrolled the ordinary dialogue list, chose "Tell me how the crossing
+  ended at the bell.", then "What will you tell the village?". The specific
+  epilogue appeared and the objective panel changed to **Complete**. Captures
+  and the pre-epilogue autosave are in the candidate's `runs/`; see
+  `runs/native_route.md`.
+- Not verified natively: the mercy account, the ring-twice and silence endings,
+  defeat/interruption, optional-page combinations, post-ending repeat dialogue
+  and v1 refusal. Those are focused automated checks. No human playtest,
+  balance judgment or full permutation replay was performed.
+
+### Closure record (documentation-only)
+
+Accepted functionally on the reported evidence. No executable rebuild, no suite
+rerun for these edits, and no regeneration or modification of the sealed
+checkpoint. Candidate
+`builds/qa/candidates/ashwick_second_ring_2026-11-14/RavenloftFoundationEdit.exe`,
+110,611,128 bytes, SHA-256
+`457e3b887e9105a565a7da25d6a82374e0fe7c9dbd045a87d91cff75034c3253`. Sealed
+checkpoint `builds/qa/snapshots/2026-11-14_ashwick_second_ring/`: tarball
+`0ee9fc2e742510f5399073c9f70b622a1bf81d040bdf802b5209516eeda1f716`;
+`MANIFEST.sha256` file SHA-256
+`ec657214eee59eb814e1ad1e8d5b39f432585d5b8dd4a30dd94bc3b8d0190ad4` (490 files,
+verified clean before this documentation change); `CHECKPOINT.md` file SHA-256
+`6103368f70bf32724ab65eb9a0df132cd81cb9b0f084ada51baf68768d7e5685`.
+
+The README Tests paragraph and this record were corrected post-checkpoint, so
+the working tree intentionally differs from that snapshot. `tools/qa/creator_input.ps1`
+carries the two-line window-focus and pre-capture-wait change; it matches the
+sealed manifest entry (`c02b138c675435aa81822d8c7e3f053e373a438ee271b6500ca8f95b6dd13f70`)
+and was used by the recorded native route. That is an explicit scope exception
+for this milestone only. Native evidence covers one truth/single-ring route;
+every other branch is automated. No human playtest or balance validation. The
+only deletion was disposable isolated-profile test residue; see
+`PROGRAM_PROGRESS.md` for the full reconciliation.
+
+## Flat-footed milestone — 2026-11-13
+
+Runtime change: combat-start flat-footedness (PHB p. 133) is now applied instead
+of documented as an omission. See `docs/TRACEABILITY.md` row 2a and
+`docs/ADAPTATION_LOG.md` entry 38.
+
+- Full suite: **360/360 tests, 4,732 assertions, 25 scripts, exit 0**
+  (`All tests passed`). The previous checkpoint was 352/352, 4,697 assertions;
+  that result is retained above and below as history.
+- New focused file `tests/test_flat_footed.gd`: **8 tests, 30 assertions**, exit
+  0. It covers the initial state for every combatant, the Dexterity modifier
+  removed from normal and touch AC, the end of the state at the start of the
+  first turn, no opportunity attack from a flat-footed reactor, the reaction
+  returning once the creature has acted, monster attacks resolved against a
+  flat-footed party AC, rogue sneak attack against a flat-footed living target
+  and its absence afterwards, and no state after the encounter ends.
+- Six existing tests legitimately changed and were updated to assert the new
+  rule rather than weakened: `test_moving_out_of_threatened_square_provokes_
+  attack_of_opportunity` and `test_moving_out_of_two_threats_provokes_from_both`
+  now let the reacting creatures take their first turn first;
+  `test_standing_up_provokes_an_opportunity_attack_while_still_prone`,
+  `test_unarmed_trip_provokes_the_target_before_the_touch_attack` and
+  `test_pick_up_costs_a_move_action_and_provokes` do the same through a
+  `target_has_acted` fixture flag; and the Cleave/Improved Trip AC assertions now
+  compute the expected AC with the defender's actual flat-footed state.
+- Exported candidate **superseded** (it contains the wrong AC handling):
+  `builds/qa/candidates/flat_footed_2026-11-13/` `RavenloftFoundationEdit.exe`,
+  110,483,112 bytes, SHA-256
+  `ac959c5b42b68c42d7c686df6f8f5387b35557627ee16867bec5ba7ddf538b7c`. It is
+  preserved unchanged and marked by a `SUPERSEDED.txt` note added beside it; the
+  exe and `BUILD.txt` were not modified. `source_head=no-git` (this copy has no
+  Git repository).
+- Exact-candidate combat probes (automated viewport input on QA fixtures, not a
+  human playthrough): `cleave` **PROBE RESULT PASS**
+  (`builds/qa/qa/runs/2026-11-13_145911_cleave_cleave/probe.log`) and `prone`
+  **PROBE RESULT PASS** (`.../2026-11-13_145922_trip_prone/probe.log`). The Cleave
+  log contains the live rule line `QA Cleave Second is flat-footed: no Dexterity
+  modifier to AC (PHB p.133).`, so the state is active in the exported build, not
+  only in the test harness.
+- Not verified: the enemy inspect panel's "(flat-footed)" label was not opened in
+  the candidate; no full scenario was replayed in the candidate; no human
+  playtest was performed; balance was not retuned and the opening encounters were
+  not replayed for difficulty. The panel change is a presentation-only reuse of
+  the tested effective AC.
+
+### Correction: only a Dexterity bonus is denied (2026-11-13)
+
+The first version of this milestone removed the raw Dexterity modifier and kept
+dodge bonuses, and the documentation said so. The supplied PHB says otherwise on
+printed p. 136 (PDF 137):
+
+> "Sometimes you can't use your Dexterity bonus (if you have one). If you can't
+> react to a blow, you can't use your Dexterity bonus to AC. (If you don't have a
+> Dexterity bonus, nothing happens.) … Any situation that denies you your
+> Dexterity bonus also denies you dodge bonuses."
+
+`Rules.armor_class` and `Rules.touch_ac` now subtract `max(0, Dexterity
+modifier)`, and `Rules._feat_ac_bonus` drops only dodge-typed feat AC while
+Dexterity is denied, so a non-dodge bonus (exercised with `ac_misc`) is
+untouched. Helpless targets already used Dexterity 0 and now also lose dodge
+bonuses, which corrected `test_helpless_target_has_dexterity_zero` (8 → 7) and
+the Dodge clause of the Combat Expertise test.
+
+- Full suite after the correction: **366/366 tests, 4,753 assertions, 25
+  scripts, exit 0**. The 360/360, 4,732 result above is the pre-correction run,
+  retained as history.
+- `tests/test_flat_footed.gd`: **14 tests, 51 assertions** — positive, zero and
+  negative Dexterity, armor-limited Dexterity, dodge denial with a retained
+  non-dodge bonus, normal and touch AC, clearing at the first turn, and
+  panel/roll parity through `CombatScreen.effective_ac`.
+- Windowed evidence in a real window with ordinary controls (isolated `APPDATA`
+  `builds/qa/profile_inspect`): `--demo-inspect --inspect-probe` **PASS**. Round 1
+  showed `QA Inspect Duelist` (+3 Dexterity, Dodge) as "HP 60/60 • AC 12
+  (flat-footed)" and the zombie (-1 Dexterity) as "AC 11 (flat-footed)" with a
+  standing AC of 11 too. At 1.6 — set by clicking the real Text size slider in
+  Settings and asserted back at 1.6 — the marker was still shown and the panel
+  text stayed inside the panel. After End turn the same panel read "AC 16" with
+  no marker, and the attack line in that window read `vs AC 12`, matching the
+  panel. Captures: `builds/qa/runs/2026-11-13_151001_inspect_panel/shots/`.
+- Method limit: the probe is an automated viewport-input script driven through
+  the real control tree, not a human usability study. The captures were read by
+  the model; no human reviewed them.
+- Corrected candidate:
+  `builds/qa/candidates/flat_footed_corrected_2026-11-13/`
+  `RavenloftFoundationEdit.exe`, **110,490,504 bytes**, SHA-256
+  `51b00508cdb8167a94918818281074f11f484388982bae29b78ff32c2b256a42`
+  (`source_head=no-git`). Its own `--validate-campaigns` passed all three
+  packages, and the asserted probes passed in that exact executable:
+  `--demo-inspect --inspect-probe` **PROBE RESULT PASS** (same checks and same
+  panel text as in source; captures under
+  `builds/qa/runs/2026-11-13_151253_inspect_panel_candidate/shots/`), `cleave`
+  **PASS**, and `trip/prone` **PASS**.
+- Packaging defect found and fixed by this milestone's probe: QA evidence written
+  under `builds/` was packed into the exported executable (the first corrected
+  build was 112,284,872 bytes and contained the run's PNGs). `export_presets.cfg`
+  now excludes `builds/*`; the rebuilt executable packs no probe image
+  (`trip_inspect_01_panel_flat` absent) and is 1.79 MB smaller. That first package
+  was deleted before acceptance rather than kept, because it was never a
+  candidate for play; no earlier milestone's candidate was touched.
+
+## Ranged-melee milestone — 2026-11-13
+
+Two printed rules that are easy to confuse, implemented and tested separately.
+
+> **PHB p. 140 (PDF 141).** "If you shoot or throw a ranged weapon at a target
+> engaged in melee with a friendly character, you take a -4 penalty on your
+> attack roll because you have to aim carefully to avoid hitting your friend.
+> Two characters are engaged in melee if they are enemies of each other and
+> either threatens the other. (An unconscious or otherwise immobilized character
+> is not considered engaged unless he is actually being attacked.) If your
+> target ... is at least 10 feet away from the nearest friendly character, you
+> can avoid the -4 penalty, even if the creature you're aiming at is engaged in
+> melee with a friendly character. Precise Shot: If you have the Precise Shot
+> feat (page 98), you don't take this penalty."
+
+> **PHB p. 135 (PDF 136).** "Making a ranged attack provokes attacks of
+> opportunity from opponents that threaten you."
+
+(A) is about the target's neighbours and changes the attack roll; (B) is about
+ the attacker's neighbours and produces a reaction. Neither is used as a proxy
+for the other, and the log names whichever applied.
+
+- `Encounter._into_melee_penalty` evaluates (A): engagement by the printed test
+  (enemies of each other, and either threatens the other), the 10-ft escape, a
+  helpless target counting as not engaged, and Precise Shot. `Rules.attack`
+  accepts the result as `into_melee_penalty`, so the -4 is inside the auditable
+  roll, and `Rules.format_attack` prints `shooting into melee -4`.
+- `Feats.CATALOG` gains `precise_shot` (p. 98) with no passive modifier and the
+  printed prerequisite `point_blank_shot`; `Feats.has_active` therefore honours
+  the requirement, and a character with Precise Shot alone gets no exemption.
+- Ranged spells: Complete Arcane p. 85 makes any attack-roll spell a weapon and
+  p. 73 gives Precise Shot the same exemption for ranged spells, so Scorching
+  Ray takes the penalty and Magic Missile (no attack roll) does not. Casting
+  still provokes once; firing the ray adds no second opportunity attack.
+- The p. 135 provocation message no longer says "fires into melee": it states
+  that the attacker is threatened, and it is emitted independently of (A).
+- Full suite: **378/378 tests, 4,794 assertions, 26 scripts, exit 0**.
+  `tests/test_ranged_melee.gd`: **12 tests, 41 assertions** — penalty and its
+  exact -4 against an identical-seed control shot, 10-ft escape with a reach
+  ally, thrown weapons, melee unaffected, Precise Shot on and off (and without
+  its prerequisite), provocation without penalty, penalty without provocation,
+  ray penalty, ray without engagement, one provocation per cast, Magic Missile
+  excluded.
+- Candidate: `builds/qa/candidates/ranged_melee_2026-11-13/`
+  `RavenloftFoundationEdit.exe`, **110,492,248 bytes**, SHA-256
+  `e4cde889f5fe812d4671031552f24da4653f115fb358f2467b8362e50dbe6995`. In that
+  exact executable `--validate-campaigns` and `--validate-diagnostics` both
+  passed, and the `inspect`, `cleave` and `trip/prone` probes all reported
+  `PROBE RESULT PASS`. The `flat_footed_corrected_2026-11-13` build is preserved
+  and marked `SUPERSEDED.txt` because this runtime change postdates it.
+- Limits: no windowed probe covers the ranged penalty (the rule is verified by
+  the unit tests above and by the exact-candidate regression probes only);
+  cover, concealment, cover-provoked misses and per-round "actually being
+  attacked" tracking remain unmodelled; no human playtest.
+
+### Windowed ranged verification and milestone closure (2026-11-13)
+
+The earlier `inspect`, `cleave` and `trip` probes are regressions: none of them
+touches the into-melee penalty or the provocation, so citing them proved nothing
+about the ranged rule. A dedicated windowed probe now covers it.
+
+- Fixture `--demo-ranged` (`_qa_ranged_demo`): QA clones only, no shipped
+  character edited — a crossbow shooter, a shooter with Point Blank Shot and
+  Precise Shot, a third shooter aimed at an unengaged target, the prepared wizard,
+  and a fighter who is the friendly character in the melee. Two enemies: "QA
+  Ranged Target" and a rooted "QA Clear Target" (the zombie AI would otherwise
+  close in and make the control case engaged — the fixture clone has `speed_ft`
+  0, no shipped monster changed). Cells are assigned by character after `begin()`
+  and the geometry preconditions are asserted before any attack.
+- Probe `--ranged-probe` drives only ordinary controls: `Attack` + target, the
+  enemy row's `Attack`, `Cast spell` → `Scorching Ray` → target, and `End turn`
+  until the wanted actor is active. It reads the rendered combat log; the
+  "must not appear" checks use the exact lines that action added, because the
+  label scrolls.
+- Result: **49 checks, `PROBE RESULT PASS`** in source and again in the exact
+  accepted candidate. Evidence:
+  `builds/qa/runs/2026-11-13_153702_ranged_probe_candidate/` (`probe.log`,
+  `shots/00_start`, `01_engaged_penalty`, `02_precise_shot_exempt`,
+  `03_unengaged_control`, `04_ray_into_melee`). The rendered breakdown reads, for
+  example, "QA Ranged Shooter attacks QA Ranged Target with Light Crossbow:
+  d20(4)+1 = 5 vs AC 11 | shooting into melee -4 | MISS" followed by "shooting
+  into melee -4: QA Ranged Target is engaged with QA Clear Shooter (PHB p.140)."
+- Scope of that evidence: it shows the -4 when the target is engaged with an ally
+  at 5 ft., its absence for an unengaged target, its absence for a Precise Shot
+  attacker against the same engaged target, and the ray taking the -4 with one
+  provocation line and no creature reacting twice. It does not exercise the
+  10-ft escape (unit test only) or the unmodelled cover/concealment and
+  "actually being attacked" cases.
+- Accepted candidate: `builds/qa/candidates/ranged_windowed_2026-11-13/`
+  `RavenloftFoundationEdit.exe`, 110,501,736 bytes, SHA-256
+  `2aa5c030dc46577f35d6df727e00e5edf34d859bde8ab7e08de6f623220278a2`.
+  `--validate-campaigns`, `--validate-diagnostics`, `--ranged-probe`,
+  `--inspect-probe`, `cleave` and `trip/prone` all passed in that executable.
+  `ranged_melee_2026-11-13` is preserved with `SUPERSEDED.txt`: it predates the
+  probe, so it could not demonstrate the rule in a window.
+- Package hygiene, from the embedded path list (`tools/qa/pck_paths.py`, 144
+  entries): no `builds/`, `workspace/`, `snapshots`, `tests/`, `tools/`, `docs/`,
+  `.py`, `SUPERSEDED`, `BUILD.txt`, `trip_*` or `profile_` path is packed; 58
+  `res://src/*`, 31 `content/*` (characters, monsters, demo encounters), 32
+  assets, `res://project.godot` and `res://src/main.gd` are present. Exported
+  content paths are stored without the `res://` prefix in this export; the
+  executable loads and validates them, so it is recorded rather than "fixed".
+- Source snapshot and manifest: `workspace/snapshots/2026-11-13_ranged_closed/`
+  (`RL_Edit_source.tar.gz` and `MANIFEST.sha256` over 457 files; the exact
+  hashes are recorded in that folder's `CHECKPOINT.md`, so they cannot drift out
+  of date against later documentation edits).
+
+## Automated tests — retained history (2026-11-07)
+
+**2026-11-07 run: 339 tests, 4,324 assertions, exit 0; creator file
+33 tests, 609 assertions; pending-edit probe 37 checks.** The detailed block
+below is the retained Cleave-era run kept as history.
+
+Current teardown observation: the full suite was clean. The focused creator
+suite passed 33/33 tests and 609 assertions, exited 0, and then printed this
+exact unresolved teardown warning:
+
+```
+WARNING: 5 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)
+```
+
+This is retained as an **unresolved teardown warning**, not claimed fixed. Its
+cause has not been established. Reproduction scope: the focused
+`tests/test_campaign_creator.gd` GUT process only; the 2026-11-07 full-suite log
+had no ObjectDB/resource shutdown warning. No cleanup investigation was opened
+merely to silence it. Scope was widened by the 2026-11-08 Journal triage below
+to include that focused suite and the focused Ashwick process (2 ObjectDB
+instances / 1 resource in use); neither is assumed to share this warning's cause.
+
+### Journal overlay triage (2026-11-08)
+
+A blank Journal overlay was reported during the exported Ashwick playthrough.
+The exported candidate was preserved unchanged (SHA-256
+`8a3f067b142411039afef7324739126c664b8944baa0751d5e527053d31d4f5f`) and the
+observation reproduced from a copy of the completed Ashwick `slot1` save at
+1280x720 and the default 1.0 text scale: the modal showed only its "Journal"
+header and an empty body with a tiny scrollbar, and closing/reopening produced
+an identical capture. The pre-bell save itself no longer exists — both retained
+slots were overwritten by the completed landing save — so that state is
+reconstructed with an ordinary save/load fixture, not claimed as a fresh
+playthrough.
+
+Cause (measured, not inferred): `Panels.journal()` put a `RichTextLabel` with
+`fit_content = true` inside a `ScrollContainer` without horizontal expansion, so
+the label laid out **1 px wide** and **6,831 px tall** and all content fell
+outside the visible body. Quest data was present throughout; the view could not
+show it. Source probe: `text_size=(1.0, 6831.0)`, `scroll_size=(720.0, 420.0)`,
+`content_h=6831`.
+
+Fix (layout only; no quest, save or campaign-data change): the Journal label now
+uses `SIZE_EXPAND_FILL` horizontally and its scroll container disables
+horizontal scrolling, so text wraps at panel width.
+
+`tests/test_journal_panel.gd` replaces the temporary layout probe and covers the
+established cause plus every reachable state: an empty quest log, the active
+Ashwick quest (all five objectives), a save/load round trip with two objectives
+done, the completed quest after reload, a second campaign (`hollow_lantern`),
+and 1.6 text scale at the 720x420 content size the 1280x720 modal provides. Its
+assertions read rendered text and measured layout (parsed text, label width
+against the scroll area, wrapped line count, content height, visible overlap),
+not quest flags alone.
+
+- Focused: **6/6 tests, 85 assertions, exit 0**.
+- Full suite: **352/352 tests, 4,697 assertions, 24 scripts, exit 0**.
+- `--validate-campaigns` and `--validate-diagnostics`: **PASS**, exit 0. Both
+  need the `--` user-argument separator (`... --path . -- --validate-campaigns`);
+  without it Godot ignores the flag and starts the GUI.
+- Candidate: `workspace/candidates/journal_fix_2026-11-08/RavenloftFoundation.exe`,
+  110,481,944 bytes, SHA-256
+  `78b8c2e9d5d0c6b99c5241d491f048f95dc79a165eee6f358261a143b65e4292`. The original
+  `ashwick_ferry_2026-11-08` candidate is untouched.
+- Exported check with ordinary OS input at 1280x720: Continue from the copied
+  completed save, then open Journal at 1.0 — full-width body showing "Completed:
+  The Ashwick Ferry" and the recorded events; close and reopen gives a
+  byte-identical capture. With Text size set to 1.6 through the Settings slider,
+  the Journal wraps at panel width and scrolls vertically with no blank body.
+  Captures: `workspace/qa/journal_triage/fixed/{menu_1p0,journal_1p0,
+  journal_1p0_reopen,menu_1p6,explore_1p6,journal_1p6}.png`.
+- Method limit: passing `--text-scale=1.6` to the exported executable (with or
+  without the `--` separator) did not change the scale, so the native 1.6 check
+  used the in-game Settings slider instead.
+- Active-quest check in the same candidate, from a fresh isolated profile
+  (`workspace/qa/journal_triage/active_profile/`, separate from the preserved
+  evidence profiles): Choose a campaign → Ashwick New game → Begin the campaign,
+  walked to Maela and spoke to her with ordinary OS clicks ("Objective complete:
+  Speak with Maela Vey at the landing."), then set Text size to 1.6 with the
+  Settings slider. The readout capture (`settings_1p6_readout.png`) and the
+  resulting `settings.cfg` (`text_scale=1.6`, copied as `settings_at_1p6.cfg`)
+  are the actual settings record; no command-line argument is involved. The
+  Journal then showed the quest title, the wrapped summary,
+  `[x] Speak with Maela Vey at the landing.`, four incomplete `[ ]` objectives
+  and a vertical scrollbar (`active_journal_1p6.png`).
+- Save/relaunch: saved to slot1 through the Save game panel (read back as
+  "2026-11-08 19:29:15 — The Ashwick Ferry — Landing …"), preserved separately as
+  `workspace/qa/journal_triage/active_quest_save_preserved/slot1.json`
+  (`abf9d953d66937ccc0a4cac4e5f74b334748b8841553b62608effbf7e61e635e`) with the
+  autosave
+  (`55141c909c67b80fea1e373a2d757f8ec6e244bf90b25804f53dc2e8868b74b4`); the JSON
+  records quest `active` with `speak_maela: true` and the other four objectives
+  false. The process was then closed by PID — the intended pause-menu Quit click
+  missed its button in the enlarged layout, so an in-game Quit is **not**
+  verified here, and that miss is not treated as an application defect. The same
+  executable and profile were relaunched and the save opened through the ordinary
+  Continue entry: Journal showed the identical title, summary, one `[x]` and four
+  `[ ]` objectives, wrapping and scrolling (`journal_after_reload_1p6.png`). No
+  combat and no further scenario steps were played.
+- Packaging: `pck_list.py` read the embedded pack of this candidate — 121 paths,
+  all three campaigns (`content/campaigns/*`), `content/shared/*`, areas,
+  dialogue and the runtime `src/`/`scenes/`/engine assets present; no
+  `workspace/`, `docs/`, `tests/`, `tools/`, PDF, reference, save or settings
+  path. The 29,864 byte reduction versus `ashwick_ferry_2026-11-08` is therefore
+  **not** claimed as workspace exclusion alone: the filter is proven by
+  inspection, but the runtime change also alters compiled size. Two older
+  Ashwick candidates do package QA probe scripts (10 and 6 `workspace/qa`
+  paths); they are retained unchanged and marked `LOCAL_ONLY.txt` (local
+  evidence, not for distribution).
+- Build identity: the untracked-file hash now uses null-delimited paths
+  (`git ls-files -z --others --exclude-standard | sort -z | xargs -0 -r
+  sha256sum`). In a disposable repository outside the project, the new pipeline
+  hashed three files including `with space.txt` identically twice and changed
+  when a file was removed; the previous line split that name into `with` and
+  `space.txt` and aborted the first export attempt (exit 123, no `BUILD.txt`),
+  so the successful `journal_fix_2026-11-08` identity record was written by the
+  fixed tool. `worktree_diff_sha256` no longer matches the working tree because
+  these docs were edited after the export; that does not retroactively change
+  what the build ran with, and the package itself proves the edited filter was
+  in effect.
+
+Historical scale claims, reviewed rather than re-run: no retained profile or
+record contains `text_scale=1.6` (every preserved `settings.cfg` holds 1.0), and
+`--text-scale=1.6` has no observed effect on an exported executable. Earlier
+reports' "1.6 text scale" labels therefore rest on captures whose UI is visibly
+enlarged, not on a settings record, and are now marked *scale unverified* where
+that is the only evidence. Those passes' other results stand as reported: the
+exercised action worked, the control was visible, the save/load route passed and
+native OS input reached the target. This review does not invalidate every
+earlier scale check — only the claim that 1.6 was applied.
+
+Teardown: this focused Journal suite exits 0 and then prints the same warning
+class as the focused Ashwick process — **2 ObjectDB instances leaked and 1
+resource still in use at exit**. Its cause is not established, it is not assumed
+to match the creator-suite warning, and it is not claimed fixed. The full suite
+in this run was clean.
+
+Command:
+
+```bash
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . \
+  -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+```
+
+Result (exit status 0):
+
+```
+Scripts              20
+Tests               296
+Passing Tests       296
+Asserts             3654
+Time               4.084s
+---- All tests passed! ----
+```
+
+No failing, pending or risky tests were reported. This is the final run after the
+Cleave off-turn increment: the earlier batches (shared skill resolution, the feat catalog
+with the committed Power Attack and Combat Expertise trades, the +2/+2 skill
+feats, the proficiency feats, Extra Turning and Improved Turning, the
+non-proficiency penalties, take 10/20, the holy-symbol requirement and corrected
+Multiattack/Toughness data), the turn-undead baseline, Trip/prone, Improved Trip
+and Cleave.
+
+Historical teardown note (earlier runs): normal runs printed 2–3 `ObjectDB
+instances were leaked at exit` plus `1 resources still in use at exit`, while two
+normal runs and one `--verbose` run were clean. The verbose run named no project
+object. Every run still exited 0 and passed all tests. This is recorded as
+intermittent test-process teardown noise, not claimed fixed and not reported as
+a gameplay failure. The current 2026-11-07 focused-run warning is recorded
+separately above.
+
+### Test scripts
+
+| Script | Focus |
+| --- | --- |
+| `tests/test_rules.gd` | Ability modifiers, AC, attack bonuses, saves, skills, critical confirmation, range increments |
+| `tests/test_feats_skills.gd` | 45-skill catalog, trained-only, armor breakdown, Skill Focus/Alertness, the fourteen +2/+2 skill feats and their stacking, proficiency grants and non-proficiency penalties, synergies, typed stacking, take 10/20, Aid Another, opposed ties, rank caps, Dodge, Weapon Focus, Weapon Finesse, Point Blank Shot, Improved Initiative, Toughness persistence, Multiattack, unknown feats, shipped-content validation, holy symbol, take controls, crate take 20 |
+| `tests/test_character.gd` | HP/damage, dying/stable/dead, conditions and expiry, equipment effects, inventory, serialization |
+| `tests/test_combat.gd` | Initiative order, action economy, movement, 5-ft step, AoOs, targeting, spells, DR, monster behavior, victory/defeat, Power Attack committed duration, expiry, per-actor state, weapon modes and damage cases, and Combat Expertise's prerequisite, cap, pending/committed timing, dodge AC states, opportunity attack, expiry, Power Attack combination and combat-end cleanup |
+| `tests/test_exploration.gd` | Start state, grid movement/turning, walls, doors/lockpick, search loot, shrine rest, encounter triggers, bell objective, look text |
+| `tests/test_narrative_and_save.gd` | Content validation, missing dialogue, quest effects, conditional choices, skill-check actor, Corvin combat start, save/load round trip, combat save refusal, invalid content, missing audio, party validation |
+| `tests/test_integration.gd` | Full demonstration loop: talk → accept quest → fight zombies → loot clapper → open crypt → parley/fight Corvin → ring bell → victory → save/reload |
+| `tests/test_smoke.gd` | Entry-scene/engine smoke checks |
+| `tests/test_ui.gd` | Instantiates Main, ExplorationScreen, CombatScreen, DialoguePanel, character sheet, inventory, journal, settings and saves panels; checks the 1.6× four-member sidebar; verifies the committed Power Attack and Combat Expertise controls, their post-attack locks, actor switching and the dagger mode selector, plus a binding button entering capture mode |
+| `tests/test_travel.gd` | Demo-route travel, staging state, save/load and dialogue refusal |
+| `tests/test_phase3_town_square.gd` | Area registry, E3 entry effect and featured tracker, encounter and infected-zombie stats, Ashlyn dialogue, one-time barricade repair, repair autosave through the interaction path, repair through the real Save Game panel, failed-autosave honesty, full save/quit/load/return loop and legacy saves |
+| `tests/test_cleave.gd` | Cleave: prerequisites, a drop by the actor's own melee attack, eligible targets and reach, same weapon and base bonus, no movement, once per round, no chaining, decline, duplicate submission, invalidated target, Power Attack/Combat Expertise, Improved Trip's granted attack |
+| `tests/test_cleave_offturn.gd` | Off-turn Cleave: an opportunity attack that drops a creature offers Cleave to the attacker (not the active combatant), no turn ownership transfer, the opportunity attack spends no action, decline, resolve-then-resume of the interrupted route, duplicate submission, once per round in both own-turn/off-turn directions, target modifiers re-evaluated (cowering, helpless, prone, reach), encounter-end invalidation |
+| `tests/test_extensibility.gd` | Foundation contracts: shipped content validates against the effect/condition registry, stable vocabulary, unknown effect and condition errors, required identifier fields, missing item/quest/encounter/area/skill references, registry/lookup consistency, and a data-only positive control (registered shapes with real ids need no new code) |
+| `tests/test_improved_trip.gd` | Improved Trip: prerequisites, +4 only on the attacker's check, no unarmed provocation, the granted follow-up (take/decline), follow-up attack selection (equipped melee mode or unarmed, ranged refused, no equip change), turn/encounter invalidation |
+| `tests/test_turn_undead.gd` | Turn undead: eligibility and 3 + Cha uses, standard-action and use consumption, Table 8-9 thresholds, 2d6 + level + Cha damage, 60-ft range, closest-first ordering and capacity exhaustion, Knowledge (religion) +2, explicit Hit Dice, ghoul +2 turn resistance gating eligibility/capacity/destruction, turn versus destruction, 10-round duration, path-aware fleeing within one move action, cornered cowering and its expiry, the four 10-ft approach distinctions, skipping turned undead, exhausted uses, Extra Turning stacking and non-turner rejection, Improved Turning effective level/cap/damage, save round-trip, legacy and current save payloads, rest recovery, no-softlock, one-time XP, defeat routing |
+
+### Combat Expertise batch verification (2026-11-04)
+
+- Full suite: **206/206 tests, 2,224 assertions, 13 scripts**, exit 0, after the
+  final assertion repair. Focused runs: `tests/test_combat.gd` **36/36 tests, 235
+  assertions** and `tests/test_ui.gd` **14/14 tests, 77 assertions**, both exit 0.
+- Source rule (PHB p. 92): Intelligence 13; trade up to 5 points of melee attack
+  bonus for an equal dodge bonus to AC, never more than the base attack bonus.
+  Dodge bonuses are lost when the defender is denied Dexterity (p. 135).
+- Three distinct states are tested independently: the pending UI amount grants
+  nothing (AC unchanged, no effect on the character), the committed amount on a
+  qualifying melee attack (the activating attack takes the penalty and the dodge
+  bonus applies from then on), and expiry at the start of the actor's next turn.
+  The amount cannot be changed after commitment; the message states that it must
+  be chosen before the attack roll.
+- Nonqualifying actions: a ranged crossbow attack and a thrown attack resolve
+  normally, receive no Combat Expertise penalty, and discard the pending choice
+  without committing it. A dedicated regression test proves that an opportunity
+  attack cannot activate a pending choice — PHB p. 92 makes the choice when you
+  use the attack action or full attack action in melee — while an already
+  committed amount does apply to that opportunity attack.
+- AC paths: normal AC, touch AC, flat-footed AC (bonus omitted), helpless (bonus
+  omitted) and stacking with Dodge (+1 general adaptation) were checked. The
+  incoming zoo-level attack test asserts the defender's AC used by the enemy
+  attack equals the committed dodge value.
+- Power Attack interaction: both are separate per-actor states, their penalties
+  combine (-4 at 2/2), Power Attack still adds damage, Combat Expertise adds no
+  damage and the committed dodge AC, and both survive an opportunity attack and
+  expire together at the next turn. Switching active characters preserves the
+  other actor's commitment.
+- Temporary loss: reducing Intelligence to 12 after commitment suspends the dodge
+  bonus and the AC returns to baseline; restoring 13 resumes it without a new
+  choice. `Encounter.finish()` removes the transient effect so it cannot leak
+  into exploration or saves; the feat itself survives a save round trip.
+- Source-native QA used the `--demo-combat-expertise` window and visible controls:
+  AC 17 with the control visible, a pending 2 with AC still 17, a committed
+  longsword attack at -2/-2 with AC 19, an incoming slam at "vs AC 19 — MISS", an
+  opportunity attack showing both penalties, and round 2 with both controls reset
+  to 0 and both expiries logged. Evidence:
+  `docs/screenshots/qa_ce_source_start.png`, `qa_ce_source_pending.png`,
+  `qa_ce_source_committed.png`, `qa_ce_source_offturn.png`,
+  `qa_ce_source_after_turn.png`. The fixture is a temporary Kaelen-derived fighter
+  with Int 13, Combat Expertise and Power Attack, a longsword, one turned zombie
+  and one incoming zombie; shipped pregens and content are unchanged.
+- Deferred rather than invented: fighting defensively (PHB p. 139), total defense
+  (p. 141), full attacks and one-handed weapons wielded in two hands. "Until your
+  next action" is read as until the start of the character's next turn because
+  the engine has no immediate/swift-action subsystem and opportunity attacks are
+  reactions.
+- Exported candidate `../.ravenloft-candidate-featskills6/RavenloftFoundation.exe`
+  (110,132,152 bytes, SHA-256
+  `ee786089b2d3be679aaf2008b9f543423a040969f862cd09ce8678b0e4855bf`), built from
+  HEAD `06f4abd` plus the uncommitted changes, then launched windowed with
+  `-- --demo-combat-expertise` under an isolated `APPDATA`. In its visible
+  controls: AC 17 with both controls at 0; Combat Expertise 2 and Power Attack 2
+  selectable together with AC still 17 and the pending label; the longsword
+  attack resolved at -2/-2 for 6 damage, raised AC to 19 and locked both
+  controls; ending the turn produced the turned zombie's flight and an attack of
+  opportunity at -2/-2 for 11 damage; the incoming zombie's slam was logged as
+  `d20(9)+2 = 11 vs AC 19 | MISS`; the next turn reset both controls to 0,
+  returned AC to 17 and logged both effects ending at the start of the turn.
+  Evidence: `docs/screenshots/qa_ce_candidate6_start.png`,
+  `qa_ce_candidate6_pending.png`, `qa_ce_candidate6_power_attack_pending.png`,
+  `qa_ce_candidate6_committed.png`, `qa_ce_candidate6_offturn.png` and
+  `qa_ce_candidate6_after_turn.png`. A first launch attempt used the wrong
+  working directory and never opened a window; that invocation was rejected
+  rather than counted as evidence. No full E3 replay was performed.
+
+### Power Attack correction and verification (2026-11-04)
+
+- Full suite: **194/194 tests, 2,092 assertions, 13 scripts**, exit 0 (superseded
+  by the batch-6 run above). Focused
+  runs also passed: `tests/test_combat.gd` **27/27 tests, 138 assertions** and
+  `tests/test_ui.gd` **12/12 tests, 51 assertions**. The prior 185-test batch-5
+  result described a per-attack reset; that interpretation was incorrect and is
+  superseded by this section.
+- Source rule (PHB p. 98): one amount, capped by base attack bonus, is committed
+  for the character's melee attacks and relevant attacks of opportunity until
+  the start of the character's next turn. `Encounter.power_attack_committed` is
+  keyed per combatant, is erased in `_begin_turn`, and cannot be replaced after
+  the standard action is used. Switching the active UI actor preserves another
+  actor's commitment.
+- Weapon modes are explicit: `attack_modes` supports melee, thrown and ranged;
+  legacy `range_increment`-only data remains ranged, and ordinary weapons default
+  to melee. A dagger's melee attack is melee; its thrown attack is explicit and
+  gets Strength but no Power Attack. Crossbows are projectile/ranged. Opportunity
+  attacks use the committed amount and melee mode.
+- Damage cases exercised: ordinary one-handed, light (including dagger), synthetic
+  two-handed, unarmed, natural, critical multiplier, ranged during an active
+  choice, thrown, and opportunity attack. One-handed weapons wielded in two hands
+  and full-attack sequences are not implemented; no shipped two-handed weapon
+  exists.
+- Source-native QA used the `--demo-power-attack` window and visible controls:
+  Power Attack 2, a 4-damage dagger melee attack, the amount still 2 afterward,
+  a turned zombie's flight provoking an opportunity attack at -2, and a round-2
+  reset to 0. The QA fixture derives a temporary fighter from Kaelen with a
+  dagger and a low-AC/no-DR zombie; shipped pregens and content are unchanged.
+  Evidence: `docs/screenshots/qa_power_source_final_committed.png`,
+  `qa_power_source_final_attacked.png`, `qa_power_source_final_reset.png`.
+- Exported corrected candidate
+  `../.ravenloft-candidate-featskills5b/RavenloftFoundation.exe` (110,123,432
+  bytes, SHA-256
+  `c7c49ef57ec32345faad2ac0cff9a781544f2e957c90bc13c42d27e4e0fe6e55`) was
+  launched windowed with `-- --demo-power-attack` under isolated `APPDATA`; the
+  same feature-specific checks passed in that exact executable. Its evidence is
+  `docs/screenshots/qa_power_candidate5b_native_committed.png`,
+  `qa_power_candidate5b_native_attacked.png`, and
+  `qa_power_candidate5b_native_reset.png`. A first launch omitted the `--`
+  separator and remained on the main menu; that invocation was rejected rather
+  than counted as feature evidence. A headless candidate smoke check also exited
+  0 and reached `QA POWER ATTACK READY`. No full E3 replay was performed.
+- No shipped pregen has Power Attack; the existing JSON `feats` field is the
+  authoring hook. Candidate `featskills5` predates this correction and is not the
+  corrected artifact.
+
+### Turning-feat batch verification (2026-11-04)
+
+- Focused run `tests/test_turn_undead.gd`: **36/36 tests, 173 assertions**, exit 0.
+- Feats/skills run: **36/36 tests, 1,025 assertions**, exit 0.
+- Full suite at the batch-4 boundary: **180/180 tests, 1,981 assertions, 13 scripts**, exit 0 (superseded by batch 5 above).
+- Source-grounded checks: Extra Turning (PHB p. 94) is repeatable and adds four
+  uses per taking; the test covers 4 → 8 → 12. A Fighter with the feat is still
+  rejected by the turn-undead prerequisite. Improved Turning (p. 96) adds one
+  effective cleric level; the same d20 check leaves a 4-HD ghoul unaffected at
+  level 3 but turns it at effective level 4, with the expected 2d6+5 damage.
+  Save/load retains both feats and recomputes the allowance from `turn_undead_used`.
+- No shipped pregen has either feat; they are available through the existing JSON
+  `feats` field. No new native controls were added.
+- Exported candidate `../.ravenloft-candidate-featskills4/RavenloftFoundation.exe`
+  (110,113,448 bytes, SHA-256
+  `56c1a7d3645b640327e9bc41c8e31fa7db2bd1ba1b79850ad71ef8cf86dd925a`), built
+  from HEAD `06f4abd` plus the uncommitted changes. Copied outside the source
+  tree and launched with `--headless --quit-after 90 -- --demo` under an isolated
+  `APPDATA`: exit 0, no `SCRIPT ERROR`, `Parse Error` or validation failure.
+
+### Proficiency batch verification (2026-11-04)
+
+- Focused run `tests/test_feats_skills.gd`: **36/36 tests, 1,025 assertions**,
+  exit 0.
+- Full suite: **177/177 tests, 1,960 assertions, 13 scripts**, exit 0.
+- Source-grounded checks: Armor Proficiency (PHB p. 89), Exotic Weapon
+  Proficiency (p. 94), Martial Weapon Proficiency (p. 97), Shield and Simple
+  Weapon Proficiency (p. 100). The tests cover positive proficiency, the -4
+  negative path, exact-selection isolation, armor/shield ACP on attacks and
+  movement skills including Ride, armor+shield attack-penalty stacking, armor
+  prerequisite chains, the Exotic BAB +1/Str 13 exceptions, and shipped-pregens
+  remaining proficient.
+- Save behavior: current lists round-trip under `proficiency_schema` 2; a legacy
+  Fighter payload without the schema receives one-time class armor/shield
+  defaults and does not become retroactively non-proficient.
+- Regression caught before export: proficiency matching was narrowed from
+  arbitrary substrings to exact names plus the known masterwork prefix. A
+  short-sword proficiency no longer satisfies `Weapon Focus (sword)`.
+- Exotic Weapon Proficiency is tested with a synthetic exotic weapon because no
+  exotic weapon is authored in shipped content; it is not claimed as fully
+  integrated. Tower Shield Proficiency remains deferred (no tower shield item or
+  cover mechanic).
+- Exported candidate `../.ravenloft-candidate-featskills3b/RavenloftFoundation.exe`
+  (110,112,472 bytes, SHA-256
+  `fcb8edaafa10b639c3b44e7c7598af4709f56e9716fa6ea8d9fcbd2df690104f`), built
+  from HEAD `06f4abd` plus the uncommitted changes. It was copied outside the
+  source tree and launched with `--headless --quit-after 90 -- --demo` under an
+  isolated `APPDATA`: exit 0, no `SCRIPT ERROR`, `Parse Error` or validation
+  failure. No new native controls were added; proficiency feats use the existing
+  JSON `feats` authoring field and equipment metadata. The earlier `...featskills3`
+  candidate (SHA-256 `4a74702e...`) is retained as superseded evidence.
+
+### Skill-feat batch verification (2026-11-04)
+
+- Focused run `tests/test_feats_skills.gd`: **30/30 tests, 978 assertions**, exit 0.
+- Full suite: **171/171 tests, 1913 assertions, 13 scripts**, exit 0.
+- Source-grounded checks: Acrobatic, Agile, Animal Affinity and Athletic
+  (PHB p. 89); Deceitful, Deft Hands and Diligent (p. 93); Investigator and
+  Magical Aptitude (p. 97); Negotiator, Nimble Fingers and Persuasive (p. 98);
+  Self-Sufficient (p. 100); Stealthy (p. 101). Each is non-repeatable, has no
+  prerequisite and grants +2 to exactly its two printed skills.
+- Exact-pair coverage checks all 45 skills for leakage; Skill Focus +3 and the
+  feat's +2 stack to +5 because both are untyped. No shipped content changed and
+  the save schema is unchanged.
+- Exported candidate `workspace/releases/windows_legacy_2026-11-05/RavenloftFoundation-featskills2.exe`
+  (110,104,120 bytes, SHA-256
+  `03ea2068f077cc8e7d46ce686656c67468312dbe819e4c35714e9323cbe7fefc`), built
+  from HEAD `06f4abd` plus the uncommitted batch-1/2 changes. It was copied
+  outside the source tree and launched with `--headless --quit-after 90 -- --demo`
+  under an isolated `APPDATA`: exit 0, no `SCRIPT ERROR`, `Parse Error` or
+  validation failure. The pack includes `src/core/feats.gdc`. No new native
+  controls were added in this batch, so no additional click-through was required.
+
+### Batch 1 feats and skills verification (2026-11-04)
+
+- At that boundary `tests/test_feats_skills.gd` was **25/25 tests**; the file now
+  contains 30 tests after batch 2.
+- Full suite at that boundary: **166/166 tests, 1093 assertions, 13 scripts**, exit 0.
+- Source-grounded checks: Table 4-2 (45 skills), Table 4-5 synergies, take 10/20
+  (PHB p. 65), Aid Another, opposed-check ties (PHB p. 64), rank caps (p. 62),
+  Dodge (p. 92), Improved Initiative (p. 95), Alertness (p. 89), Skill Focus
+  (p. 100), Weapon Focus/Finesse (p. 102), Point Blank Shot (p. 98), Toughness
+  (p. 101), Multiattack (MM p. 304), turn-undead holy symbol (PHB p. 159).
+- Corrections caught by the suite: armor check penalties were negated twice in
+  the breakdown (Kaelen climb 11 → 3); Weapon Focus substring matching replaced
+  with exact parameter matching; ghoul claw data corrected from -2 to 0 and the
+  Multiattack penalty computed by the rules; infected zombie base HP corrected
+  from 42 to 39 so Toughness yields the printed 42 once.
+- Save compatibility: `proficiencies` is optional and defaults to empty; Toughness
+  is not reapplied on load; no save-version bump is required.
+- Not covered: manual click-through of the two new take buttons at every text
+  scale; their construction and the gameplay path are automated, rendering is not.
+
+### Turn undead milestone verification (2026-11-04)
+
+- Focused suite `tests/test_turn_undead.gd`: **33/33 tests, 152 assertions**, exit 0.
+- Full suite: **141/141 tests, 935 assertions**, exit 0.
+- Save compatibility: the three new fields (`hit_dice`, `turn_resistance`,
+  `turn_undead_used`) are optional in the payload and default to 0, so saves from
+  before this milestone load unchanged — no version bump, migration or refusal is
+  needed. A pre-milestone payload is covered by a dedicated test.
+- Ghoul correction: MM p.119 gives the standard ghoul **+2 turn resistance**, so
+  Corvin is 2 HD and treated as 4 HD for turning. The drowned dead (MM zombie
+  template) and the ECR infected Strahd zombie (HD 6, `SQ hard to kill, plodding,
+  undead traits`) have none. Effective Hit Dice drive eligibility, capacity spent
+  and destruction; applying resistance to the destruction clause is recorded as
+  an interpretation.
+- Exact exported executable `.ravenloft-candidate-turnundead2\RavenloftFoundation.exe`
+  (110,070,048 bytes, SHA-256
+  `9fa7ac64104570f98e82892e96889af885fa4f6d0001677b470fc176d27b4ccd`), built from
+  `06f4abd455b16213289503113e0646e605b54bb8` plus the uncommitted changes:
+  - `--demo-turn-undead`: check d20(14)+1 = 15 (4 HD cap), damage 2d6(3,3)+4 = 10;
+    the ghoul was turned **as 4 HD**, the drowned dead as 2 HD, the 6-HD infected
+    zombie was listed unaffected, and uses fell to 3/4 with the action then
+    disabled and the reason shown. The drowned dead then cowered (already at the
+    map's maximum distance).
+  - `--demo-turn-undead-save`: one use spent, real save + load, combat shows
+    **3 of 4** remaining — spent attempts survive the save round trip.
+  - `--demo-turn-undead-rest`: two uses spent, shrine recovery path run, combat
+    shows **4 of 4**.
+  - `--demo-victory-qa`: one attack destroyed the last enemy; the screen showed
+    VICTORY, `Each adventurer gains 150 XP` once, and `Autosaved`.
+  - `--demo-defeat-qa`: party reduced below −9 HP routed to the defeat screen with
+    its load/menu recovery buttons.
+- Not repeated in the export this pass: the full E3 acceptance sequence and the
+  dialogue/travel loop. Combat remains intentionally unsaveable, so a turned
+  duration is never persisted; daily uses are.
+
+The UI tests are **construction smoke tests**: they catch missing nodes, bad
+types, null state and layout-time script errors. They do not simulate every mouse
+click. Two of them now cover the reported manual-save problem specifically: the
+quick-action grid must precede the scrolling party list, and `_open_save_modal()`
+must produce a modal listing named slots.
+
+### Save isolation check
+
+After the full suite:
+
+- `user://saves/` contained **no** files (player slots untouched).
+- `user://test_saves/auto.json` existed.
+
+This confirms GUT runs are redirected to the test directory. Earlier runs did
+pollute `user://saves`; that file was removed and the redirect was added.
+
+## Runtime and import checks
+
+Commands run:
+
+```bash
+# Register class_name scripts and import generated audio.
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . --import
+
+# Main menu shell.
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . --quit-after 30
+
+# Demo launch paths.
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . --quit-after 90 -- --demo
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . --quit-after 90 -- --demo-dialogue
+"..\Godot_v4.7.2-stable_win64.exe" --headless --path . --quit-after 90 -- --demo-combat
+```
+
+Observed:
+
+- Import exit 0; no `SCRIPT ERROR` / `Parse Error`.
+- Main menu, exploration demo, dialogue demo and combat demo exit 0; no project
+  script errors.
+- Windowed in-game viewport captures succeeded for menu, exploration, dialogue and
+  combat, writing 1280×720 PNGs to `docs/screenshots/`.
+- Godot may print shutdown-only diagnostics such as `BUG: Unreferenced static
+  string` when a windowed process exits; these are engine teardown messages, not
+  project script errors. They do not appear during gameplay.
+
+## Manual visual verification
+
+Screenshots in `docs/screenshots/` were captured from the running game viewport
+(not the desktop) and inspected. Only a representative subset of QA captures is
+tracked; the complete historical run sets were moved without deletion to
+`workspace/qa/archive/2026-11-05_creator_acceptance_prep/`, and the slice-3 and
+combat captures remain under `workspace/qa/`. Phase 2 also captured 1366×768, 1920×1080,
+1024×600 and 1.6× text layouts; those are summarized in
+[PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
+
+- **Menu:** Continue and Load are disabled when no saves exist; layout is centered
+  and readable.
+- **Exploration:** header (location, gold, seed, pause), first-person corridor,
+  Miruna sprite, all four party HP/AC rows, quest tracker, action grid and log.
+- **Dialogue:** speaker badge/name, wrapped prose, five choices including a named
+  Sense Motive actor, leave button, modal dimming.
+- **Combat:** encounter title, initiative order with all six combatants, action
+  buttons, enemies-first combatant list, tactical grid with tokens and HP,
+  reachable squares, legend and combat log.
+
+Issues found and fixed during visual verification:
+
+1. Gold/Seed header labels collapsed to one-character-wide columns and pushed the
+   header to ~200 px tall. Fixed with non-wrapping header labels.
+2. The first-person raycaster drew close walls outside its rect and covered the
+   screen title. Fixed with `clip_contents`.
+3. The party sidebar cut off half the party; compact HP/AC rows now show all four
+   members.
+4. The combat initiative panel clipped the last entry; smaller type and a taller
+   panel show the full order.
+5. Dialogue skill-check labels duplicated the DC and did not name the actor; they
+   now append the acting adventurer once.
+6. Load game was enabled with no saves; it now matches Continue's disabled state.
+7. Test runs created an `auto` save visible in the player menu; tests are now
+   redirected to `test_saves`.
+
+## What was not verified
+
+- **Audible audio.** Headless runs use a dummy audio driver; windowed files were
+  imported and hooks called, but the 14 placeholders were not subjectively
+  auditioned.
+- **Full UI interaction.** Save/load modals, settings sliders, rebinding and every
+  combat button were built and inspected, but not exhaustively clicked in an
+  automated test.
+- **Mouse combat end-to-end.** `CombatView.cell_clicked` is wired and construction-
+  tested; an automated click-through of move/attack/target selection is not present.
+- **Full campaign loop in the batch-2 executable.** The candidate was exported,
+  launched outside the source tree with an isolated profile, and produced no
+  script or validation errors. The full E3 loop was verified in source, not
+  repeated end to end in this candidate; no shipped content or native controls
+  changed in batch 2, so the focused and full suites carry the mechanical proof.
+  The earlier baseline executable at `workspace/releases/windows_legacy_2026-11-05/RavenloftFoundation.exe`
+  remains unchanged.
+- **E3 victory/return** was completed through normal graphical controls on the
+  previous build: encounter won, Ashlyn spoke, barricade repaired, travelled out
+  and back without repeating the trigger or rewards, autosave reloaded with
+  position, quest and XP. The repaired-barricade flag did not survive that
+  autosave; that gap is now diagnosed and fixed. The repair interaction never
+  requested a save — autosave existed only at dialogue end and combat victory — so
+  `_run_interaction()` now writes the autosave after effects and removal, and
+  three regression tests cover the repair flag, the removed object, the manual-save
+  route and a failed write. The fix has **not** yet been re-verified end to end in
+  the baseline executable or the batch-2 candidate; batch 2 changed no campaign
+  content, so that remains a separately tracked acceptance item.
+- **Baseline executable.** `workspace/releases/windows_legacy_2026-11-05/RavenloftFoundation.exe`, 110,056,320
+  bytes, SHA-256
+  `b70cc9276d5ba5a88af202ec26e3df3b38294baa97601ce4244c40cb122d1065`, built after
+  the fixes from HEAD `d52168d74da0c0c955395f0c130b21fd7ab21e9e` with a dirty tree
+  and run outside the source tree under an isolated `APPDATA` (the real player
+  profile was untouched). Verified in it: menu, New game, party selection with
+  full character data, a four-member session, E3 scenario start, and combat
+  started/moved/attacked through the normal controls. Not yet verified in it:
+  E3 victory, Ashlyn dialogue, barricade repair autosave, travel return, manual
+  save/quit/relaunch/load, defeat and both recovery paths, and
+  rebinding/restart/Restore Default Controls.
+- **Packaged contents.** The export excludes docs, tests, tools, GUT, markdown,
+  PDFs, zips and `.qa*` screenshots. A parsed pack table plus a binary scan of the
+  built executable confirm 14 `content/*.json` files are packaged and no
+  `docs/`, `tests/`, `tools/`, `addons/gut/`, `.pdf`, `.md` or screenshot entries
+  are. Reference PDFs and extracted text live outside the project.
+- **Long-session stability.** No soak test beyond the short demo runs.
+- **Other resolutions/DPI.** 1280×720, 1366×768, 1920×1080, 1024×600 and 1.6× text were visually inspected; mouse-wheel scrolling and high-DPI beyond those captures were not automated.
+- **PDF page-level completeness.** Key sections and samples were verified; not
+  every page of every PDF was read. Extraction gaps are listed in the reference
+  index.
+- **Canonical Ravenloft accuracy.** The Old Gatehouse and staging map are
+  invented; only the E3 town square is a bounded source-adapted excerpt. The
+  encounter is reduced to two infected zombies, and much of the village/church
+  material is deferred.
+
+## Reproduce this report
+
+1. Run the import command.
+2. Run the GUT command and confirm 206/206, 2,224 assertions.
+3. Run the three demo commands; grep for `SCRIPT ERROR`.
+4. Run windowed with `-- --demo --capture=explore` (and menu/dialogue/combat) and
+   inspect the images.
+5. Confirm `user://saves` is untouched after the test run.
+
+This report reflects only the commands and checks above. No test result was
+fabricated or inferred from a partial run. See
+[PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md) for the Phase 2 audit.
+
+## Trip and prone — 2026-11-05
+
+- `tests/test_prone_and_size.gd`: 13 tests, 1,023 assertions — size progression
+  and save migration, content consistency, prone AC signs by attack type, prone
+  melee penalty, prone ranged restriction, opposed-check tie procedure, save
+  round trip.
+- `tests/test_trip.gd`: 18 tests, 100 assertions — stand-up cost and timing
+  (including that the opportunity attack uses the prone AC), refusal cases, Trip
+  size gate, immunity, reach, unarmed provoke order, prone application,
+  trip-weapon requirement, weapon drop, counter-trip, the paused weapon-release
+  decision (no reroll, no double spend, duplicate submission refused), pickup
+  cost and provoke, interrupt, ground-item duplication/recovery and crawling.
+- `tests/test_trip_pending_guards.gd`: 9 tests, 84 assertions — spells, potions,
+  first aid, turn undead, Power Attack, Combat Expertise, equipment/inventory
+  use and auto-advance all refuse while a decision is pending, with no resource
+  spent; duplicate resolution applies once; encounter end and a dead actor void
+  the decision without effects; a turn change discards it; a dropped weapon is
+  ground-only; victory recovers leftovers and defeat grants nothing.
+- Baseline reproduced at the start of this increment: 237/237 tests, 3,347
+  assertions, 15 scripts, exit 0.
+- Full suite after the guards and fixture: **246/246 tests, 3,431 assertions,
+  16 scripts, exit 0**.
+- Native interface verification: performed in the source build and repeated in
+  the exported candidate, windowed at 1280x720. The QA probe clicks real
+  controls and every scenario ended in the expected state: successful Trip,
+  missed touch attack (standard still spent), counter-trip pause with Drop and
+  Keep, prone attack and stand-up opportunity attack, pickup, crawl (5-ft step
+  disabled), and return to exploration. Captures are in
+  `docs/screenshots/qa_trip/` (source) and `docs/screenshots/qa_trip_export/`
+  (exported candidate).
+- Export candidate: `workspace/releases/trip_candidate/RavenloftFoundation.exe`, SHA-256
+  `6fb26be2c919d749177db8348e023bfd8b8088edb46ac68ca18916f8d034f5f9`, built
+  from HEAD `9fc8fff` plus working-tree diff `064452c3...`.
+- Headless startup and headless probe runs are smoke evidence only; the
+  interface claims above rest on the windowed runs.
+- Not verified: NPC-initiated Trip (unimplemented), and manual play outside the
+  fixture scenarios.
+
+## Improved Trip and probe closure — 2026-11-05
+
+- `tests/test_improved_trip.gd`: 12 tests, 78 assertions — prerequisites (INT 13
+  and Combat Expertise, and suspension when unmet), +4 applied only to the
+  attacker's trip check (the defender's check and the counter-trip resist are
+  unchanged), no opportunity attack for an unarmed trip, a qualifying success
+  pausing with the granted attack, no pause without the feat or after a miss or
+  lost trip, one follow-up attack that spends no second standard action and deals
+  damage on a hit, duplicate submission refused, declining restoring ordinary
+  movement, a changed turn or finished encounter voiding the grant, committed
+  Power Attack and Combat Expertise carrying into the follow-up, and the prone
+  target's melee AC.
+- The QA probe is now an acceptance probe, not an observational transcript: each
+  scenario checks explicit expected actor, target, modal, condition and action
+  state, including that every clicked control exists, is enabled and lies inside
+  the window; it captures its steps, is bounded by a 90-second watchdog and exits
+  nonzero on any failed check. Setup stays in `_qa_trip_demo`; the checks only
+  read state that the real control tree produced.
+- The new assertions immediately found a real UI defect: the added decision label
+  sat in a horizontal box, giving the sidebar an enormous minimum width, which
+  squeezed the log to one character per line and pushed the decision buttons
+  below the 1280x720 window. The panel is now a label above a button row, and the
+  probe's on-screen check covers the regression.
+- All eleven scenarios (`success`, `touch_fail`, `counter_drop`, `counter_keep`,
+  `prone`, `stand_aoo`, `pickup`, `crawl`, `return`, `improved_trip`,
+  `improved_trip_decline`) pass with exit 0 in the source build and in the new
+  export. Captures are in `docs/screenshots/qa_trip_improved/` and
+  `docs/screenshots/qa_trip_improved_export/`.
+- External-input pass (narrow, not a replay): a PowerShell harness starts each
+  exported candidate and drives it with OS-level mouse events (`SetCursorPos` +
+  `mouse_event`) at the client coordinates the probe reports. In both the
+  preserved `trip_candidate` and the new candidate it opened Trip, ticked the trip
+  weapon, targeted the enemy, answered Drop weapon, picked the flail up and
+  returned to the next round (round 2, HP 21, "Picked up Light Flail."). Captures:
+  `workspace/qa/runs/2026-11-04_05_feats-cleaves/external/old_candidate_counter_drop.png` and
+  `workspace/qa/runs/2026-11-04_05_feats-cleaves/external/new_candidate_counter_drop.png`. This is scripted external
+  input, not a human hand on the mouse.
+- Full suite: **258/258 tests, 3,509 assertions, 17 scripts, exit 0**;
+  `git diff --check` clean.
+- New export: `workspace/releases/improved_trip_candidate/RavenloftFoundation.exe`,
+  111,382,672 bytes, SHA-256
+  `17f164e9ed83427a3809f713e8a413cb772ea951ac48303f7e6387c232e94b01`, built from
+  HEAD `9fc8fff` plus working-tree diff `095ad523...`. The earlier candidate and
+  its evidence are untouched.
+- Limitation: layout-dependent clicks need a real window. A headless probe lays
+  controls out for a larger default viewport, so decision buttons can sit outside
+  the 1280x720 click area; headless remains smoke only.
+
+## Improved Trip follow-up selection and Cleave — 2026-11-05
+
+- Improved Trip attack-selection conclusion (PHB p. 96: "you can immediately make
+  a melee attack against that opponent as if you hadn't used your attack for the
+  trip attempt"): the follow-up is *a melee attack*, not the trip method. The
+  earlier report wording ("the trip weapon or unarmed strike") overstated a
+  restriction the source does not impose. The code now records the actual choice:
+  at the decision the player picks the equipped weapon's legal melee mode or an
+  unarmed strike. Ranged modes are refused, and no draw, equip or grip change
+  occurs, so a different weapon still needs its normal equip action.
+- `tests/test_improved_trip.gd`: **15 tests, 90 assertions** — the 12 earlier
+  tests plus follow-up selection (an unarmed trip still offers the equipped
+  longsword), refusal of a ranged mode, and the follow-up resolving with the
+  chosen attack.
+- `tests/test_cleave.gd`: **14 tests, 64 assertions** — prerequisites (STR 13,
+  Power Attack, and suspension when unmet), a drop by the actor's own melee
+  attack offering the decision, a hit that does not drop offering nothing, the
+  same weapon and attack bonus preserved, only living enemies within reach
+  offered, no 5-ft step or movement before the extra attack, once-per-round use
+  cleared at round start, no chaining from the Cleave attack itself, decline
+  restoring play, duplicate submission refused, a dead or invalidated pending
+  target, Power Attack and Combat Expertise carried into the extra attack,
+  Improved Trip's follow-up granting Cleave while the trip itself does not, and
+  opportunity attacks not granting Cleave.
+- QA: `--demo-cleave --cleave-scenario=<cleave|cleave_decline|
+  cleave_no_target|cleave_from_trip>` with the asserted `--cleave-probe` (bounded
+  by the 90-second watchdog, an on-screen check for every clicked control, and a
+  nonzero exit on any failed check). All four scenarios pass with exit 0 in the
+  source build and in the exported candidate. Captures:
+  `docs/screenshots/qa_cleave/` and `docs/screenshots/qa_cleave_export/`.
+- External OS-input pass on the new decision panel:
+  `tools/qa/external_input.ps1` gained `-Demo cleave`; two runs drove the export
+  with OS mouse events at the coordinates the probe reports. The first stopped on
+  the Cleave panel (the second enemy offered, decline offered, the dropped
+  creature dead); the third click in the second run resolved the extra attack,
+  destroyed the second enemy, ended the encounter and returned to exploration.
+  Captures: `docs/screenshots/qa_cleave_external/cleave_panel.png` and
+  `cleave_follow.png`.
+- Export candidate: `workspace/releases/cleave_candidate/RavenloftFoundation.exe`,
+  113,419,112 bytes, SHA-256
+  `0a6088757d49dd9b2c55a4a1a6a3fc666196297c9336f407028465501f9578c5`, built from
+  HEAD `9fc8fff` plus the tracked source/content working tree (source diff
+  `6c5f86d20911ec8a328bbd3d06a5abfcb31cb8f8bbc6642231e8118d46e1e7e9`; the untracked `tests/test_cleave.gd` is part of the same state).
+  The `trip_candidate` and `improved_trip_candidate` builds and their evidence are
+  untouched.
+- Full suite after this increment: **275/275 tests, 3,585 assertions, 18 scripts,
+  exit 0**; `git diff --check` clean.
+- Limitations: Great Cleave is not implemented; Cleave does not trigger from
+  opportunity attacks or other out-of-turn damage, and NPC attackers do not take
+  it. No shipped content carries the feat, so the native evidence is the QA
+  fixture.
+
+## Off-turn Cleave, compact layout and training entry — 2026-11-05
+
+- Trigger scope: the feat is offered from any party member's resolved melee
+  attack, own turn or off turn. Opportunity attacks are melee attacks, so a
+  provoked attack that drops a creature now offers Cleave; the decision stores
+  that attacker, weapon and context instead of the active combatant. Ranged
+  attacks, spells and damage-over-time effects remain non-triggering, and NPC
+  attackers still do not take the feat.
+- Interruption: the interrupted monster or flee route keeps its remaining path,
+  target chain and attack-after flag in a bounded `off_turn_resume` record;
+  `resume_interrupted()` re-validates and continues or ends that action. The
+  active combatant and turn are unchanged while the decision is open, and the
+  opportunity-attack budget is debited before the decision.
+- Same bonus: `Rules.attack` preserves the triggering attack's own base and
+  committed Power Attack/Combat Expertise context and re-evaluates
+  target-specific circumstances (helpless +4, cowering +2, flanking, prone,
+  reach) for the new target; the previous final total is never copied.
+- New tests: `tests/test_cleave_offturn.gd` (11 tests) covering the trigger,
+  turn ownership, use of the opportunity attack, decline, resolve-then-resume,
+  duplicate submission, same-round frequency in both directions, modifier
+  re-evaluation and encounter-end invalidation. `tests/test_cleave.gd` updated
+  for the base-bonus model.
+- Layout: window minimum enforced at 1280x720; the combat sidebar scrolls. The
+  stated 1024x600 target is **not supported**; Godot clamps the window to
+  1280x720 and the docs now say so. At 1280x720 with the 1.6x text scale, the
+  `cleave`, `cleave_decline` and `cleave_from_trip` probes pass, with every
+  clicked control on screen and the target list scrollable.
+- QA: `--probe-size=WxH`, `--probe-text-scale=<float>`, the two new
+  `cleave_offturn*` fixtures and `--training-probe` were added. All six Cleave
+  scenarios and the training probe pass in source and in the exported build.
+  External OS-input runs on the exported build drove the decision panel: one
+  resolved the extra attack and destroyed the second enemy (victory), one
+  declined. Captures: `workspace/qa/runs/2026-11-04_05_feats-cleaves/external/cleave_offturn_accept2.png`,
+  `cleave_offturn_decline.png`.
+- Export candidate: `workspace/releases/cleave_offturn_candidate/RavenloftFoundation.exe`,
+  117,406,824 bytes, SHA-256
+  `1bb6a194bf4a6c7b17a69d3862c53ba4df84cc91e6fa4b13fbd96ec8dc80c6aa`, built from
+  HEAD `9fc8fff` plus the working tree (`git diff --check` clean). The
+  `trip_candidate`, `improved_trip_candidate` and `cleave_candidate` builds and
+  their evidence are untouched.
+- Full suite after this closure: **286/286 tests, 3,631 assertions, 19 scripts,
+  exit 0**.
+- Remaining limitations: Great Cleave, ranged/spell/DoT triggers, NPC Cleave and
+  full-attack/iterative interactions stay unimplemented; the training entry
+  reuses QA fixtures rather than authored campaign content; 1024x600 is
+  unsupported by design.
+
+## Foundation reassessment — 2026-11-05
+
+- Scope: the individual feat queue is paused. This pass audited the shared
+  groundwork and made one bounded consolidation instead of another named feat.
+- `src/core/content_spec.gd` (new) is the single registry for authored effect
+  and condition types: required fields, field kinds and the content table each
+  id must exist in. `ContentDB` validates every effect list and every dialogue
+  choice condition through it (conditions previously had a second,
+  hand-maintained list), and `GameSession.apply_effects`/`check_conditions`
+  consult the same registry before running their handlers.
+- `Main._start_demo` now sets `Game.training_mode`, so command-line
+  demonstrations cannot autosave over player slots or grant campaign XP;
+  explicit QA slots (`qa_turn`) are unchanged, and campaign play is untouched.
+- New `tests/test_extensibility.gd` (10 tests) pins the contract: shipped
+  content validates cleanly, the vocabulary is stable, unknown effect/condition
+  types and missing identifiers/references produce named errors, registry
+  lookups are declared fields, and a data-only addition using existing shapes
+  needs no new code.
+- Full suite: **296/296 tests, 3,654 assertions, 20 scripts, exit 0**; content
+  validation runs inside the suite (no separate validator has been added yet).
+- Native check: new candidate `workspace/candidates/foundation_contracts_candidate/RavenloftFoundation.exe`
+  (118,961,152 bytes, SHA-256
+  `31b452002ad274a0fa9b6f7c272328a2621638add4a5aaf41458312b7111cc1d`) passes
+  `--training-probe` and the `cleave_offturn` probe.
+- Not changed: no feat, special attack or campaign area was added; the earlier
+  candidate builds and their evidence are untouched; no commit, push or
+  publish was made.
+
+## Campaign creator (slice 1) — 2026-11-05
+
+- Scope: a visible **Create campaign** flow and **Campaign Editor** for metadata,
+  9x9 areas, wall/floor cells, entry position/facing and two-area passages,
+  with validation, atomic save and an ordinary-loader playtest that can be
+  paused and returned to the creator. NPC/dialogue/encounter/quest editing is
+  explicitly out of this slice.
+- New code: `src/core/campaign_store.gd` (safe ids, template, directory scan,
+  draft helpers, shape/full validation through a temporary package, atomic
+  writes, delete) and `src/ui/campaign_creator.gd` (the editor screen).
+  `CampaignDB` merges user packages and rejects bundled-id collisions;
+  `ContentDB` merges campaign-local instance tables and refuses local spells;
+  `Game` gained `playtest_mode`, save/autosave refusal, `refresh_campaigns`,
+  `validate_campaign_draft` and `abandon_playtest`.
+- Local-content policy: campaign-root `items.json`, `monsters.json` and
+  `characters.json` may define instances using shared schemas; a shared id may
+  not be redefined; a local `spells.json` is a named error. Named characters
+  default to non-playable only when authored `"playable": false`; party
+  selection uses `ContentDB.playable_character_ids()`.
+- Test coverage: `tests/test_campaign_creator.gd` (9 tests) covers create and
+  discovery, invalid ids/path traversal, duplicate user ids with no overwrite,
+  bundled read-only protection, map/entry/transition validation, local-instance
+  merging and shared-id refusal, playtest save refusal with the ordinary save
+  untouched, authored files unchanged by playtest, and existing bundled
+  campaign save/load. `test_campaign_packages.gd` was updated for the new local
+  table policy (local spells rejected, empty local instance tables allowed).
+- Full suite: **315/315 tests, 3,783 assertions, 22 scripts, exit 0**. Content
+  validation: `ravenloft_demo` and `hollow_lantern` VALID.
+- Probes: `--creator-probe` (create → second area → passage → entry → validate
+  → save → playtest → travel → save refusal → no save file → relaunch
+  discovery → cleanup) and `--creator-ui-probe` (area list, 81-cell map,
+  add-area, set-entry, passage, validate, save, playtest, pause/return with
+  draft, Edit of the existing package). Both exit nonzero on failure and pass
+  in source and in the exported executable, alongside both
+  `--campaign-probe` runs and `--validate-campaigns`.
+- Windowed inspection at 1280×720, 1.0 and 1.6 text scale, found and fixed:
+  metadata labels rendering vertically (grid label column collapsed under
+  autowrap) and the first build blanking the template area name; the campaign
+  list footer still said the creator was a future milestone. The description
+  field now wraps instead of scrolling horizontally. Party selection was checked
+  for both campaigns (it names the selected campaign) and at 1.6 scale (it
+  scrolls, with Back/Begin visible); the Validate dialog was checked. A
+  `--demo-party` QA flag makes that screen directly launchable. Continue/Load
+  enabled state was not visually exercised because no campaign save existed;
+  their behavior remains covered by the save tests. Captures:
+  `workspace/qa/runs/2026-11-05_campaign_creator/`.
+- External OS-input pass on the source executable: Create campaign dialog →
+  typed title/id → created `external_campaign` → added area 2 → set entry →
+  linked a passage → saved; then `--demo-creator` → Playtest → Pause → Return
+  to campaign creator. Captures `ext_01_dialog.png` … `ext_05_returned.png`.
+  The created test campaigns were removed afterwards.
+- Export candidate: `workspace/candidates/creator_2026-11-05b/RavenloftFoundation.exe`,
+  110,252,488 bytes, SHA-256
+  `e73c2076a4d9503fc6efe7476f207fba14315b29fcfee939deefd264d1d8bdd4`,
+  built from HEAD `9fc8fff` plus 80 worktree entries (diff hash
+  `e1e6b0d3…ed0dbee`). The earlier `creator_2026-11-05` build predates the
+  `--demo-party` QA flag and is superseded. Logs:
+  `workspace/qa/runs/2026-11-05_campaign_creator/exe_b_*.log`.
+- Remaining limitations: creator covers one 9x9 area at a time; larger maps,
+  doors/triggers/objects, NPCs, dialogue, encounters and quests remain
+  file-authored; no scripting or new mechanics from local instances; the
+  exported executable was probed headlessly, not played windowed by a human.
+
+## Campaign creator slice 2 — speaker NPCs and dialogue (2026-11-05)
+
+- Scope: place a campaign-local speaker NPC and author a branching conversation
+  in the existing Campaign Editor, without external JSON. The NPC is a speaker
+  record (`id`, name, position, look, dialogue, sprite); no combat stat block is
+  required. Encounters, quests, doors, triggers and objects remain file-only.
+- Dialogue authoring: dialogue id and start node; node id, speaker name, text
+  and `next`; choices with a plain destination or one skill check (skill, DC
+  1–60, actor `best` or a default party member, success/failure destinations);
+  preview. Node effects apply on entry; choice effects apply before the check.
+  The bounded palette is require flag (`not_flag`), show only when set (`flag`),
+  set flag, and narration. Effects outside this palette are preserved when a
+  form is applied rather than silently stripped.
+- Reference safety: renaming a node rewrites start, `next`, choice and check
+  destinations; renaming a dialogue rewrites NPC references. Deleting a
+  referenced node or dialogue is refused with the exact references. Removing an
+  NPC keeps its conversation. Loops are valid; unreachable nodes are reported
+  separately from cycles.
+- Draft isolation: editing changes only the in-memory draft. Save writes
+  atomically. Playtest saved the current draft first in slice 2 (superseded in
+  slice 3 by staged-snapshot playtest), then
+  launches the ordinary loader with `Game.playtest_mode`; saves are refused,
+  ordinary slots are untouched, and Return restores the draft.
+- `tests/test_campaign_creator.gd` is now **14 tests, 250 assertions**
+  (was 9 tests), adding NPC placement/move/remove validity, dialogue links and
+  unreachable-node reporting, rename/delete refusal with live references, the
+  check/effect/condition palette, and an end-to-end authored interaction. The
+  last test uses deterministic success and failure seeds, asserts the failure
+  branch does not set the flag and the success branch does, asserts the guarded
+  response hides and the later response appears, asserts playtest save refusal,
+  then plays the same package normally, saves, starts a new game, loads and
+  confirms the flag. It also asserts a second campaign's save and flags do not
+  leak into the first campaign and vice versa.
+- Full suite: **320/320 tests, 3,965 assertions, 22 scripts, exit 0** (baseline
+  315/3,783). `--validate-campaigns` PASS.
+- Probes: `--creator-probe` 21 checks, `--creator-ui-probe` 21 checks and the new
+  `--creator-interaction-probe` 29 checks all exit 0 in source and in the exact
+  exported candidate. The interaction probe covers place → author identity →
+  add nodes/responses → validate → save → dirty flag cleared → reopen → playtest
+  → talk from the entry cell → skill-check response offered → return with the
+  draft → ordinary play reloads the package and writes a save → main-menu
+  Continue/Load enabled → the authored campaign card's Continue latest/Load slot
+  enabled. The full authoring path before the card checks is asserted; failures
+  exit nonzero.
+- Windowed inspection at 1280×720, 1.0 and 1.6 text scale. Captures:
+  `workspace/qa/runs/2026-11-05_creator_slice2/`. The first captures showed the
+  NPC and conversation columns clipping horizontally; they are now stacked.
+  Long `OptionButton` labels then squeezed row labels into vertical text; picker
+  labels are now stable ids (node text stays visible in the fields/preview) and
+  row labels have fixed minimum widths. Placement, node, response, check and
+  flag controls were re-captured at both scales.
+- External OS-input pass on the source executable: **Save draft** produced the
+  visible “Saved” state; **Add area** produced “Area 2 (area_02)” and “Unsaved
+  changes.” The full edit → save → reopen → playtest → return path is asserted by
+  the interaction probe, not by the OS-input screenshots. Captures `ext_save.png`
+  and `ext_add_area.png` in the same run directory.
+- Export candidate:
+  `workspace/candidates/creator_slice2_2026-11-05/RavenloftFoundation.exe`,
+  110,302,600 bytes, SHA-256
+  `a01c364413d829cb312a8bbb538fcf7ca6cd31e6f64128beb001f256c14a7a9c`.
+  `BUILD.txt` records HEAD `9fc8fff`, 80 worktree entries and diff hash
+  `a821d511…e29488`. The accepted slice-1 candidate
+  `creator_2026-11-05b` is untouched.
+- Limitations: this is a node-list editor, not a graph; one skill check per
+  choice; only the stated flag/narration palette; one 9x9 area at a time;
+  encounter/quest/door/trigger/object editing is still file-authored. The
+  exported executable was probed headlessly; visual checks used the source
+  executable and were not repeated in the export. No human windowed playtest
+  was performed.
+
+[read_files: showing lines 1-777 of 777.]
+
+## Campaign creator slice 3 — quests, encounters, playtest semantics (2026-11-05)
+
+- Scope: author a quest with flag-bound objectives, declare flags, create a
+  fixed-layout encounter with shared monsters and bounded XP, connect victory to
+  an objective flag, and place a once-only encounter trigger — then validate,
+  playtest, save, play normally and reload. No feat, combat-rule or monster
+  additions.
+- Draft/playtest separation: **Save draft** writes atomically. **Playtest**
+  validates the in-memory draft, stages `user://playtest/<id>/`, loads it through
+  the ordinary loader with `Game.playtest_mode`, refuses saves, and deletes the
+  staged copy on return. Tests assert the saved `quests.json` is byte-identical
+  after staging, while the playtest sees an unsaved in-memory title; validation
+  failure and start failure leave both draft and package untouched.
+- Quest/flag semantics: objectives complete only after the quest is active;
+  start and completion quests are explicit, so a completed quest does not end
+  every campaign. Quest/encounter rename rewrites references; delete is refused
+  while referenced. A used-but-undeclared flag is listed separately from a
+  declared flag; removing a declaration is refused while used.
+- Encounter/trigger semantics: three legal templates; monsters capped by the
+  layout and four; walkability/uniqueness/bounds validation; triggers refuse
+  walls, the entry cell, occupied cells and missing encounters. Re-entering a
+  cleared trigger does not restart combat or grant XP, and the guard flag keeps
+  it spent after reload.
+- Defeat versus victory: `Encounter.finish("defeat")` leaves the victory flag
+  unset, the objective incomplete, the quest incomplete and XP unchanged;
+  victory sets the flag, completes the objective/quest and grants the authored
+  XP exactly once.
+- Real-combat acceptance (2026-11-05, closure): `--creator-combat-probe` creates
+  the campaign through `CampaignStore` (the creator backend), talks the authored
+  NPC into starting the quest, travels by the authored passage, walks onto the
+  trigger through ordinary exploration and wins with one shared zombie using the
+  shipped controls: the **Attack** button plus a click on the enemy's map cell,
+  moving into 5-ft reach through the **Move** control first and ending turns when
+  the standard action was spent. It never calls `Encounter.finish()`, never edits
+  hit points and never sets the victory flag itself. Disclosed deterministic
+  seed **90210**; 10 attack clicks; victory sets `beacon_lit`, completes the
+  quest, and awards the authored 50 XP once (3000 → 3050). It then saves and
+  exits.
+- Relaunch acceptance: a **separate process** (`--creator-combat-reload-probe`)
+  discovers the campaign, loads `slot1`, and confirms the flag, spent trigger,
+  completed quest and saved XP. Walking off and back over the trigger cell starts
+  no combat and grants no second reward; the return passage and the changed NPC
+  response still work. Both phases PASS in source and in candidate `…e`.
+- Lossless editing: the creator rewrites the package as a whole, so supported
+  content outside its forms survives an unrelated edit. A fixture with doors, an
+  object interaction (`once`, guard, effects), hand-authored node/choice effects
+  and conditions, unknown author keys on the manifest/quest/encounter/area/node/
+  choice, `flag_definitions`, a campaign-local `items.json` and an unmanaged
+  `dungeon.json` was opened, had unrelated fields changed, saved and reopened;
+  all of it survived and the local/unmanaged files were byte-identical. Loading
+  now refuses, with an actionable message, packages that store `areas`, `quests`,
+  `encounters`, `narration` or `dialogues` inline, a newer `format_version`, a
+  non-object content file (valid JSON of the wrong shape), or duplicate
+  area/dialogue ids, instead of
+  silently emptying and overwriting them.
+- Write boundaries (file comparisons): the saved package is byte-identical after
+  staging, loading and abandoning a playtest; a normal `slot1` save is unchanged
+  by playtest; unsaved draft edits and dirty state survive; only **Save draft**
+  changes `quests.json`; `cleanup_playtest("..")`, `cleanup_playtest("bad/../id")`
+  and `delete_user_campaign("..")` leave a sentinel file outside the designated
+  root untouched while removing files inside it.
+- Full suite at this milestone's close: **329/329 tests, 4,160 assertions, 22
+  scripts, exit 0** (baseline 320/3,965, 22). `test_campaign_creator.gd`: 23
+  tests, 445 assertions, adding the lossless round trip, refusal guards,
+  write-boundary comparisons and the pinned creator action bar.
+- New-encounter click resolution: geometry from the real control tree shows the
+  **New encounter** button at `(939, 2821)` with `scroll=0` — outside the
+  1280×720 viewport — and at `(939, 125)` after `focus_encounter_section()`
+  (`scroll=2696`). The control is enabled and visible in both states. The earlier
+  missed OS click used a post-scroll coordinate against the unscrolled layout;
+  no application defect was found. Clicking the measured centre `(1009, 142)` in
+  the exact candidate created and selected `encounter_02` and reported “Created
+  encounter 'encounter_02'.” Capture:
+  `workspace/qa/slice3/ext_new_encounter_verified.png`.
+- Probes, source and exact candidate: `--creator-probe`, `--creator-ui-probe`,
+  `--creator-interaction-probe` and `--creator-story-probe` all exit 0. The story
+  probe covers create → quest/flags → second area/passages → encounter →
+  trigger → conversation with quest start and a flag-gated changed response →
+  save → unsaved edit → playtest (travel, trigger, victory, no repeat, changed
+  response, save refused) → return with the package unchanged → ordinary play →
+  save → reload → cross-campaign isolation. Its victory/defeat resolution calls
+  the engine's own `Encounter.finish()` path so assertions are deterministic;
+  that probe verifies **forced postcombat integration only** and is not a combat
+  playthrough. The attack-driven acceptance is `--creator-combat-probe` above.
+  `--creator-encounter-click-probe` asserts the measured click geometry and that
+  the button creates/selects the new encounter.
+- Windowed/exported evidence: the exact candidate was run windowed for the story
+  probe and for captures at 1280x720 at 1.0 and 1.6 text scale:
+  `workspace/qa/slice3/creator_slice3_quests_min.png`,
+  `..._quests_large.png`, `..._encounters_min.png`,
+  `..._encounters_large.png`. Both sections stack vertically and remain readable
+  at 1.6; no horizontal clipping was observed.
+- Layout correction found by the captures: the encounter row labels ("Battle
+  map", "Monster", "Victory flag") collapsed into one character per line beside
+  the expanding pickers. They now have fixed minimum widths and no wrapping;
+  re-captured at 1.0 and 1.6, both sections stack vertically and stay readable.
+- External input (automated OS events, not human testing; SetCursorPos +
+  mouse_event on the real window): **New quest** produced a selected `quest_01`
+  with its placeholder objective; **Add monster** changed the count from 1 to 2
+  and reported "Added monster 'ghoul'." After scrolling the encounter section
+  into view, the measured **New encounter** click created and selected
+  `encounter_02` and displayed “Created encounter 'encounter_02'.” Captures:
+  `ext_new_quest.png`, `ext_new_encounter.png`,
+  `ext_new_encounter_verified.png`.
+- Candidate: `workspace/candidates/creator_slice3_2026-11-05e/RavenloftFoundation.exe`,
+  110,376,216 bytes, SHA-256
+  `57758c82c761362bccaa64f1ec8bc0e0619c5038bd7c0da03c07d8a2aea3565f`.
+  `BUILD.txt` records HEAD `9fc8fff`, **79** worktree entries, tracked diff hash
+  `efc929ed…747090b`, 266 untracked files and untracked-source hash
+  `5f2c6200…cae310af` (build identity now covers untracked source/content, not
+  just tracked diffs). Candidate `…c` remains at
+  `7a205aee…ecb7a227`; `creator_slice3_2026-11-05d` keeps the pre-preset-fix
+  build; the accepted `creator_slice2_2026-11-05` and earlier exports were not
+  overwritten.
+- Windowed/exported checks on this exact candidate: `--creator-combat-probe`,
+  `--creator-combat-reload-probe`, `--creator-encounter-click-probe`,
+  `--creator-probe`, `--creator-ui-probe`, `--creator-interaction-probe`,
+  `--creator-story-probe`, `--validate-campaigns` and
+  `--campaign-probe=ravenloft_demo` all exit 0. The external OS click above ran
+  against this candidate. The full suite ran on the final source (export preset
+  path is not compiled into the executable).
+- Limitations: fixed battle-map templates; four monsters, four party cells and
+  twelve objectives; no monster/stat/spell/AI editing; no quest scheduler,
+  scripting language or failure-state framework; objective flags only; trigger
+  once-only relies on the per-trigger spent flag plus the optional guard; no
+  human windowed playtest was performed, and the combat acceptance is automated
+  control input rather than a person playing. The malformed-JSON-syntax case is
+  a known test gap: the refusal fixture replaces the area file with valid JSON of
+  the wrong shape (`[]`); a syntactically invalid file takes the same strict
+  reader branch and message but has no dedicated fixture.
+
+## Campaign-creator usability and acceptance (2026-11-05)
+
+- Scope: prove a creator can build a small campaign through the application and
+  the authoring guide, then fix only the highest-impact confirmed friction. No
+  new editor section, subsystem, undo/redo, node graph or map resizing was added.
+- Exercise: `--creator-acceptance-probe` starts at the campaign list and uses the
+  visible **Create campaign** dialog and the creator's own controls for every
+  step: two 9x9 areas with entry and linked passages, a speaker, a conversation
+  with a Search check and a flag-gated changed response, a declared flag, a quest
+  with a flag-bound objective, a fixed-layout encounter with victory wiring, and
+  a once-only trigger. It validates, saves, exercises refusals, playtests (talk,
+  check, trigger, forced postcombat victory, changed response, refused save),
+  returns with the package byte-identical, reopens from disk, and plays/saves/
+  loads ordinarily. This is a **model-driven UI script, not a human usability
+  study**; it drives screen callbacks rather than native OS input for the long
+  workflow.
+- Result: every authoring and recovery check PASS in source and in
+  `creator_usability_2026-11-05` (exit 0). No step required external file editing.
+- Confirmed friction and fixes, highest impact first:
+  1. **Actions and feedback scrolled out of reach (fixed).** The header sat
+     inside the scrolling page, so at the quest/encounter sections (about 2,700
+     px down) Save/Validate/Playtest were off-screen, and validation text was
+     written below the last section. The action bar, save/play distinction line
+     and status label are now pinned above the scroll area. Measured proof:
+     `--creator-encounter-click-probe` places **New encounter** at y=2821 at
+     scroll 0 and y=125 after the focus scroll; the new assertion checks Save,
+     Playtest and status remain enclosed by the viewport at that scroll position.
+  2. **Playtest vs save was ambiguous (fixed).** The button is now **Playtest
+     draft**, with “Save draft writes the package. Playtest draft runs these
+     unsaved changes with all saves disabled.” Tests and probes still call the
+     callback, not the label.
+  3. **The guide lacked an end-to-end order and state model (fixed).**
+     `AUTHORING_GUIDE.md` now opens with a ten-step getting-started workflow, the
+     draft/save/playtest/playthrough distinction, a concrete flag→objective→
+     victory→guarded-response example, and a refusal-recovery table.
+  4. **Validation recovery was not discoverable (mitigated).** The pinned status
+     line keeps the full listed error visible while editing, and the guide maps
+     common refusals to the next action. Validation still does not jump to the
+     offending field; that remains a deliberately deferred UX change.
+  5. **Generated ids and rename actions were easy to misread (documented).** The
+     guide now explains the campaign-id slug, that quest/encounter ids are
+     stable and renamed through their explicit **Rename** action, and that
+     **Apply** commits form fields to the draft.
+- Error-recovery checks (draft preserved, package unchanged): wall entry refused;
+  trigger on the entry/occupied cell refused; deleting a referenced quest
+  refused and names the reference; leaving with unsaved changes offers Save /
+  Discard / Keep editing; duplicate campaign id keeps the create dialog open; a
+  playtest save is refused; a failed check or an invalid draft does not write.
+- Verification: full suite **329/329 tests, 4,160 assertions, 22 scripts, exit
+  0**; `test_campaign_creator.gd` **23 tests, 445 assertions**, including the
+  pinned-action regression. `--validate-campaigns` PASS in source and in the
+  exported candidate. Windowed at 1280×720 and 1.6 text scale, an automated OS
+  click on **Validate draft** at the encounter section left the pinned bar and
+  the green “Draft validates…” message visible:
+  `workspace/qa/usability/creator_encounters_1p6_validate.png`.
+- Candidate (runtime changed):
+  `workspace/candidates/creator_usability_2026-11-05/RavenloftFoundation.exe`,
+  110,384,600 bytes, SHA-256
+  `1a53fa04e5cb6683083ffebde8186b8d4f4ce3e14291691adc4c66613c54d39c`.
+  The accepted `creator_slice3_2026-11-05e` candidate is untouched.
+- Limitations: this is not a human study; the long workflow is in-process UI
+  automation, and only the changed pinned control was exercised with native OS
+  input. No external file editing was needed for the exercised capabilities, but
+  doors/objects/unique items remain file-authored. Malformed JSON syntax still
+  has no dedicated fixture. Validation does not focus the offending section.
+  Fixed maps, four monsters, flag-only objectives and the absence of undo/redo
+  remain supported-scope limits.
+
+## Structured content diagnostics (2026-11-05)
+
+- **Contract.** `src/core/content_diagnostics.gd` defines one dictionary per
+  result: stable `code`, `severity` (`error`/`warning`), human `message`,
+  `campaign`, `source`, `entity_type`, stable `entity_id`, `field`, `area_id`,
+  `node_id`, `choice_index`, `section`, `refs`, and `advanced`. Producers attach
+  these directly; consumers never parse message wording. Legacy validators
+  remain authoritative for save/playtest, and unmapped legacy messages are
+  wrapped as `content.rule` advanced diagnostics.
+- **Migrated coverage.** `CampaignStore.diagnose_draft` covers campaign id/title/
+  areas; area rows, duplicate ids and start cells; entry area/position/facing and
+  entry overlap; missing or non-walkable passage destinations; NPC ids, duplicate
+  ids, names, placement and dialogue references; dialogue speaker/start/nodes,
+  destinations, choices, skill/DC/actor/branches and unreachable nodes; quests,
+  objectives and flags; encounter maps/cells/monsters/XP; trigger ids, cells,
+  encounter references and guards. Declared-but-unused flags and undeclared
+  trigger guards are warnings, not errors; legitimate dialogue loops are not
+  errors. Doors, non-travel objects and file-only instance arrays produce
+  advanced warnings that name the package source.
+- **Creator navigation.** Selecting a result opens the owning section, selects
+  the area/entity (including the right one among similar NPCs), scrolls the field
+  into view, and focuses it. Node/choice results carry their dialogue first and
+  objectives carry their quest first. Navigation uses ids and existing selectors,
+  not fixed coordinates. Dirty form text and draft state are preserved; nothing
+  is applied, saved or discarded. A deleted/renamed entity shows “no longer
+  exists … Validate draft again” instead of selecting a neighbour. The results
+  panel stays pinned and keeps the full status list readable.
+- **Advanced-only.** Unmapped legacy rules (`content.rule`) and file-only content
+  remain non-navigable. Their source and the need to edit package JSON are shown;
+  there is no universal reference browser or automatic repair.
+- **Malformed content.** A dedicated area fixture writes syntactically invalid
+  JSON (`{ this is not json`). Loading reports the file and parser message, exits
+  without crashing, does not replace the live campaign, does not overwrite the
+  invalid original, and does not mutate a valid open draft. Valid JSON with the
+  wrong shape (`[]`) produces a separate message. Parser output is handled by
+  `JSON.new().parse()` rather than dependent on the test runner tolerating an
+  engine error.
+- **CLI.** `--validate-diagnostics` prints one JSON array plus a summary and exits
+  nonzero on any error; `--validate-campaigns` keeps its existing text and exit
+  behavior. A copied user package with a broken area file produced
+  `package.load` naming `barovia_east_gate.json`, summary FAIL, exit 1. Bundled
+  campaigns now report no false load error.
+- **Verification.** Full suite **332/332 tests, 4,198 assertions, 22 scripts,
+  exit 0**; `test_campaign_creator.gd` **26 tests, 483 assertions**. The focused
+  source and exported `--diagnostic-navigation-probe` passed all 11 checks
+  (right NPC, focused field, dirty state, stale revalidation, entry field,
+  corrected revalidation, save). `--validate-campaigns` and
+  `--validate-diagnostics` PASS in the candidate. At 1280×720 and 1.6 text scale,
+  a native OS mouse click on the pinned result scrolled to **Set entry here** with
+  the button focused: `workspace/qa/diagnostics/creator_diag_1p6_after_click.png`
+  (before-click capture alongside it).
+- **Candidate.**
+  `workspace/candidates/content_diagnostics_2026-11-05/RavenloftFoundation.exe`,
+  110,427,456 bytes, SHA-256
+  `9acd6c35b119c8b872e0137b558cd60de67d2188c70779fc0c521fea6a7b027a`.
+  The earlier `creator_usability_2026-11-05` candidate is untouched.
+- **Dirty-state boundary.** Navigation preserves campaign-level form text, the
+  draft and its dirty flag, and never saves. Entity-specific fields still use the
+  existing **Apply** contract; unapplied entity-field text is not in the draft
+  and is not silently committed by navigation. The focused regression asserts
+  the campaign title and dirty flag; entity-form Apply behavior is unchanged.
+- **Method and limits.** The long creator exercise remains callback-driven
+  workflow/integration verification, not viewport input or human usability
+  testing; it was not rerun merely to relabel it. The single result-selection
+  check used native OS input on the source debug window. The exported candidate
+  check is the headless asserted probe. Not every legacy rule has rich metadata;
+  those are explicitly advanced. Rich diagnostics may coexist with the same
+  legacy message in the text list. Fixed maps, four monsters, flag-only
+  objectives and no undo/redo remain supported-scope limits.
+
+## Pending-form protection (2026-11-05)
+
+- **Confirmed lossy paths.** Before this change, `_select_area`, `_select_npc`,
+  `_select_dialogue`, `_select_node`, `_select_choice`, `_select_quest`,
+  `_select_objective`, `_select_encounter` and `_select_trigger` assigned the new
+  selection and refreshed the controls, replacing unapplied form text.
+  `capture_draft` carried campaign title/description/current-area name only, so
+  Save and Playtest ignored entity-form text; Back discarded it; and diagnostic
+  navigation used the same selectors. Validation could say the applied draft was
+  valid without mentioning the pending text. This is a pre-guard control-flow
+  reproduction; the initial standalone probe failed outside the autoload context
+  and produced no pre-fix captured baseline. The current tests assert the
+  protected behavior instead.
+- **Policy.** One shared guard compares each supported form with the applied
+  draft. Before a lossy transition it opens **Apply changes and continue**,
+  **Discard these form edits** or **Cancel**. Cancel keeps text, selection and
+  focus; Discard is explicit; Apply validates before changing the draft. Failed
+  Apply keeps the text and the explanation and performs no navigation. Save,
+  Playtest, Back, every selector and diagnostic navigation call the same guard.
+  The header shows `Pending form edits: ...` and Save/Playtest refuse until the
+  choice is resolved. No silent commit, no new editor section, no undo system.
+- **Validation agreement.** `_validate` distinguishes the applied draft from
+  pending form text and says so; Save/Playtest consume the same pending guard and
+  the existing authoritative validator. Structured diagnostics continue to
+  supplement the legacy checks. Duplicate status/panel messages remain where no
+  stable deduplication key was introduced; unmapped legacy errors stay visible
+  and non-navigable. Message strings are not parsed for locations.
+- **Focused regression coverage.** Dirty NPC → diagnostic navigation; dirty
+  dialogue/node/choice/quest/objective/encounter → selection change; dirty NPC →
+  area change; Apply success; failed Apply preserving text and draft; explicit
+  Discard; Cancel preserving text, selection and focus; Save and Playtest with
+  pending text; failed validation preserving form and draft; and validation/
+  save agreement. Tests assert the live control text separately from the applied
+  draft, not only a dirty flag. Focused `tests/test_campaign_creator.gd`:
+  **33 tests, 609 assertions**. Full suite: **339 tests, 4,324 assertions, exit
+  0**. Historical pre-atomic pending-form run: **334 tests, 4,279 assertions**
+  (creator **28/564**), retained as history and superseded by the current run.
+- **Atomic Apply regression.** The failing pre-fix reproduction had a valid NPC
+  name pending and `"   "` in the speaker field, with a valid stored speaker.
+  The first application changed the NPC, refreshed the screen, and the later
+  invalid speaker either disappeared or was overwritten; the operation returned
+  success and the complete draft changed. The fix snapshots the complete draft,
+  all detected form values, dirty state and selection. Any failure restores all
+  of them, keeps the explanation, and writes no file. Success applies all forms
+  before guarded navigation. The test compares the complete related draft before
+  and after failure, not just `dirty`.
+- **Unresolved-reference regression.** `_fill_options` and `_select_by_meta` now
+  insert **Unresolved reference: <id>** for a non-empty stored id that is absent,
+  instead of selecting the first valid option. Opening `guide_b` leaves
+  `missing_talk` selected and not pending; an unrelated name Apply preserves it;
+  choosing `guide_talk` repairs it and clears the diagnostic; opening or applying
+  does not write a package. `CampaignStore.update_npc` permits preserving an
+  already-stored missing dialogue while editing unrelated fields, but still
+  refuses a newly invented missing id. The package writer refuses the invalid
+  draft, so no file is overwritten.
+- **Executable evidence.** Final candidate
+  `workspace/candidates/pending_atomic_2026-11-07/RavenloftFoundation.exe`,
+  110,463,552 bytes, SHA-256
+  `4d88215acd720de9e1278dd2908a7e9ec3e6202aafa27fab8914bc7f9eba11c1`.
+  `--pending-edit-probe` passed **37** checks in the candidate, including atomic
+  failure, unresolved display/preservation and both validation commands;
+  `--diagnostic-navigation-probe` passed **11/11**; `--validate-campaigns` and
+  `--validate-diagnostics` passed. The prior pending, diagnostics and usability
+  candidates were not overwritten.
+- **Windowed interface check.** At 1280×720 and 1.6 text scale, the exported
+  candidate showed `Unresolved reference: missing_talk` and the pending NPC name
+  (`workspace/qa/pending_atomic/unresolved_1p6_scrolled.png`). A real OS click on
+  the `guide_b` result opened the prompt (`guard_prompt_1p6.png`); Apply preserved
+  the unresolved stored id while applying the unrelated name edit
+  (`guard_applied_1p6.png`). The asserted probes cover the atomic failure path;
+  this is a short external-input check, not a human-usability study.
+- **Teardown warning.** The focused creator suite is the reproduction scope for
+  the unresolved exact `5 ObjectDB instances were leaked at exit` plus
+  `2 resources still in use at exit` warning recorded at the top of this report;
+  the full suite was clean. It remains teardown noise without an established
+  cause, not a passing assertion or a gameplay failure.
+- **Limitations.** No undo or per-form history; the picker uses one explicit
+  unresolved entry rather than a browser; duplicate validation status/panel
+  messages remain; invalid unresolved saves are blocked rather than repaired.
+  The prompt is modal and generic. Full validation-system unification remains
+  out of scope. The pre-fix baseline is control-flow evidence, not an exported
+  before/after run.
+
+## Ashwick Ferry exact-candidate acceptance (2026-11-08)
+
+- **Executable.** At the Ravenloft workspace root (outside this project):
+  `workspace/candidates/ashwick_ferry_2026-11-08/RavenloftFoundation.exe`,
+  110,511,808 bytes, SHA-256
+  `8a3f067b142411039afef7324739126c664b8944baa0751d5e527053d31d4f5f`.
+  Hash and size were checked before launch. The earlier
+  `ashwick_ferry_2026-11-08_backend` build remains preserved.
+- **Isolation and input.** The process used `APPDATA` =
+  `workspace/qa/native_profile`, so its `slot1` and `auto` saves could not touch
+  an existing profile. The run used visible mouse controls; the release ignores
+  `--script`, and injected keyboard events were not accepted. No copied save,
+  backend probe or direct state mutation was used.
+- **Primary route.** Seed 4104856171; party Brother Aldric, Kaelen Dorn, Sera
+  Vane and Ysolde. Maela Sense Motive **d20(8)+7 = 15 vs DC 15** succeeded and
+  granted key/potion. Ledger Search **d20(14)+8 = 22 vs DC 10** succeeded. The
+  key opened the door. Four rounds of combat ended with token x1 and 200 XP;
+  Ysolde was at 10/13 HP. Slot 1 was saved before the bell, then the process
+  closed.
+- **Cross-process continuity.** Relaunch, normal Load slot, and the loaded state
+  showed the key/token/potions, open door, removed ledger, spent encounter,
+  four completed objectives and Maela's changed token branch. The bell raised
+  victory once. Save, quit, reload showed **Complete**, no victory modal, no
+  restarted encounter and token x1; repeat bell use was inspection only.
+- **Alternative coverage.** Focused tests cover Maela success/failure, key,
+  Open Lock, spare-key fallback, failed-ledger retry, failed-spare retry,
+  pre-Maela actions and early-bell refusal. The exact window independently
+  covered the Maela-success/key route; the other alternatives were not replayed
+  there.
+- **Limitations.** The Journal overlay rendered blank at the boathouse after the
+  pre-bell load (four objectives complete, `ring_bell` open; capture
+  `workspace/qa/native_50_journal.png`). The loaded save retained its objectives
+  and the later run completed the quest; the overlay is not claimed working.
+  This was an external-input acceptance, not a human usability study. No runtime
+  or campaign content changed after export; later edits are documentation and
+  QA evidence only. No full-suite run was repeated for this content checkpoint.
+
+## Concentration and defensive casting (2026-11-13)
+
+Scope: damage taken during casting forces a Concentration check (DC 10 + damage +
+spell level, one check per damaging interruption); casting on the defensive is an
+explicit checkbox in the spell list (DC 15 + spell level, no opportunity attack).
+Source text and rulings: ADAPTATION_LOG 40, TRACEABILITY 18a-18b.
+
+- **Source suite.** 390/390 tests, 4,851 assertions, 27 scripts, exit 0.
+  `tests/test_concentration.gd` adds 12 tests / 57 assertions and asserts the roll
+  inputs (roll, bonus, DC), not only the outcome: unthreatened cast, threatened
+  cast whose reaction misses, injury success with the DC arithmetic, injury
+  failure with slot/prepared/action spent and no effect, defensive success and
+  failure, the level term raising the DC by one, one check per interruption,
+  incapacitation by the reaction, invalid target preserving resources, missing
+  ranks using Constitution only, and an old save without the skill entry.
+  `tests/test_ranged_melee.gd` changed only for the provocation line's new wording
+  ("while threatened and provokes").
+- **Candidate.** `RL_Edit\builds\qa\candidates\concentration_2026-11-13\`,
+  110,510,200 bytes, SHA-256
+  `8ebb56f2b72461acf6323cf9bb728a084d98995b8617a3e957ee65afa379331a`.
+- **Exact-executable probes.** `--demo-concentration --concentration-probe`: 56
+  checks PASS, `PROBE RESULT PASS`. `--demo-ranged --ranged-probe`: 49 checks PASS.
+  `--validate-campaigns`: PASS. `--validate-diagnostics`: PASS. Captures:
+  `builds/qa/runs/2026-11-13_155123_concentration_probe_candidate/shots/`
+  (`trip_concentration_00_start` ... `04_defensive_failure`). The fixture waits for
+  round 2 so no reacting creature is still flat-footed, and drives the real Cast
+  spell button, the real checkbox and the target cell.
+- **Rendered log evidence** (screenshots, not assertions): `01` shows `Injury
+  while casting: 9 damage + spell level 1: Concentration DC 10 + 9 + 1 = DC 20.`
+  then `Concentration check: d20(1)+21 = 22 vs DC 20 - success` and the resolved
+  missiles; `03` shows `casts Magic Missile defensively: no opportunity attack,
+  Concentration DC 15 + 1 = DC 16.` with no reaction line; `04` shows `casts
+  Scorching Ray defensively ... DC 17`, a failed `d20(13)-5 = 8` check, `The spell
+  is disrupted: ... loses Scorching Ray, the prepared cast is expended and the
+  action is spent.` and the status line `QA Caster Untrained's spell is
+  disrupted.` Backend state (slot counts, target HP) is asserted separately in the
+  probe and labelled `state:`.
+- **Package.** `tools/qa/pck_paths.py`: 144 packed paths; 58 `res://src/*`, 31
+  `content/*`, and no path from `builds/`, `workspace/`, `tests/`, `tools/`,
+  `docs/` or any profile directory.
+- **Limitations.** No human playtest. Combat Casting's +4, readied/delayed
+  actions, counterspells, casting while grappled, weather and ongoing-damage
+  interruptions, and spell components are not implemented. The pregens were not
+  given Concentration ranks.
+
+## Combat Casting (2026-11-13)
+
+Printed text verified on PHB p. 92 before implementation: the +4 applies only to
+Concentration checks made to cast while on the defensive, or while grappling or
+pinned. Only the defensive clause is implemented.
+
+- `tests/test_combat_casting.gd`: 6 tests / 28 assertions. Defensive check with
+  and without the feat (bonus equals Constitution modifier plus the printed +4),
+  the feat named once in the roll breakdown with value 4 and type untyped, an
+  injury check receiving nothing even with the feat, duplicate feat text not
+  doubling (and content validation still rejecting the duplicate), a failed
+  defensive cast still spending the standard action, slot and prepared cast, and
+  the catalog/validation/character-sheet contract.
+- Whole suite after the change: **396/396 tests, 4,879 assertions, 28 scripts,
+  exit 0**.
+- Candidate `builds/qa/candidates/combat_casting_2026-11-13/` (110,511,656 bytes,
+  SHA-256 `ec8aa425a30385d20d81261e666710302920881f001c2fa91059a47a10803c82`):
+  both validators PASS, the concentration probe PASS (79 checks, now including a
+  feat-holder whose log line reads
+  `Concentration check: d20(1)-1 = 0 vs DC 16 [CON modifier -5, Combat Casting +4] - FAILED`),
+  and the ranged probe PASS. 144 packed paths, no generated-output leakage.
+- Scope boundary: the grappling/pinned clause is documented as not modeled
+  rather than claimed.
+
+## Integration acceptance in the shipped town-square encounter (2026-11-13)
+
+Fixture `--demo-integration` runs content encounter `town_square_zombies` with its
+own map, party cells and standard infected zombies, played by the four unmodified
+pregens. The only fixture value is a fixed dice seed (20261113); no stat, cell or
+modifier was retuned to change outcomes. `--integration-probe`: **49 checks PASS**,
+`PROBE RESULT PASS` in both source and candidate
+`builds/qa/candidates/integration_2026-11-13/` (110,517,400 bytes, SHA-256
+`78b85a8688e17aaf69651626ded7f0e41f9a0f59f46bf00be16eed95821d1931`). Captures:
+`builds/qa/runs/2026-11-13_160546_integration_probe_candidate/shots/`
+(`00_opening`, `01_flat_footed_panel`, `02_melee_attack`, `03_thrown_into_melee`,
+`04_cast_threatened`).
+
+- **Correct rule behavior observed.** The opening logs combat-start flat-footedness
+  and the enemy panel's AC line reports the state before anyone acts; Kaelen's
+  melee attack reports the flat-footed state the resolver actually applied;
+  Ysolde's thrown dagger logs `shooting into melee -4: Infected Zombie is engaged
+  with Kaelen Dorn (PHB p.140)`; an ordinary Magic Missile in reach logs the
+  provocation, the reaction misses, the cast completes and exactly one slot is
+  spent.
+- **No defect found** in the rules these mechanics resolve in this encounter.
+  Monster AI, cover and the p. 140 "actually being attacked" nuance remain outside
+  the model as documented.
+- **Authoring limitation, now the next selected milestone.** Sera carries a light
+  crossbow in her inventory but her equipped weapon is a short sword and the
+  combat screen has no weapon switch, so the party's only usable ranged attack is
+  throwing Ysolde's dagger. This is a player-facing gap rather than a rules bug.
+- Not attempted here: finishing the encounter, a difficulty or balance judgment,
+  and any human playtest. Three rounds were exercised.
+
+## Carried-weapon access and crossbow loading (2026-11-13)
+
+Reproduced first: Sera's authored equipment readies a short sword while her light
+crossbow sits in inventory with no way to use it, and the combat screen attacked
+only with the readied weapon.
+
+- `tests/test_weapon_access.gd`: 9 tests / 41 assertions. The shipped rogue's
+  carried list; drawing costs the move action and readies the weapon; a second draw
+  in the same turn is refused with an explanation and no mutation; an unloaded
+  crossbow refuses to fire and spends nothing; loading costs a move and firing
+  spends the shot (a second shot needs another load); loading provokes when
+  threatened; loading without a move action is refused; a two-handed weapon is
+  refused while a shield is strapped on; equipment and carried lists do not leak
+  between characters; returning to the melee weapon works.
+- Whole suite: **405/405 tests, 4,920 assertions, 29 scripts, exit 0**. Existing
+  ranged fixtures now mark their crossbows loaded because they measure range,
+  engagement and the into-melee penalty; that is stated in the fixtures, and reload
+  behaviour is covered only by the new file.
+- Candidate `builds/qa/candidates/weapons_2026-11-13/`, 110,528,136 bytes,
+  SHA-256 `47672918ef0e6d5ee10c4313dc43c71c82752478f5353082e5290d9ce023ea88`:
+  both validators PASS; `--demo-weapons --weapon-probe` **30 checks PASS** (weapons
+  control, draw cost, refusal of an unloaded shot, load, fired shot, return to
+  melee); integration probe 49 PASS; concentration probe 79 PASS; ranged probe 49
+  PASS. 144 packed paths, no generated-output leakage.
+- Rendered evidence: `builds/qa/runs/2026-11-13_162413_weapons_candidate_final/shots/`
+  (`trip_weapons_00_before`, `01_drawn`, `02_unloaded_refusal`, `03_loaded`,
+  `04_fired`, `05_back_to_melee`). The weapon control shows
+  `Light Crossbow (readied)`; the log shows
+  `Sera Vane draws Light Crossbow (move action; PHB p.142).`,
+  `Sera Vane loads Light Crossbow (move action; loading provokes attacks of
+  opportunity; PHB p.115).` and
+  `Sera Vane attacks QA Target Zombie with Light Crossbow: d20(8)+5 = 13 vs AC 11 |
+  3 damage`.
+- Adaptations (also in ADAPTATION_LOG 42): one move action both stows and readies;
+  the BAB +1 free draw is not granted; loaded state is encounter-scoped; no
+  ammunition; shield removal not modelled; threat stays reach-based.
+
+
+## Weapon-state correction and shield handling (2026-11-13)
+
+The first carried-weapon build exposed two defects, both reproduced before changing
+anything: threat came from reach alone, so a crossbow-armed character took melee
+opportunity attacks, and one move action both stowed and readied a weapon, which the
+log described as the printed cost when it was not.
+
+- `tests/test_melee_threat.gd`: 9 tests / 34 assertions. Sword threatens, crossbow
+  does not, an unsupported reaction is refused with a reason and consumes no
+  reaction (and works again once the sword is readied), switching to a crossbow and
+  back removes and restores threat, a flat-footed creature still threatens but cannot
+  react, engagement survives when only the target threatens, two crossbows across the
+  way are not engaged, flanking needs two actual threats, and loading still provokes
+  from a melee-capable enemy.
+- `tests/test_weapon_access.gd`: 11 tests / 76 assertions. Sheathing and drawing are
+  separate actions; a swap within one turn spends the move and the standard action
+  (PHB p. 138) and the log names the slot; a loaded crossbow stays loaded while
+  stowed; a spent shot is never restored; a refused attack leaves the weapon loaded.
+- `tests/test_shield_handling.gd`: 9 tests / 50 assertions. The shipped fighter's
+  strapped shield, loosing drops it on his square and lowers AC by its bonus, pickup
+  and re-strapping restore it with no duplicate copy, a second shield cannot be
+  strapped over the first, loosing without one is refused, a two-handed weapon blocks
+  strapping one on, loose-then-ready uses the standard action in one turn, save/load
+  round trip, and no cross-character leakage.
+- Whole suite: **425/425 tests, 5,039 assertions, 31 scripts, exit 0**.
+- Candidate `builds/qa/candidates/weapon_state_2026-11-13/`, 110,538,840 bytes,
+  SHA-256 `2dd5c83a3926127eff7520f35e4bbe767e52d4b733f7f213ebc015c4fa7edc9a`:
+  both validators PASS; `--demo-weapons --weapon-probe` **50 checks**, `--demo-shield
+  --shield-probe` **27 checks**, integration 49, concentration 79, ranged 49, all PASS.
+  144 packed paths, no generated-output leakage.
+- Rendered evidence in `builds/qa/runs/2026-11-13_163904_weapon_state_candidate/shots/`:
+  `trip_weapons_00_before` through `07_back_to_melee` (switch refused, sheathed,
+  drawn, unloaded refusal, loaded, fired, back to melee) and `trip_shield_00_before`
+  through `04_loose_standard`. The shield log reads
+  `Kaelen Dorn unstraps and drops Heavy Steel Shield (move action; PHB p.142).` and
+  the shield control shows the strapped shield with an explicit loose entry.
+- Adaptations: ADAPTATION_LOG 42 (corrected), 43 (threat capability, including the
+  recorded divergence on bow-armed unarmed strikes) and 44 (shield ready/loose/drop).
+  The earlier claim that a swap was never cheaper than the printed rules is withdrawn.
+
+
+## Unarmed-threat correction (2026-11-13)
+
+Reported boundary: the shared threat helper still conflated "can attempt a melee
+attack" with "is armed and threatens". PHB printed p. 137 ("If you're unarmed, you
+don't normally threaten any squares") and p. 139 (armed unarmed attacks) settle it.
+
+- Split into `Encounter.available_melee_attack` (attack option), `threat_capability`
+  (armed state driving threat, flanking, engagement and provocation) and the existing
+  reaction guards (can act, not flat-footed, one reaction per round). Ordinary empty
+  hands no longer threaten; natural weapons and Improved Unarmed Strike do.
+- `tests/test_melee_threat.gd`: **15 tests / 55 assertions**, adding ordinary
+  empty-hand refusal, Improved Unarmed Strike armed status, natural-weapon threat,
+  no false flank from an empty-handed enemy, no engagement when neither side threatens,
+  and a load that provokes nothing from an adjacent unarmed enemy. Existing fixtures
+  were checked for empty-hand assumptions; none relied on empty hands threatening.
+- Whole suite: **431/431 tests, 5,060 assertions, 31 scripts, exit 0**.
+- Candidate `builds/qa/candidates/unarmed_threat_2026-11-13/`, 110,539,432 bytes,
+  SHA-256 `ef7688ed1f4975c4976577c5f14b533763ff0c027b82e7c18ab37019741d5c67`:
+  both validators PASS; weapon probe 51 checks, shield 27, integration 49,
+  concentration 79, ranged 49, all PASS; 144 packed paths, no leakage.
+- `weapon_state_2026-11-13` is preserved with a `SUPERSEDED.txt` that names the
+  empty-hand threat defect specifically. ADAPTATION_LOG 45 records the correction and
+  keeps entry 43 as history.
+
+## 2026-11-13 — ordinary unarmed attacks
+
+- `Character.nonlethal` with `apply_nonlethal`, persisted through the save
+  record; `Rules.nonlethal_immune` for undead and constructs; the size-based
+  `Encounter._unarmed_strike`; the printed provocation in `attack_active`; the
+  nonlethal branch in `_apply_damage`; nonlethal flags propagated through
+  opportunity attacks and the monster full attack; nonlethal totals shown in the
+  combat labels.
+- `tests/test_unarmed_attack.gd`: **7 tests / 30 assertions** — size-based
+  damage, nonlethal totals without hit-point loss, unconsciousness at the
+  printed threshold, undead immunity, armed-target provocation, no provocation
+  from an unarmed bystander, and the persisted nonlethal total.
+- Whole suite: **438/438 tests, 5,090 assertions, 32 scripts, exit 0**.
+- Candidate `builds/qa/candidates/unarmed_2026-11-13/`, 110,545,480 bytes,
+  SHA-256 `c9d9f970a637d4f792651f6f5c05280fd8f0c1db61e8ada1f4cb66a2a48c0108`:
+  weapons 51 checks, shield 27, **unarmed 15**, integration 49, concentration
+  79, ranged 49, all PASS; both validators PASS; 144 packed paths, no leakage.
+  The unarmed probe drives the exported executable: an empty-handed punch is
+  announced as unarmed, provokes the armed target, deals nonlethal damage
+  (hit points untouched), leaves the threat state empty, and the same damage
+  path logs immunity and records nothing for an undead target.
+- `unarmed_threat_2026-11-13` is preserved with a `SUPERSEDED.txt` naming only
+  the missing unarmed-attack semantics; its threat verification still stands.
+  Both snapshots now carry a `CHECKPOINT.md`.
+- Superseded limitation: the lethal-at-−4 option and the "improved damage die"
+  were not real gaps in the printed feat. See the 2026-11-13 nonlethal section
+  below. the undead-immunity probe uses the engine damage call rather
+  than two extra turns of UI setup.
+
+## 2026-11-13 — nonlethal conditions, healing and the Improved Unarmed Strike record
+
+- **Feat record corrected.** PHB p. 97 gives Improved Unarmed Strike no damage
+  die; it grants armed status, the no-provocation clause against armed opponents,
+  and the option to deal lethal or nonlethal damage. The earlier "improved damage
+  die" limitation was invented and is withdrawn; no damage progression was added.
+- **Lethal choice implemented.** `attack_active(target, mode, unarmed_damage)`
+  accepts `"lethal"` for an unarmed strike: no penalty with the feat, the printed
+  −4 without it (PHB p. 147). The combat screen exposes the choice next to the
+  weapon control and resets it per attacker.
+- **Nonlethal state machine.** `Character.nonlethal_state` /
+  `refresh_nonlethal_state` derive `staggered` (nonlethal equals current hit
+  points) and `nonlethal_unconscious` (greater), refreshed after nonlethal gain,
+  hit-point damage, healing, rest and load. Equality staggered, greater
+  unconscious and helpless, zero never staggers, and independent incapacities are
+  preserved by using separate effect ids.
+- **Action limit.** `Encounter._staggered_blocks_standard` /
+  `_staggered_blocks_move` refuse a standard action after a move and a move after
+  a standard action; the combat screen disables the same controls and shows
+  "staggered" in the status line.
+- **Healing.** `Character.magical_heal` removes nonlethal damage equal to the
+  amount cured by the cure spell, a potion (combat or inventory) or the authored
+  party-healing effect, including at full hit points. Natural hourly recovery is
+  recorded as replaced by rest clearing the total.
+- **Encounter completion.** `_check_end` counts only enemies that `can_act()`, so
+  a fully nonlethally incapacitated enemy force ends the encounter in victory.
+- `tests/test_nonlethal_state.gd`: **20 tests / 78 assertions**. Whole suite:
+  **458/458 tests, 5,168 assertions, 33 scripts, exit 0**.
+- Candidate `builds/qa/candidates/nonlethal_2026-11-13/RavenloftFoundationEdit.exe`,
+  110,554,296 bytes, SHA-256
+  `0e551045a24e82c53ce1c78abeac0959ff958248f7ec9654c2a599def6ef8acb`, built
+  once in its own directory (`IDENTITY.txt`, `BUILD.txt`). Probes in that
+  executable: weapons 51, shield 27, unarmed 15, **nonlethal 30**, integration 49,
+  concentration 79, ranged 49, all PASS; both validators PASS; 144 packed paths,
+  no leakage.
+- The nonlethal probe (`--demo-nonlethal`, `--nonlethal-probe`) drives the UI: a
+  staggered rogue shows "nonlethal 20 • staggered", Attack is disabled after a
+  move, a potion removes nonlethal damage and clears the state, and a punch takes
+  an already-staggered dummy past its hit points to unconscious/helpless, ending
+  the encounter in victory with its hit points untouched.
+- `unarmed_2026-11-13` is preserved with `SUPERSEDED.txt` and an
+  `ARTIFACT_NOTE.txt` recording that an intermediate binary in that directory was
+  overwritten and is not preserved.
+- Limitation: the immunity half of the unarmed probe remains an engine-call
+  demonstration rather than a fully UI-driven one; monk progression and touch
+  spells are still out of scope.
+
+## Encounter resolution and package discovery (2026-11-13)
+
+### Encounter resolution correction
+
+`Encounter._check_end` previously used `Character.can_act()` for both sides. That
+treated any temporary inability to act as defeat: ghoul paralysis (1d4+1 rounds)
+and a timed unconsciousness effect would end the fight, grant victory/XP and
+campaign effects, and a wholly paralysed party would be defeated. The encounter
+now uses two explicit predicates:
+
+- `_enemy_defeated(ch)`: `dead` or `nonlethal_unconscious`.
+- `_party_defeated(ch)`: `dead`, `dying`, `stable` or `nonlethal_unconscious`.
+
+`tests/test_encounter_resolution.gd`: **11 tests / 33 assertions**. Cases:
+paralysed enemy does not finish; timed unconsciousness does not finish; nonlethal
+incapacitation wins; a dead enemy still wins; a mixed dead+paralysed group does
+not finish until the last enemy is nonlethally out; party paralysis is not
+defeat; a whole paralysed party keeps running and recovers when the effect
+expires; nonlethally knocked-out party is defeated; a dead party is defeated; a
+lone dying member is defeat; temporary incapacity grants no victory, XP, mode
+change or flag change, and the real victory then awards XP once even after a
+second `changed` emission.
+
+### Package discovery diagnostics
+
+`CampaignStore.list_user_campaigns()` previously dropped an unreadable user
+package silently, so an author's campaign could disappear from every list with no
+reason. Discovery now records `scan_errors` with the cause (missing manifest,
+invalid JSON with line number, valid JSON that is not an object, id/folder
+mismatch, illegal folder id); `CampaignDB` carries those into its registry
+errors; the campaign selection screen shows them above the list; and
+`--validate-campaigns` prints `CAMPAIGN PACKAGE ERROR: ...` and exits nonzero.
+No file is rewritten and no old data is reinterpreted.
+
+`tests/test_campaign_discovery.gd`: **7 tests / 24 assertions** (invalid JSON is
+skipped with a line number; the registry carries the reason; id mismatch;
+missing manifest; illegal folder name; repairing the manifest restores the
+package and clears the diagnostic; a healthy package lists with no errors).
+
+End-to-end in the exported executable, using a profile containing a broken
+`user://campaigns/broken_pack/campaign.json` plus a valid creator-made
+`qa_recovery` package:
+
+- broken: exit 1, `CAMPAIGN PACKAGE ERROR: User campaign 'broken_pack':
+  campaign.json is not valid JSON: Expected key (line 3)...`,
+  `CAMPAIGN VALIDATION FAIL`, while `qa_recovery` and all three bundled campaigns
+  are `CAMPAIGN VALID`.
+- repaired (valid manifest, matching id): exit 0, `CAMPAIGN VALID broken_pack`,
+  `CAMPAIGN VALIDATION PASS`.
+
+Whole suite after both changes: **476/476 tests, 5,225 assertions, 35 scripts,
+exit 0**; `--validate-campaigns` and `--validate-diagnostics` PASS in source. The
+seven probes pass in the exported candidate: weapons 51, shield 27, unarmed 15,
+nonlethal 30, integration 49, concentration 79, ranged 49 checks, no failures.
+Packed-path audit: 144 paths, no leaked source/secret/build artifacts.
+
+Candidate: `builds/qa/candidates/package_diagnostics_2026-11-13/RavenloftFoundationEdit.exe`,
+110,555,832 bytes, SHA-256
+`926b121b78ed16d094f1fde5c2335f2190319fb8c1dfba10cc225c8dc94afc39`, exported once
+into its own directory (`BUILD.txt`). Intermediates
+`encounter_resolution_2026-11-13` and `campaign_discovery_2026-11-13` are marked
+`SUPERSEDED.txt`: they were built before the validator/reporting correction and
+before the final documentation state, and are preserved, not overwritten.
+
+Limitations: the campaign-screen notice is exercised by code inspection and by
+the exported validator path, not by a windowed click-through; the discovery
+diagnostics cover the manifest file, not damage inside area/dialogue files, which
+the creator already refuses with its own message and the content validator
+reports separately.
+
+
+## Story-file diagnostics and recovery (2026-11-13)
+
+### Reader and diagnostics
+
+`ContentDB` now records structured diagnostics beside its human strings:
+`_parse_json_file` keeps the parser message and line, and `_diag` attaches a
+stable code, campaign id, package-relative source, entity type/id and line.
+Codes: `content.area.syntax`, `content.dialogue.syntax`, `content.json.syntax`,
+`content.area.shape`, `content.dialogue.shape`, `content.area.missing`,
+`content.area.id_mismatch`, `content.area.duplicate`, `content.file.missing`,
+`content.index.shape`, `content.area_manifest.syntax` / `.shape`.
+`ContentDiagnostics` gained the `line` field. Parser lines are 1-based (Godot's
+`get_error_line` is 0-based; verified with a direct parse probe). Shape errors
+carry `line: 0` and never claim a line. Semantic errors remain descriptor-only and
+keep their existing entity/field wording.
+
+`validate_campaign` returns the same structured diagnostics, so
+`--validate-campaigns`, `--validate-diagnostics` and the campaign screen agree on
+validity. `Game.diagnose_campaign` validates through the content loader first and
+returns those entries (file, line, code) instead of re-wrapping them as
+location-less rules. `CampaignStore.load_package` now reports the damaged
+dialogue file with its parser line and distinguishes syntax from shape; the
+creator still refuses rather than rewriting.
+
+### Tests and workflow
+
+`tests/test_story_diagnostics.gd`: **9 tests / 69 assertions** — malformed area
+and dialogue JSON with file and line 3; valid-JSON-wrong-shape with `line 0` and
+no "invalid JSON" wording; missing file listed by `areas/_manifest.json`; broken
+package refused without replacing the active campaign; creator refusal leaving
+bytes untouched; repair clearing the diagnostic without leaking into another
+package; both diagnostic surfaces agreeing.
+
+Disposable-package CLI run in source (`qa_story_diag` under an isolated profile):
+
+- malformed area: `--validate-campaigns` exit 1,
+  `Area file areas/area_01.json is not valid JSON: Expected key (line 3).`;
+  `--validate-diagnostics` exit 1 with `"code":"content.area.syntax"`,
+  `"source":"areas/area_01.json"`, `"line":3`, `"campaign":"qa_story_diag"`.
+  SHA-256 of the damaged file unchanged; `--campaign=qa_story_diag` prints
+  `CAMPAIGN LOAD FAILED` with the same reason and does not start.
+- malformed dialogue: exit 1 with `Dialogue file dialogue/intro.json is not valid
+  JSON: Expected key (line 3).`; JSON code `content.dialogue.syntax`, line 3;
+  bytes unchanged.
+- after restoring both files: both validators exit 0 (`PASS`).
+
+Exported candidate `story_diagnostics_2026-11-13` (110,566,424 bytes, SHA-256
+`1a5ce809ba8eda304315f8a53813599f6f3fe0b100cc85ddacd0cf1572eb2421`):
+
+- `--encounter-end-probe` — 11/11 checks: paralysis does not end combat or pay XP,
+  expires through the turn loop, recovery does not resolve it, nonlethal defeat
+  resolves once and pays once.
+- `--package-diagnostics-probe` — 20/20 checks on the real campaign screen with an
+  isolated profile: broken manifest is not listed and its reason is readable;
+  the story-damaged package is listed and every campaign stays selectable; its
+  **New game** is refused with `Campaign unavailable`, `areas/area_01.json` and
+  `line 3`; the active campaign is unchanged; **Validate** reports the same file;
+  repairing the area and refreshing/reopening lets it load; repairing the
+  manifest clears the notice.
+- `--nonlethal-probe` — 30/30 checks still pass.
+- Exported CLI on the story-damaged package: `--validate-campaigns` exit 1 with
+  the file/line, `--validate-diagnostics` exit 1 with
+  `content.area.syntax`/line 3, and exit 0 after repair.
+- Window capture at the supported minimum 1280x720 and the actual default
+  Settings text scale (1.0, fresh profile): the discovery notice is fully legible
+  above the campaign cards; screenshot in
+  `builds/qa/candidates/story_diagnostics_2026-11-13/runs/shots/package_notice.png`.
+
+Whole suite: **485/485 tests, 5,294 assertions, 36 scripts, exit 0**; both
+validators PASS on the clean profile. Packed-path audit: 144 paths, no leaked
+source, secret, profile or build artifact.
+
+### Limitations
+
+- Shape diagnostics intentionally carry no line; semantic reference errors still
+  have no source mapping and report entity/field text only.
+- Parser lines are normalized to 1-based here (Godot reports 0-based). The earlier discovery record that quoted `line 3` for a token on human line 4 is superseded by this convention; new messages report 4.
+- The capture shows the top of the list; the story-damaged card is below the fold
+  and was exercised through the probe's ordinary button press, not a human click.
+- The probe uses the real screen, buttons and refresh path, but it runs headless;
+  the windowed path is represented by the capture plus the source-run screen.
+
+## Save/content compatibility (2026-11-13)
+
+Reproduced through the existing load path against a disposable package and an
+ordinary `slot2` save before changing runtime code:
+
+| Edit | Observed before the fix | After the fix |
+| --- | --- | --- |
+| Prose only | loaded at saved cell | loads at saved cell |
+| Entry moved | loaded at saved cell | loads at saved cell |
+| Saved cell became a wall | loaded into the wall | refused, `blocked` message |
+| Saved position out of bounds | silently used area start | refused, `outside` message |
+| Saved side quest removed | progress silently dropped | refused, names the quest |
+| Flag declaration removed | flag value intact | loads, flag intact |
+| Saved area removed | refused, missing area | refused, missing area |
+| `content_version` changed | refused | refused |
+
+Backend tests: `tests/test_content_compatibility.gd`, **11 tests / 108
+assertions**. They assert refusal before live replacement (saved cell, quest
+status, campaign id and session position unchanged), unchanged save bytes, the
+harmless cases, unsupported save format, uninstalled campaign and recovery after
+restoring content. Whole suite **496/496 tests, 5,402 assertions, 37 scripts,
+exit 0**; `--validate-campaigns` and `--validate-diagnostics` PASS.
+
+Exported candidate `save_compat_2026-11-13` (110,575,720 bytes, SHA-256
+`71a6e0cad5fb2138ef2c23d791f1ac8953104b0521aa7b9fe361586fd2b22c36`):
+
+- `--save-compat-probe` — 14/14 checks: prose and entry edits load; blocked cell,
+  out-of-bounds position and removed saved quest are refused with specific
+  messages; a removed flag declaration still loads the stored flag; removed area
+  and changed content version are refused; save bytes unchanged.
+- `--save-compat-ui-probe` — 9/9 checks through the ordinary Load modal:
+  harmless save loads and closes the modal at the saved cell; blocked content is
+  refused with the message visible and the modal stays open; session, campaign
+  and save bytes remain unchanged; restoring the area recovers the save.
+- Capture: `builds/qa/candidates/save_compat_2026-11-13/runs/shots/save_compat_refusal.png`,
+  1280x720 at the actual default Settings text scale (1.0), showing the Load
+  modal, the listed slot and the blocked-cell refusal.
+- Packed paths: 144; required runtime scripts, `content/` and assets included;
+  no development files, private references, profiles or generated artifacts.
+
+### Limitations
+
+- The UI demonstration activates the ordinary button signal headlessly; it is
+  not an OS-level mouse click and not a human playtest.
+- The rendered capture is one 1280x720 window at default text scale. The earlier
+  diagnostics UI limits remain: a story-damaged campaign card can be below the
+  fold and was exercised through the probe, not a human click.
+- Shape/semantic diagnostic entries still intentionally carry no parser line.
+
+## Campaign-list usability (2026-11-13)
+
+Isolated profile: 10 listed campaigns (three bundled, five valid user packages,
+one 77-character title, one damaged area), plus one malformed-manifest notice,
+at 1280x720. The probe counted 11 panel children including the notice.
+
+| Check | Before | After |
+| --- | --- | --- |
+| 1.0 list height / viewport | 2058 / 495 px | 2058 / 495 px |
+| 1.6 list height / viewport | 2860 / 431 px | 2860 / 431 px |
+| `follow_focus` | false; focus at y=2887 with scroll 0 | true; focused action scrolled into view |
+| 1.6 list width / viewport | 1384 / 1204 px, horizontal bar | 1204 / 1204 px, no horizontal bar |
+| Disabled Continue/Load | focusable | skipped by Tab |
+
+`tests/test_campaign_list_layout.gd`: **2 tests / 35 assertions**. It builds
+four temporary packages through `CampaignStore.create`, instantiates the real
+`Main` scene, opens the ordinary campaign screen, and asserts title wrapping, no
+horizontal requirement, focus-follow to the last action, disabled-focus skipping,
+and that rebuilding after a package disappears neither activates a card nor
+changes the active campaign.
+
+Whole suite **498/498 tests, 5,439 assertions, 38 scripts, exit 0**;
+`--validate-campaigns` and `--validate-diagnostics` PASS. Exported candidate
+`campaign_list_2026-11-13` (110,577,992 bytes, SHA-256
+`217a061b1cac4ae1df4024ac285ff59a94b2220d62f5465518aa1aa019819830`):
+`--campaign-list-probe` PASS at 1.0 and at 1.6 set through the Settings slider
+(`follow=true`, no horizontal overflow, focused action inside the viewport).
+
+Native OS input in that executable at 1280x720: wheel reached bottom cards; Tab
+focused an enabled action on a lower card and the list followed; Validate named
+`qa_list_damaged` and then `qa_list_long_title`; New game on the damaged package
+refused with its id and area line; closing it and launching the long-titled
+campaign showed the matching title on party selection; validation return kept the
+scroll position. Captures in
+`builds/qa/candidates/campaign_list_2026-11-13/runs/shots/native_*`. Packed paths:
+144; required runtime scripts, `content/` and assets included, unintended
+development files, private references, QA profiles and generated artifacts
+excluded.
+
+### Limitations
+
+- Native interaction was one automated 1280x720 window per check, not a human
+  playtest; scaled coordinates target the 1280x720 client layout.
+- The 1.6 run used the persisted setting changed and confirmed through the real
+  Settings slider; the 1.0 run used a fresh profile.
+- Back from party selection rebuilds the list at the top; this was recorded as a
+  clean reset, not treated as a defect.
+- The 1.6 party-selection screen clips one card's last trait line behind the
+  footer; that is outside the campaign-list fix and is the next selected task.
+
+## Party selection at 1.6 (2026-11-13)
+
+Isolated campaign, 1280x720, five pregens, default party of four.
+
+| Check | Result |
+| --- | --- |
+| 1.0 grid / viewport | 449 / 449 px; all five cards visible, no scroll |
+| 1.6 grid / viewport | 689 / 439 px; scroll max 689 |
+| Labels inside cards at 1.6 | all five cards, no clipping |
+| Horizontal scrolling at 1.6 | none required (542 / 542 px) |
+| Focus before fix | last checkbox y=657-869, viewport y=180-619, scroll 0 |
+| Focus after fix | scroll 250, card y=407-619, fully visible |
+| Footer | Begin/Back start at y=648, below the grid viewport (ends 619) |
+
+`tests/test_party_layout.gd`: **3 tests / 39 assertions**. It instantiates the
+real `Main` scene at 1.6 and asserts card growth, wrapped labels inside cards,
+focus scrolling the last full card into view, visible Begin/Back, empty and
+five-member refusal, a one-member minimum, Begin starting exactly the four
+chosen characters, and Back/reopen restoring defaults without changing the
+campaign.
+
+Whole suite **501/501 tests, 5,478 assertions, 39 scripts, exit 0**;
+`--validate-campaigns` PASS and `--validate-diagnostics` PASS on clean profiles.
+Exported candidate `party_layout_2026-11-13` (110,580,824 bytes, SHA-256
+`bb7bc2901831bc53769dcbfd5935485a99101a869ac250b9637cffb89a380666`):
+`--party-layout-probe` PASS at 1.0 and at 1.6 set through the Settings slider.
+Packed paths: 144; no tests, tools, documentation, builds or QA profiles.
+
+Native OS input in that executable: five Tabs reveal Ysolde's full card at 1.6;
+wheel reaches the bottom cards; clicks reduce the party to three; Begin launches
+it; Back returns to the campaign list. At 1.0 all five cards remain visible and
+Begin launches the campaign.
+
+### Limitations
+
+- Each native check is one automated 1280x720 window, not a human playtest.
+- At 1.0 the entire party fits without scrolling; at 1.6 scrolling is required
+  and the top view legitimately ends partway through Sera's card.
+- After Begin at 1.6 the intro modal is horizontally clipped by its fixed width,
+  including the Close control. This is a separate modal layout defect and is the
+  next selected task, not a regression from the party-grid change.
+
+## Intro modal at 1.6 (2026-11-13)
+
+| Check | Before | After |
+| --- | --- | --- |
+| 1.6 panel | 1665x546 at x=0 | 800x520 at x=240-1040 |
+| 1.6 heading min width | 1454 px, no wrap | 1 px min, 589x165 wrapped |
+| 1.6 Close | x=1486-1637, off-screen | x=861-1012, inside panel |
+| 1.0 long-title panel | 1080 px wide | 800 px wide, wrapped |
+| Content height | expanded panel | 744x282 viewport over 420 px content |
+| Focus | none | Close on open; released on close |
+
+`tests/test_modal_layout.gd`: **3 tests / 46 assertions**. It checks viewport
+bounds with a maximum-length title, heading wrapping, a tall scrolled body,
+focus-follow to Continue, a short modal, the real intro, Begin and Close
+dismissal, Escape, focus release, and unchanged campaign/exploration state.
+The exported `--intro-layout-probe` and `--intro-click` PASS at 1.0 and 1.6.
+
+Whole suite **504/504 tests, 5,524 assertions, 40 scripts, exit 0**;
+`--validate-campaigns` PASS and `--validate-diagnostics` PASS on clean profiles.
+Candidate `intro_modal_2026-11-13` (110,584,776 bytes, SHA-256
+`0dc6de1b29bc084511e19dd22e525c9a842717782491c8ce7546b15a455098dc`). Packed
+paths: 144; no tests, tools, docs, builds or QA profiles.
+
+Native OS input at 1280x720: campaign list → party → Begin → readable intro at
+1.0 and 1.6; mouse Close and mouse Begin dismiss to exploration; keyboard
+Tab+Enter closes without opening Pause; wheel exposes the final text and Begin
+at 1.6; movement/turn input works after dismissal. Settings at 1.6 remains
+inside the window with Close reachable.
+
+### Limitations
+
+- Each native check is one automated 1280x720 window, not a human playtest.
+- SendKeys Escape was not delivered reliably; Escape dismissal is covered by an
+  automated InputEvent test, while native keyboard dismissal used Tab+Enter.
+- At 1.6 the intro body requires scrolling; the top view intentionally ends
+  before the final note and Begin.
+- No further start/load/play blocker was demonstrated. Further work should
+  return to foundation content/rules rather than another screen sweep.
+
+## Quest-completion idempotence (2026-11-13)
+
+`QuestLog.sync_flags()` reported `Quest complete` again whenever a completed
+quest was synchronized with flags. Because `GameSession._sync_quests()` logs the
+returned messages, later effects could re-announce an already resolved quest.
+
+- Focused reproduction before the change: `tests/test_quest_log.gd` failed with
+  `ARRAY(["Quest complete: The Watch"]) != ARRAY([])` on the second sync.
+- Correction: skip quests whose status is already `complete` in
+  `sync_flags`; the completion transition is reported once.
+- Focused test: **2 tests / 15 assertions**, exit 0.
+- Full suite: **506/506 tests, 5,539 assertions, 41 scripts, exit 0**.
+- Validators: `--validate-campaigns` PASS; `--validate-diagnostics` PASS.
+- Candidate: `builds/qa/candidates/quest_log_idempotence_2026-11-13/`,
+  110,586,088 bytes, SHA-256
+  `3f85c47ff9355b9e5efb135b4a9d2f784be5c00ec5228a2f83809ae869302b23`.
+- Exact candidate `--quest-log-probe`: **6/6 PASS**, including the live
+  `ravenloft_demo` completion log count remaining at one after a second flag
+  synchronization.
+- Package: **144 packed paths**, no tests, tools, docs, builds, private
+  references or QA profile output.
+- Limits: automated session/log probe, not a human playtest or windowed UI
+  replay; no campaign content, reward, save-format or setting change.
+
+## Party contract and Ashwick minimum (2026-11-14)
+
+`party.min` was validated on content load but ignored at runtime, so a campaign
+that declared a larger minimum could still be started with fewer characters.
+Ashwick declared 1 while its only bell token comes from a mandatory encounter.
+
+- Correction: one shared interpretation of the campaign range
+  (`GameSession.party_limits` / `party_size_error` / `party_range_text`),
+  enforced at party selection (Begin unavailable with the reason) and in
+  `new_game` before any state or campaign switch is committed.
+- Content: Ashwick `party.min` 1 → 3, description states "three or four
+  adventurers"; `version` stays 2, so compatible v2 saves still load. `party.min`
+  is a new-game restriction and does not itself invalidate an otherwise
+  compatible existing save; the documented save-format and content-safety
+  refusal checks are unchanged. A version-2 save holding two characters loads in
+  the focused regression, which separates new-game eligibility from save-load
+  compatibility.
+- Focused tests: `tests/test_party_limits.gd`, **8 tests / 91 assertions**, PASS,
+  covering minimum/maximum in UI and `new_game`, refused requests preserving
+  campaign, session, RNG and save bytes, campaign-specific limits, unchanged
+  1–4 wording for campaigns that keep their range, and compatible-save loading.
+- Full suite: **525/525 tests, 6,054 assertions, 43 scripts, exit 0**.
+- Validators: `--validate-campaigns` PASS (3/3); `--validate-diagnostics` PASS.
+- Candidate: `builds/qa/candidates/party_min_2026-11-14/`, 110,634,608 bytes,
+  SHA-256 `87f94b96653402b161aaa1d7fe0fecff27f9292f536a0dfa5384975c7a0f84a4`.
+- Exact candidate, automated party-screen probe only: `--party-limits-probe
+  --probe-size=1280x720 --probe-text-scale=1.6` **22/22 PASS** (range shown, two
+  characters refused with the reason and Begin unavailable, three characters
+  begin, footer buttons inside the window). Ordinary native-input verification
+  of this change was not performed.
+- Package: **186 packed paths**, no tests, tools, docs, builds, addons,
+  workspace, Markdown or QA-profile path.
+- Composition evidence (`builds/qa/runs/2026-11-14_party_min_check/`): all ten
+  three-character subsets won the mandatory encounter at seeds 11 and 4242 under
+  one scripted policy that uses weapons, prepared spells, turning, healing and
+  each character's single potion. Bounded evidence for the authored minimum, not
+  a win guarantee or a balance validation.
+
+## Application option guard (2026-11-14)
+
+**Defect.** Application options (`OS.get_cmdline_user_args()`, i.e. text after
+Godot's `--` separator) were dispatched by a chain of `in args` and
+`begins_with` tests with no rejection path. An unrecognised option matched
+nothing and the game started normally, so a mistyped CI command looked like a
+hang rather than an error. Reproduced during the audit: `-- --validate-content`
+(the option named in `ROADMAP.md` but never implemented) started the game
+headless and ran until killed.
+
+**Correction.** `Main.APP_FLAGS` (60 bare options) and
+`Main.APP_VALUE_OPTIONS` (11 `--name=value` options) declare the supported
+vocabulary; `Main.application_arg_error(args)` returns `""` for a usable command
+line and otherwise one message naming each offender plus the closest supported
+alternatives. `_ready()` prints it and quits **2** before presenting anything. A
+`--name=` option with an empty value is refused for the same reason: the dispatch
+would otherwise silently use the default. Engine options are unaffected — they
+are consumed by Godot before the game sees its arguments. Exit status is now
+0 = ran, 1 = ran but a validation/probe check failed, 2 = the invocation was
+wrong.
+
+**Tests.** `tests/test_cli_args.gd`: **13 tests / 209 assertions**, PASS —
+no-argument acceptance, bare-word tolerance, the reported `--validate-content`
+typo, every unknown option listed, the three validator commands, nineteen
+representative probes, all eleven value forms, empty-value refusal, a realistic
+probe command line, registry uniqueness, and rejection of every registered
+option as unknown.
+
+**Boundary.** Full suite **538/538 tests, 6,263 assertions, 44 scripts, exit 0**;
+`--validate-campaigns` PASS (3/3); `--validate-diagnostics` PASS (`[]`).
+
+**Candidate.** `builds/qa/candidates/cli_args_2026-11-14/`, 110,637,712 bytes,
+SHA-256 `e3650ecbcab429e4f23eec83976c74277b181e2842f26ad93ee361503cc45262`.
+Verified in that exact executable: `-- --validate-content` and `-- --bogus-option`
+print the refusal and exit **2**; `--list-campaigns`, `--validate-campaigns` and
+`--validate-diagnostics` exit **0**; a no-application-argument launch exits 0;
+representative existing probes still run (`--quest-log-probe` PASS,
+`--party-limits-probe --probe-size=1280x720` PROBE RESULT PASS). Package: 186
+packed paths, zero `tests/`, `tools/`, `docs/`, `builds/`, `workspace/` or
+`addons/` entries and zero Markdown files; all 32 content JSON files are packed.
+
+**Limits.** Classification is pinned by unit tests; the process exit statuses
+above are headless checks against the exported candidate. No window was opened,
+no gameplay was replayed, and no human playtest was performed for this correction.
+
+## Player-view assessment - The Ashwick Ferry (informed evaluator pass)
+
+*Post-checkpoint addition, recorded after `builds/qa/snapshots/2026-11-14_cli_args/`.
+No new executable and no sealed checkpoint were produced. No code, content, rules
+or UI were changed; this is an assessment, not a correction.*
+
+**Candidate.** `builds/qa/candidates/cli_args_2026-11-14/RavenloftFoundationEdit.exe`,
+SHA-256 `e3650ecbcab429e4f23eec83976c74277b181e2842f26ad93ee361503cc45262`.
+
+**Setup.** 1280x720 window; text scale **160 %**, the largest offered in Settings and
+confirmed in Settings before play. Disposable profile
+`builds/qa/runs/2026-11-14_ashwick_player_view/profile`. Two seeds were used
+because the run had to be restarted: 2410389571 (run 1) and 1524215524 (runs 2-3).
+**Party:** Kaelen Dorn, Brother Aldric, Ysolde - Sera Vane deselected to reach the
+supported three. **Input:** ordinary external mouse through the run's `drive.ps1`
+(`SetCursorPos` + `mouse_event`). Keyboard injection (SendKeys) does not reach the
+game window, so every action was a click on an on-screen control; no key drove the
+game. Screenshots: `builds/qa/runs/2026-11-14_ashwick_player_view/shots/` (01-94).
+
+**Route and stopping point.** Campaign list -> New game -> three adventurers ->
+intro -> landing -> Maela -> skiff -> boathouse -> ledger -> tack-room key ->
+mandatory encounter (won, round 4) -> bell token -> landing -> Maela account.
+Run 1 stopped there, on the **truth** account. Run 2, restarted to take the mercy
+account, was **defeated** in the mandatory encounter. Run 3, loaded from the only
+autosave (the boathouse), re-entered that encounter and stopped in round 7 with
+Aldric 8/21, Ysolde 1/13, Kaelen 28/28 and both drowned dead at 16/16, because
+clicks aimed at an adjacent square kept landing on a party token and spent turns
+opening character sheets.
+
+**Not reached, therefore not assessed:** the mercy account in a playable state,
+the bell and *break the token and leave it silent*, the specific epilogue, the
+completed Journal, and the repeatable post-ending conversation. Nothing below is
+evidence about those.
+
+### Findings
+
+1. **The mercy account sits below the fold of the decision list** (consequential).
+   `48_maela_account.png`: at 160 % the visible rows end at *Show her the last page
+   and tell her all of it. - unavailable*; *Tell her Ivo died bringing a passenger
+   home. Let her keep that.* is only reachable by scrolling. The visible rows still
+   commit a terminal account - truth and mercy both set `maela_decision` - and once
+   one is taken the rows are gone (`49_account_options.png`: the truth text, then
+   only *Let her have the rest.*, which returns to the root). That is what happened
+   in run 1: the account was committed from the visible row without the mercy
+   statement ever being on screen. An irreversible choice should not be presented
+   as a list whose decisive row is hidden. **Correction justified.**
+
+2. **The Journal shows raw internal flags, not events.** `35_journal2.png`:
+   *Recorded world events* lists `ledger found`, `maela spoken`, `maela spoken once`,
+   `maela trust`. These are identifiers, not player-facing event text, and nothing
+   separates known facts from unresolved questions, so the question "does the
+   Journal distinguish known facts from open questions" cannot be answered yes.
+
+3. **The optional page is closed to this party composition.** The strongbox needs
+   Open Lock, which is trained only; the log says *Open Lock is trained only;
+   Ysolde has no ranks in it* (`34_strongbox.png`). The roster's only lockpicker is
+   Sera Vane, and this party dropped her to reach three; a three-character party
+   may of course include her. Any supported three-character party without Sera
+   reaches the ledger but not the optional page, and the reason appears only in the
+   log, not on the object.
+
+4. **Required refusals scroll out of the exploration log.** At 160 % the exploration
+   log holds about two lines (combat holds about five), so the line explaining *why*
+   an interaction failed - lock refusal, trained-only note - is already gone when the
+   player looks (`34_strongbox.png`, `36_tack_door.png`). The player sees that
+   nothing happened, not why.
+
+5. **The party card contradicts the combat UI.** `08_party_three.png`: *Cleric of
+   the Morninglord (EXAMPLE). Turn undead and orisons are not implemented in this
+   slice.* Combat offers Aldric a usable *Turn undead: 4 of 4 uses left today*
+   (`91_r7.png`). **Correction justified** (copy).
+
+6. **Long area titles clip the control column at 160 %.** `35_journal2.png`,
+   `63_ledger_nail.png`: *Pause (E*, *Party (Tal*, *Sheet (C*, *nventory (*,
+   *Save gam*. The landing header fits; the boathouse header does not.
+
+7. **Clear where it matters.** The defeat screen is honest and complete
+   (`78_critical.png`): it says the party fell, states that combat autosaves on
+   victory only, and offers load or begin again. Reach and damage-reduction feedback
+   are explicit - *Drowned Dead is 15 ft. away; melee reach is 5 ft. Move closer
+   first.*, *damage reduction 5/slashing applies (piercing). Drowned Dead takes 0
+   damage (HP 16/16).* No finding.
+
+8. **Control friction, recorded as observation only.** Clicking a party token opens
+   the character sheet, and in a single-file column the token covers the square a
+   player aims at. It ended run 3; it is not claimed as a defect.
+
+### Correction judgement
+
+Two findings are worth acting on: the pre-commitment visibility of the mercy row (1)
+and the cleric copy (5). The rest are presentation debt for a polish pass. None were
+changed here, per the assessment-only scope.
+
+### Limits
+
+An informed evaluator pass, not a blind test or a human playtest: the route was known
+in advance and was driven by scripted mouse coordinates. The mercy line, the bell, the
+epilogue, the completed Journal and the post-ending conversation were never displayed,
+so their clarity remains unverified. Every value above is read from a screenshot or
+the run's own log; no validator, suite or checkpoint was re-run.
+
+## Correction batch — inspection triage and the account decision (post-checkpoint)
+
+*Added after `builds/qa/snapshots/2026-11-14_account_decision/`. Two bounded
+corrections were authorized from the assessment above; the retained findings were
+not touched.*
+
+### Reported combat turn loss: not reproducible
+
+Clicking a party token opens that adventurer's sheet and nothing else. The grid
+click reaches `CombatScreen._on_cell_clicked`, a party-occupied cell calls
+`_inspect_index`, and that only opens the modal; the encounter is never touched
+(no action, no movement, no `end turn`, no roll), and the sheet's dim layer blocks
+click-through. The turn that appeared lost in the assessment came from the clicks
+after it — a move on an empty square and an attack on an enemy.
+
+Evidence, in the existing windowed probe: `--demo-inspect --inspect-probe` now
+replays the grid click on the active party token and requires the sheet to open
+with round, active combatant, `turn_state`, every combatant's HP and the combat
+log length unchanged, then the same after closing. **Eight checks, PASS** in the
+source tree and in the candidate. The probe still reports its **seven
+pre-existing** failures (the first enemy's `Inspect` control is laid out below the
+1280x720 client): an A/B run with the new block removed fails identically, so they
+are not caused by this work and were left for their own scope.
+
+### Maela's account is a deliberate decision
+
+Content only, in `content/campaigns/ashwick_ferry/dialogue/maela_vey.json`, using
+the dialogue runner's existing conditions, effects and `next`. The three
+committing rows left the general conversation and one named entry replaced them:
+*Tell her what the ledger shows about Ivo's last fare.* A dedicated
+`account_decision` node states that whatever is said now is what Maela keeps, and
+offers the truthful account, the evidence-aware variant when the last page is
+found, the fabricated passenger account, and a noncommitting *Not yet - say
+nothing about the ledger.* Each account opens its own statement page with the
+account at full width and an explicit *Tell her. This commits the account she
+keeps.* / *Not yet - step back.* Only the committing choice carries the original
+effects, so `maela_decision` stays mutually exclusive and once-only, and the
+consequence nodes and epilogues are unchanged.
+
+At 1280x720 with the Settings slider at its maximum (160 %), verified natively on
+two separate pre-decision saves, all four alternatives fit on one screen, the
+cancel path commits nothing and re-offers the entry, and both commitments land
+with their own objective completion and side quest.
+
+### Stale cleric description
+
+`content/shared/characters.json`: *"Turn undead and orisons are not implemented in
+this slice"* → *"Turn undead is implemented; orisons are not in this slice."* Turn
+undead is implemented; no level-0 spell exists and no orison is referenced in
+`src/` or `content/`, so the orison half stands. No ability was added.
+
+### Corrected claim in the assessment
+
+The assessment said a three-character party necessarily drops Sera and so loses
+the optional page. A three-character party may include her; only this party
+omitted her. Corrected above; the finding itself stands unchanged.
+
+### Evidence
+
+- Focused: `test_ashwick_ferry.gd` 10/10, `test_ashwick_second_ring.gd` 11/11,
+  `test_journal_panel.gd` 6/6.
+- Full suite **541/541 tests, 6,364 assertions, 44 scripts, exit 0**;
+  `--validate-campaigns` PASS (3/3); `--validate-diagnostics` PASS (`[]`).
+- Candidate `builds/qa/candidates/account_decision_2026-11-14/RavenloftFoundationEdit.exe`,
+  110,642,032 bytes, SHA-256
+  `022817bee0515cef0b76b918565a76d20e1a40c699dd6bf286a4811c565e3980`; both
+  validators PASS in it, the new probe checks PASS in it, 186 packed paths with no
+  `tests/`, `tools/`, `docs/`, `builds/` or Markdown.
+- Checkpoint `builds/qa/snapshots/2026-11-14_account_decision/` (tarball
+  `f756dfce…f9a4a`, manifest `07791b56…875f8d5`, 535 files all OK).
+
+### Still not verified
+
+The silent-bell resolution and its ending remain unverified through ordinary
+windowed interaction; that part of the assessment stands incomplete. A save made
+before the copy fix still shows the old cleric sentence, because a save embeds the
+character note (`n18_notes2.png`); the content version was deliberately not bumped,
+since that would refuse every existing v2 save for a text-only change.
+
+**Closed later the same day.** The silent-bell resolution and the mercy/silence
+ending were then reached through ordinary windowed play - see *Silent-bell route
+completed through ordinary play* at the end of this file.
+
+## Silent-bell route completed through ordinary play (post-checkpoint)
+
+*Documentation only: no source, content, test, executable or checkpoint change.
+Executable `builds/qa/candidates/account_decision_2026-11-14/RavenloftFoundationEdit.exe`,
+110,642,032 bytes, SHA-256
+`022817bee0515cef0b76b918565a76d20e1a40c699dd6bf286a4811c565e3980`. Window
+1280x720, text size confirmed at the Settings maximum (160 %) before play, ordinary
+OS mouse input. This closes the verification gap, not the implementation.*
+
+### State and provenance
+
+The mercy-committed state from the account-decision pass had not been saved (the
+profile's `auto.json` was byte-identical to the pre-decision copy; dialogue commits
+do not write a save), so the route continued from an ordinary-play disposable save
+instead of a prepared one. Profile `silence_run/` is a copy of
+`builds/qa/runs/2026-11-14_native_mercy/profile_mercy/`'s autosave (written
+`2026-11-14 15:59:18` by mouse-driven play in the earlier native pass): landing
+`(4,7)`, three-adventurer party Aldric / Kaelen / Sera, tack room cleared, Ivo's
+token held, optional page found, **no account decided** and no bell outcome. The
+original profile was not modified, no flag was edited, no item granted, no
+teleport, and the mandatory tack-room encounter was not replayed.
+
+Mercy was then selected through the normal UI on that state: the clearly named
+entry, the decision page, the passenger statement page, and *Tell her. This commits
+the account she keeps.* The decision page showed all four alternatives on one
+screen at 1.6, with the evidence-aware row **available** this time (the page had
+been found).
+
+### The route as it actually played
+
+1. **Bell.** Walked from the landing to the bell (south-west of the entry). Its
+   page offered five rows: *Ring once for passage.*, *Ring twice for the dead.*,
+   *Break the token and leave the bell silent.*, *Inspect the waiting bell.*,
+   *Step away.* — the header says the notice gives three answers and none of them
+   is free.
+2. **Silence.** Chose *Break the token and leave the bell silent.* The log read
+   *"You set the token against the stone and break it. The socket stays empty. The
+   bell has nothing to say. Maela is waiting at the landing; speak with her before
+   you call the crossing finished."* and the bell's next page read *"The broken
+   token lies in the socket. The silence is a decision, not a peace."*
+3. **Return.** Walked back to Maela and re-opened the conversation. The epilogue
+   was **not** automatic: the first page after the ending was the ordinary
+   conversation with the account rows closed, and the epilogue row — *Tell me what
+   the silence means for the ferry.* — sat **below the fold at 160 %**, seven
+   unavailable rows down, and had to be scrolled into view.
+4. **Epilogue.** That row gave *"The token is broken. The socket stays empty.
+   Maela does not ask you to ring. 'Ask me what you need to ask.'"* with *Let her
+   keep the story she has.* available; choosing it gave *"Maela believes Ivo died
+   trying to bring someone home. She keeps the landing as a memorial, though no
+   ferry crosses. The silence is yours to carry."*, the victory narration, and the
+   objective panel **Complete**. Leaving the conversation raised the
+   *Campaign objective complete* modal.
+5. **Journal.** *Completed: The Ashwick Ferry, The Passenger's Story* and
+   *Recorded world events*: bell resolved, bell silenced, drowned cleared, ivo
+   token found, last page found, ledger found, maela decision.
+6. **Repeat conversation.** Re-opening Maela after the ending showed the roots and
+   the finale rows as *unavailable*, with *How is the landing now?* available;
+   that gave a short post-ending line (*"Maela keeps the rope where it is. The
+   landing is quiet, and she has said all she will say about Ivo. The water is
+   still."*) and the objective stayed **Complete**. The finale did not replay.
+
+Captures: `builds/qa/runs/2026-11-14_ashwick_player_view/shots/s01`-**s17**
+(`s01` text scale, `s03` decision page, `s06` bell, `s07` silence,
+`s10`-`s12` epilogue and completion, `s14` Journal, `s15`-`s17` repeat talk).
+
+### Assessment answers
+
+- **Choice understandable before commitment** — largely yes for the silence path:
+  each row names the action and the outcome, the header says none of the three
+  answers is free, and the narration after the choice confirms the bell stays
+  empty. Two gaps: nothing warns that the token is spent for good, and *Ring twice
+  for the dead.* starts a fight from a dialogue row with no hint of it.
+- **Mercy and silence acknowledged consistently** — yes: the epilogue joins the
+  fabricated passenger story to the broken token, the post-ending line holds both,
+  and the Journal records both under the mercy side quest.
+- **Directed to the required final conversation** — the direction is clear in the
+  silence narration and in the bell's own resolved page, but the epilogue is not
+  automatic and its row was below the fold at 160 %, so the last step needs a
+  scroll. That placement is recorded as a **discoverability refinement**, not a
+  blocker; the two bell-page clarity gaps above are assessment findings, not
+  approved content changes.
+- **Completion unmistakable** — yes: objective panel *Complete*, victory
+  narration, and the *Campaign objective complete* modal.
+- **Repeat interaction does not replay the finale** — yes: finale rows are gated
+  closed and a short post-ending exchange replaces them.
+
+### Limits of this pass
+
+One outcome (mercy + silence) on one party (three adventurers, Sera included).
+Ring-once, ring-twice, defeat/interruption, the page-after-mercy branch and
+post-ending save/load were **not exercised in this pass**; for those the current
+candidate rests on `tests/test_ashwick_second_ring.gd`. Ring-once does have
+earlier native evidence, but on a different executable: the *Ordinary
+exported-window route* recorded above rang once on the truth account and reached
+its epilogue in `ashwick_second_ring_2026-11-14` (SHA-256 `457e3b88...`), not in
+`account_decision_2026-11-14` (`022817be...`). That route was not rerun to
+reconcile the two. No human playtest or balance judgement.
+Per the authorization: no suite rerun, no validators, no package audit, no new
+executable and no new checkpoint — so the claims stay separate: the full suite
+(541/541, 6,364 assertions) passed at the previous implementation boundary, the
+eight new combat-inspection assertions passed, and the broader windowed probe still
+carries its seven known failures and is not a passing probe.

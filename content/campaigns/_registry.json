@@ -1,0 +1,9 @@
+{
+	"format_version": 1,
+	"default": "ravenloft_demo",
+	"campaigns": [
+		"ravenloft_demo",
+		"hollow_lantern",
+		"ashwick_ferry"
+	]
+}

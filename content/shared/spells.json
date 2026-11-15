@@ -1,0 +1,79 @@
+{
+	"magic_missile": {
+		"id": "magic_missile",
+		"name": "Magic Missile",
+		"level": 1,
+		"school": "evocation",
+		"classes": ["wizard", "sorcerer"],
+		"resolve": "magic_missile",
+		"range_ft": 130,
+		"target": "one creature",
+		"damage": "1d4+1",
+		"duration": "instantaneous",
+		"description": "Two missiles at caster level 3, each 1d4+1, no save, no attack roll. PHB p.227: one missile at 1st level plus one per two levels beyond 1st (max 5)."
+	},
+	"mage_armor": {
+		"id": "mage_armor",
+		"name": "Mage Armor",
+		"level": 1,
+		"school": "conjuration",
+		"classes": ["wizard", "sorcerer"],
+		"resolve": "mage_armor",
+		"range_ft": 5,
+		"target": "creature touched",
+		"duration": "1 hour/level",
+		"description": "+4 armor bonus to AC, 1 hour/level (PHB p.225). Range touch; armor bonuses do not stack with worn armor."
+	},
+	"scorching_ray": {
+		"id": "scorching_ray",
+		"name": "Scorching Ray",
+		"level": 2,
+		"school": "evocation",
+		"classes": ["wizard", "sorcerer"],
+		"resolve": "scorching_ray",
+		"range_ft": 30,
+		"target": "one creature",
+		"damage": "4d6",
+		"damage_type": "fire",
+		"duration": "instantaneous",
+		"description": "Ranged touch attack, 4d6 fire damage at caster level 3 (PHB p.274). One ray at this level."
+	},
+	"cure_light_wounds": {
+		"id": "cure_light_wounds",
+		"name": "Cure Light Wounds",
+		"level": 1,
+		"school": "conjuration",
+		"classes": ["cleric"],
+		"resolve": "cure_light_wounds",
+		"range_ft": 5,
+		"target": "one living creature touched",
+		"heal": "1d8",
+		"duration": "instantaneous",
+		"description": "Heals 1d8 + caster level (max +5) hit points; also stabilizes a dying creature (PHB p.215)."
+	},
+	"bless": {
+		"id": "bless",
+		"name": "Bless",
+		"level": 1,
+		"school": "enchantment",
+		"classes": ["cleric"],
+		"resolve": "bless",
+		"range_ft": 50,
+		"target": "all allies in a 50-ft. burst",
+		"duration": "1 min./level",
+		"description": "+1 morale bonus on attack rolls and on saves against fear for 1 min./level (PHB p.205). This slice has no fear effects; attack bonus is applied."
+	},
+	"aid": {
+		"id": "aid",
+		"name": "Aid",
+		"level": 2,
+		"school": "enchantment",
+		"classes": ["cleric"],
+		"resolve": "aid",
+		"range_ft": 5,
+		"target": "one living creature touched",
+		"duration": "1 min./level",
+		"temp_hp": "1d8 + caster level (max +10)",
+		"description": "+1 morale bonus on attack rolls and saves against fear, plus 1d8 + caster level temporary hit points (max +10) for 1 min./level (PHB p.196). Temporary hit points do not stack."
+	}
+}
