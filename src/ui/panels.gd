@@ -24,8 +24,14 @@ static func character_sheet(selected := 0) -> Control:
 	tabs.custom_minimum_size = Vector2(800, 500)
 	for i in Game.party.size():
 		var ch: Character = Game.party[i]
+		var page := MarginContainer.new()
+		page.name = ch.display_name
+		# At the largest text scale the tab strip was drawn over the sheet's first
+		# line, so the page keeps its own top margin instead of trusting the tab bar.
+		page.add_theme_constant_override("margin_top", 6)
+		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		var scroll := ScrollContainer.new()
-		scroll.name = ch.display_name
 		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		var text := RichTextLabel.new()
@@ -34,7 +40,8 @@ static func character_sheet(selected := 0) -> Control:
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text.text = _character_text(ch)
 		scroll.add_child(text)
-		tabs.add_child(scroll)
+		page.add_child(scroll)
+		tabs.add_child(page)
 	if tabs.get_tab_count() > 0:
 		tabs.current_tab = clampi(selected, 0, tabs.get_tab_count() - 1)
 	return tabs
@@ -303,7 +310,12 @@ static func settings(awaiting_action: String, on_rebind: Callable, on_scale_chan
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 10)
-	scroll.add_child(list)
+	# Clear the scrollbar: at 160 % the rebind buttons ran underneath it.
+	var list_margin := MarginContainer.new()
+	list_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_margin.add_theme_constant_override("margin_right", 18)
+	scroll.add_child(list_margin)
+	list_margin.add_child(list)
 	list.add_child(ThemeBuilder.heading("Audio", 20))
 	for volume in [["master", "Master"], ["music", "Music"], ["sfx", "Sound effects"], ["ambience", "Ambience"]]:
 		var captured_volume := String(volume[0])
@@ -381,8 +393,12 @@ static func _slider_row(
 	slider.custom_minimum_size = Vector2(220, 24)
 	slider.value_changed.connect(on_change)
 	row.add_child(slider)
+	# The readout is sized by its own text. A fixed 52 px column wrapped "160 %"
+	# into two lines at the largest text scale, which read as a broken value.
 	var readout := ThemeBuilder.body("%d%%" % int(round(value * 100.0)), true, 13)
-	readout.custom_minimum_size = Vector2(52, 0)
+	readout.autowrap_mode = TextServer.AUTOWRAP_OFF
+	readout.size_flags_horizontal = Control.SIZE_SHRINK_END
+	readout.custom_minimum_size = Vector2.ZERO
 	slider.value_changed.connect(func(v: float) -> void: readout.text = "%d%%" % int(round(v * 100.0)))
 	row.add_child(readout)
 	return row

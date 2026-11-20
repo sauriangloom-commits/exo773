@@ -157,6 +157,16 @@ shown and no game state is created.
 Distinguishing 1 from 2 lets a CI step tell "the content is broken" from "the
 command is wrong". Bare text without a leading `-` is ignored, as before.
 
+Layout check (windowed; asserts that no control or label is unreachable at a
+given client size and text scale, and exits nonzero if one is):
+
+```bash
+# exploration at the minimum client and maximum text
+"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo --layout-probe --layout-scenario=screen --probe-size=1280x720 --text-scale=1.6
+# Settings, the inspect modal, dialogue and fullscreen are --layout-scenario=settings|inspect|dialogue|fullscreen
+# add --capture-dir=<abs dir> to write the measured frame as a PNG
+```
+
 Content checks:
 
 ```bash
@@ -171,10 +181,14 @@ option. Use the two validators above.
 
 ## Layout and resolution
 
-- Reference viewport: **1280×720**; the window opens at that size.
-- The UI uses Godot containers and expands with the window. Screens were verified
-  at 1280×720, 1366×768, 1920×1080, 1024×600 and 1.6× text; the 1.6× sidebar,
-  dialogue and combat layouts were recaptured after clipping fixes.
+- Reference viewport: **1280×720**; the window opens at that size and cannot be
+  made smaller (`get_window().min_size`).
+- **The client area is the layout surface** (`display/window/stretch/mode="disabled"`,
+  corrected 2026-11-20). A larger window or fullscreen gives the UI more logical
+  room instead of scaling a fixed 1280×720 canvas, so fonts stay crisp and panels
+  are not magnified past a 1080-high display. Verified by `--layout-probe` at
+  1280×720, 1600×900, 1920×1017 maximized and 1920×1080 fullscreen at 100 % and
+  160 % text. 1024×600 is not a supported size.
 - The first-person and combat views set `clip_contents = true`; walls projected
   above the view rect must not paint over the header.
 - Text is sized through `ThemeBuilder.fs()`; changing the base scale there is the

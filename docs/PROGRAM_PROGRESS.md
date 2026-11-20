@@ -1669,3 +1669,83 @@ seven known failures are unchanged and reported, not fixed.
 Accepted and closed. No further implementation or verification work is authorized
 for this assessment; the epilogue placement and the bell-page wording stay
 recorded as a discoverability refinement and as assessment findings.
+
+## Bounded correction — UI scaling (2026-11-20)
+
+**Scope.** Layout and scaling only: `project.godot` display settings, the window
+floor, page minimums, modal/dialogue sizing, one readout width, and the layout
+tests that pin them. No content, rules, save format, quest/journal text or other
+behaviour changed. Earlier milestones, sealed checkpoints and accepted candidates
+are untouched.
+
+**Defect (reproduced, assessment only, 2026-11-15).** The UI was always composed in
+a fixed 1280x720 logical canvas and then magnified (`stretch/mode="canvas_items"`,
+`aspect="expand"`), while the Settings text scale only enlarged fonts. At 160 %
+text, at 1280x720 and at every larger 16:9 size: the exploration location label
+overlapped the 3D view and the newest log line was cut; the combat right column
+(Pause, actions, Inspect/Attack) was pushed past the client edge; the dialogue
+panel ran past both client edges; Settings showed about a third of its content in
+a fixed 760x540 box and the "Cannot save now" dialog clipped its own sentence; the
+text-size readout wrapped to "160" / "%"; and fullscreen reported a 1920x1082
+client on a 1920x1080 display. A taller logical viewport (1280x980) fixed the
+vertical clipping and a wider one (1600x720) the horizontal, which identified the
+fixed base canvas rather than one bad offset.
+
+**Correction.**
+
+1. `display/window/stretch/mode="disabled"`: the client area *is* the layout
+   surface, so a larger window or fullscreen adds logical room instead of scaling
+   a fixed canvas. `get_window().min_size` stays 1280x720, so 1280x720 is the
+   supported minimum and fullscreen is exactly the display size (no 1.5028 scale).
+2. Page minimums that could not shrink: exploration view 360->140 and log
+   140->80 (the log scrolls inside its panel), the exploration title now wraps
+   instead of competing with Gold/Seed/Pause, combat view 420->140, log 150->90,
+   initiative panel 150->90 and target list 120->96.
+3. The dialogue panel's minimum is capped to the client and re-clamped on resize
+   instead of being computed once at build time.
+4. `open_modal` scales its requested size by the text scale and then caps it to the
+   client; `refresh_modal` re-uses the size the caller asked for instead of
+   resetting every modal to 760x540.
+5. The text-size readout is sized by its own text (no fixed 52 px column); the
+   Settings list clears the scrollbar; the character sheet's tab page has a top
+   margin so the tab strip cannot sit on its first line.
+6. Headless CI pins its dummy window to 1280x720, since the client is now the
+   layout surface; without it the layout tests measured a 64x64 dummy.
+
+**Verification.** Full suite **550/550 tests, 6,403 assertions, 45 scripts, exit
+0**, including the new `tests/test_layout_scaling.gd` (9 tests) which lays pages
+out at 1280x720 and asserts that nothing escapes the client and that the dialogue
+panel and modal requests stay capped. Both validators PASS.
+
+New `--layout-probe` (with `--layout-scenario=screen|settings|inspect|dialogue|
+fullscreen`, `--probe-size`, `--text-scale`) asserts every visible interactive
+control is inside the client or reachable through a ScrollContainer, and that no
+wrapping-off label is allocated less width than its text. It passed **32/32** runs
+across 1280x720, 1600x900 and 1920x1017 at 100 % and 160 % for exploration, combat,
+dialogue, Settings and the inspect modal, plus fullscreen at 1920x1080 for both
+scales (a 1920x1082 client would now fail).
+
+`--demo-inspect --inspect-probe` now **PASSES**: its five failing checks (seven
+counted in earlier records because two run twice) were the combat sidebar's
+controls being laid out outside the 1280x720 client. No check was relaxed or
+removed. `--party-layout-probe`, `--intro-layout-probe`, `--campaign-list-probe`
+and `--party-limits-probe` also PASS (the first three need their QA fixture
+profile, as before).
+
+Candidate `builds/qa/candidates/ui_scaling_2026-11-20b/RavenloftFoundationEdit.exe`,
+110,647,296 bytes, SHA-256
+`6d38c18d8f533a245343ae4df9731e7ae41ad27e2d7b7477c4b2c5a17435dbd7`, built from
+worktree `a64eead` + the changes above. Its own `--list-campaigns`,
+`--validate-campaigns`, `--validate-diagnostics`, `--inspect-probe` and the layout
+matrix were run windowed with an isolated `APPDATA`; results are in
+`builds/qa/runs/2026-11-20_ui_fix/acceptance.log` with captures in
+`.../accept/shots/`.
+
+**Limits.** No human playtest and no subjective judgement of the new proportions.
+Keyboard-driven flows still cannot be injected through the headless/Windows
+harness, so keyboard-only reachability rests on the construction tests. Windows
+display scaling other than 100 % was not exercised (it needs a system-wide change)
+— if a player's failure comes from OS DPI rather than the text slider, it remains
+unverified. Journal raw-flag rendering, exploration log length and the
+"Recorded world events" heading overlap seen once at 100 % are outside this
+correction and unchanged; no checkpoint was created for it.

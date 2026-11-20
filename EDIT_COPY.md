@@ -1,7 +1,8 @@
 # RL_Edit — editable copy
 
-Independent working copy of the Ravenloft Foundation Godot project. It has no
-Git repository and can be edited freely; the original project was not modified.
+Independent working copy of the Ravenloft Foundation Godot project. It is a
+local Git repository (baseline commit `a64eead`, one commit, no remote) and can
+be edited freely; the original project was not modified.
 
 **Active development authority (2026-11-14).** This copy is the tree that is
 edited and verified. The Git-backed original at commit `1af0253` is preserved
@@ -108,14 +109,23 @@ its `EDIT_COPY.md`)", and add the active-tree line to its Conventions section.
   the original canonical paths as history; live instructions in `README.md`,
   `docs/SETUP.md` and `docs/CAMPAIGN_PACKAGE.md` point at this copy.
 - The engine binary is a read-only dependency on the original install folder.
-- There is no Git identity; `build_candidate.sh` records `no-git` for revision
-  fields. Create a repository here if version control is wanted.
+- **Superseded 2026-11-14: this copy now has a local Git repository.**
+  `build_candidate.sh` records the real `source_head` and worktree hashes.
+  Earlier `BUILD.txt` files keep their `no-git` fields as history.
 
-## Proposed local Git adoption (2026-11-14) — proposal only, nothing applied
+## Local Git adoption (2026-11-14) — applied
 
-Status: **not authorized, not started.** This copy still has no `.git`, and no
-file below was created or changed for it. The Git-backed original at `1af0253` is
-untouched and is not involved.
+Status: **applied 2026-11-14 19:14**, after the proposal below was accepted.
+`git init -b main`, `core.autocrlf=false` and the local identity
+`sauriangloom-commits <sauriangloom@gmail.com>` were used. The baseline commit is
+`a64eead86b1f17b8b9937caa0d7a786ecb5f0b11` — "Baseline: RL_Edit working tree,
+2026-11-14 (game milestones closed)" — with **535 tracked files**, 568 objects,
+4.04 MiB of objects. There is still **no remote, no tag, no push and no
+publication**, and the Git-backed original at `1af0253` is untouched. The
+`.gitignore` draft below was applied as written, so `builds/` and `.godot/` stay
+untracked; QA evidence cited by the docs therefore remains local-only.
+
+The proposal text below is kept as accepted history.
 
 **Baseline target.** One initial commit of the current working tree exactly as it
 stands, including the post-checkpoint record edits in `docs/TEST_REPORT.md` and

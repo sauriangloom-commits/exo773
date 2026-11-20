@@ -389,9 +389,12 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   and both recovery paths, E3 victory/dialogue/barricade/travel/return and key
   rebinding were exercised. Restore Default Controls is covered by the automated
   persistence test. The final executable was checked for independent launch/load.
-- **Rendering:** screenshots were inspected at 1280×720, 1366×768, 1920×1080,
-  1024×600 and 1.6× text. Mouse-wheel scrolling, focus traversal and high-DPI
-  beyond those captures were not exhaustively tested.
+- **Rendering:** screenshots were inspected at 1280×720, 1366×768 and 1920×1080.
+  1024×600 is **not** a supported size (the window minimum is 1280×720). Since
+  2026-11-20 the client area is the layout surface and 100 %/160 % text are
+  verified at 1280×720, 1600×900, maximized and fullscreen by `--layout-probe`.
+  Mouse-wheel scrolling, focus traversal and high-DPI beyond those captures were
+  not exhaustively tested.
 - **Power Attack scope:** the committed choice is verified for the supported
   single attack action, including relevant opportunity attacks. The two-handed
   multiplier is exercised with synthetic `two_handed` metadata because no shipped

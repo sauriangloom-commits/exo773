@@ -6,12 +6,35 @@ extends Control
 ## remain visible with an explanation rather than disappearing silently.
 
 var main: Control
+## The framed conversation panel. Its minimum is capped to the client area, so a
+## raised text scale or a resize can never push it past a window edge; the body
+## scrolls instead.
+var panel: PanelContainer
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	resized.connect(_clamp_panel)
 	_rebuild()
+
+
+## Largest panel that still leaves a 16 px edge inside the current client area.
+## The control is anchored full-rect, so its own size is the client area once
+## layout has run; before the first layout it falls back to the viewport size.
+func _panel_minimum() -> Vector2:
+	var area := size
+	if area.x <= 0.0 or area.y <= 0.0:
+		area = get_viewport_rect().size
+	var space := area - Vector2(32, 32)
+	return Vector2(minf(860.0, maxf(space.x, 320.0)), minf(600.0, maxf(space.y, 240.0)))
+
+
+## Called when the client area changes while a conversation is open: the panel
+## keeps its proportion instead of remembering the size it was built at.
+func _clamp_panel() -> void:
+	if panel != null and is_instance_valid(panel):
+		panel.custom_minimum_size = _panel_minimum()
 
 
 func refresh() -> void:
@@ -31,8 +54,8 @@ func _rebuild() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(860, minf(600.0, get_viewport_rect().size.y - 32.0))
+	panel = PanelContainer.new()
+	panel.custom_minimum_size = _panel_minimum()
 	center.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)

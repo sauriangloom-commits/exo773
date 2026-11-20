@@ -6,6 +6,9 @@ var current_screen: Control = null
 var modal: Control = null
 var modal_builder: Callable
 var modal_title := ""
+## The modal size a caller asked for at 100 % text, kept so `refresh_modal()`
+## re-applies the same request instead of resetting every modal to 760x540.
+var modal_base_size := Vector2(760, 540)
 var awaiting_rebind := ""
 var party_selection: Array[String] = []
 var party_error: Label
@@ -22,6 +25,7 @@ var creator_draft: Dictionary = {}
 var creator_dirty := false
 var creator_probe_failures := 0
 var creator_focus := ""
+var layout_scenario := "screen"
 
 ## Exit status for a command line the application cannot act on. 1 already means
 ## "ran, and a validation or probe check failed"; 2 means "the invocation itself
@@ -78,6 +82,7 @@ const APP_FLAGS: Array[String] = [
 	"--integration-probe",
 	"--intro-click",
 	"--intro-layout-probe",
+	"--layout-probe",
 	"--list-campaigns",
 	"--nonlethal-probe",
 	"--package-diagnostics-probe",
@@ -105,6 +110,7 @@ const APP_VALUE_OPTIONS: Array[String] = [
 	"--capture-dir",
 	"--cleave-scenario",
 	"--creator-focus",
+	"--layout-scenario",
 	"--probe-size",
 	"--probe-text-scale",
 	"--text-scale",
@@ -213,6 +219,8 @@ func _ready() -> void:
 			Game.settings["text_scale"] = clampf(float(arg.substr("--text-scale=".length())), 0.8, 1.6)
 		if arg.begins_with("--creator-focus="):
 			creator_focus = arg.substr("--creator-focus=".length())
+		if arg.begins_with("--layout-scenario="):
+			layout_scenario = arg.substr("--layout-scenario=".length())
 	theme = ThemeBuilder.build(16)
 	for arg in args:
 		if arg.begins_with("--campaign="):
@@ -358,6 +366,8 @@ func _ready() -> void:
 		_diagnostic_navigation_probe()
 	if "--pending-edit-probe" in args:
 		_pending_edit_probe()
+	if "--layout-probe" in args:
+		_layout_probe(layout_scenario)
 
 
 ## Asserted creator-to-diagnostic navigation and recovery path. Reuses the real
@@ -1837,6 +1847,187 @@ func _probe_click_cell(combat: Control, cell: Vector2i, label: String) -> void:
 	var base: Vector2 = view.get_global_rect().position + view.origin
 	var at: Vector2 = base + Vector2(cell.x + 0.5, cell.y + 0.5) * float(view.cell_size)
 	await _probe_click_at(at, "%s cell %s" % [label, str(cell)])
+
+
+## Layout reachability probe for a supported window and text scale. Every visible
+## interactive control must be reachable: inside the client area, or inside a
+## ScrollContainer that can bring it there. A label that refuses to wrap may not be
+## allocated less width than its own text. The screen comes from the ordinary
+## `--demo-*` flags; `--layout-scenario=settings|inspect` opens the modal under test.
+func _layout_probe(scenario: String) -> void:
+	get_window().size = probe_size
+	for i in 8:
+		await get_tree().process_frame
+	var failures := 0
+	match scenario:
+		"settings":
+			_open_settings()
+		"inspect":
+			if current_screen is CombatScreen:
+				(current_screen as CombatScreen)._inspect_active()
+			else:
+				failures += 1
+				print("  LAYOUT WRONG SCREEN no combat screen for the inspect modal")
+		"dialogue":
+			if Game.dialogue == null:
+				failures += 1
+				print("  LAYOUT WRONG SCREEN no conversation open")
+		"fullscreen":
+			Game.set_fullscreen(true)
+			# Switching to exclusive fullscreen is asynchronous; a fixed frame count
+			# measured the old windowed client and passed for the wrong reason.
+			for i in 120:
+				await get_tree().process_frame
+				if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
+					break
+			if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN:
+				failures += 1
+				print("  LAYOUT FULLSCREEN NOT APPLIED mode=%d" % DisplayServer.window_get_mode())
+			# The client size follows the mode change a few frames later.
+			for i in 30:
+				await get_tree().process_frame
+	for i in 8:
+		await get_tree().process_frame
+	# Read the client once, before the fullscreen scenario restores the display; the
+	# summary must describe the layout that was measured, not the restored window.
+	var measured_client := get_viewport().get_visible_rect().size
+	if scenario == "fullscreen":
+		# Exclusive fullscreen used to report a 1920x1082 client on a 1920x1080
+		# display because the fixed 1280x720 base was scaled by 1.5028. The client
+		# must never be larger than the screen it is drawn on.
+		var screen_size := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+		var client_size := measured_client
+		if client_size.x > float(screen_size.x) or client_size.y > float(screen_size.y):
+			failures += 1
+			print(
+				"  LAYOUT FULLSCREEN OVERSHOOT client=%s screen=%s"
+				% [str(client_size), str(screen_size)]
+			)
+	var checked := 0
+	if current_screen != null:
+		var screen_report: Array = await _layout_report(current_screen, "screen")
+		failures += int(screen_report[0])
+		checked += int(screen_report[1])
+	if modal != null:
+		var modal_report: Array = await _layout_report(modal, "modal")
+		failures += int(modal_report[0])
+		checked += int(modal_report[1])
+	elif scenario == "settings" or scenario == "inspect":
+		failures += 1
+		print("  LAYOUT MISSING modal for scenario '%s'" % scenario)
+	# A screen that never built would otherwise pass with nothing to check.
+	if checked < 5:
+		failures += 1
+		print("  LAYOUT TOO FEW controls checked (%d)" % checked)
+	if capture_dir != "":
+		await _capture_layout_shot(scenario)
+	if scenario == "fullscreen":
+		# Leave the display exactly as it was found; the setting is persisted.
+		Game.set_fullscreen(false)
+	print("LAYOUT PROBE %s scenario=%s client=%s text=%.2f controls=%d failures=%d" % [
+		"PASS" if failures == 0 else "FAIL",
+		scenario,
+		str(measured_client),
+		float(Game.settings.get("text_scale", 1.0)),
+		checked,
+		failures,
+	])
+	get_tree().quit(0 if failures == 0 else 1)
+
+
+func _capture_layout_shot(scenario: String) -> void:
+	await RenderingServer.frame_post_draw
+	var image := get_viewport().get_texture().get_image()
+	var client := get_viewport().get_visible_rect().size
+	var shot_name := "layout_%s_%s_t%d_%dx%d" % [
+		scenario,
+		_screen_tag(),
+		int(round(float(Game.settings.get("text_scale", 1.0)) * 100.0)),
+		int(client.x),
+		int(client.y),
+	]
+	var shot_path := capture_dir.path_join(shot_name + ".png")
+	if image.save_png(shot_path) == OK:
+		print("CAPTURED %s" % shot_path)
+	else:
+		print("CAPTURE FAILED %s" % shot_name)
+
+
+## Walks one screen (or modal) and returns [violations, interactive controls seen].
+func _layout_report(root: Node, label: String) -> Array:
+	var client := get_viewport().get_visible_rect()
+	var failures := 0
+	var controls: Array[Control] = []
+	for node in root.find_children("*", "Control", true, false):
+		var control := node as Control
+		if control != null and control.is_visible_in_tree() and _layout_interactive(control):
+			controls.append(control)
+	for control in controls:
+		if not client.encloses(control.get_global_rect()):
+			var scroller := _layout_scroller(control)
+			if scroller != null:
+				scroller.ensure_control_visible(control)
+				await get_tree().process_frame
+		var rect := control.get_global_rect()
+		if not client.encloses(rect):
+			failures += 1
+			print(
+				"  LAYOUT UNREACHABLE %s %s rect=%s client=%s"
+				% [label, _layout_path(control, root), str(rect), str(client)]
+			)
+	for node in root.find_children("*", "Label", true, false):
+		var text_label := node as Label
+		if text_label == null or not text_label.is_visible_in_tree():
+			continue
+		if text_label.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			continue
+		var needed := text_label.get_minimum_size().x
+		if needed > text_label.size.x + 1.0:
+			failures += 1
+			print(
+				"  LAYOUT TEXT CLIPPED %s %s needed=%.1f got=%.1f text=%s"
+				% [label, _layout_path(text_label, root), needed, text_label.size.x, text_label.text]
+			)
+	return [failures, controls.size()]
+
+
+## A stable, readable name for the screen under test (file name of its script),
+## so captures of different screens never overwrite each other.
+func _screen_tag() -> String:
+	if current_screen == null:
+		return "none"
+	var script: Script = current_screen.get_script()
+	if script != null and String(script.resource_path) != "":
+		return String(script.resource_path).get_file().get_basename()
+	return current_screen.get_class().to_lower()
+
+
+func _layout_interactive(control: Control) -> bool:
+	return (
+		control is BaseButton
+		or control is LineEdit
+		or control is SpinBox
+		or control is HSlider
+		or control is TextEdit
+	)
+
+
+func _layout_scroller(control: Control) -> ScrollContainer:
+	var node := control.get_parent()
+	while node != null:
+		if node is ScrollContainer:
+			return node as ScrollContainer
+		node = node.get_parent()
+	return null
+
+
+func _layout_path(control: Control, root: Node) -> String:
+	var parts: Array[String] = []
+	var node: Node = control
+	while node != null and node != root:
+		parts.push_front(String(node.name))
+		node = node.get_parent()
+	return "/".join(PackedStringArray(parts))
 
 
 func _probe_shot(scenario: String, step: String) -> void:
@@ -6256,6 +6447,7 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 		awaiting_rebind = pending_rebind
 	modal_title = title
 	modal_builder = builder
+	modal_base_size = Vector2(width, height)
 	modal = Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
 	modal.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -6270,7 +6462,12 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 	modal.add_child(center)
 	var panel := PanelContainer.new()
 	var available := get_viewport_rect().size - Vector2(32, 32)
-	panel.custom_minimum_size = Vector2(minf(width, available.x), minf(height, available.y))
+	# The panel follows the text scale: at 160 % the same content needs that much
+	# more room, and a fixed 760x540 box left Settings showing a third of itself.
+	# It is still capped to the client area, where the body scrolls instead.
+	var text_scale := clampf(float(Game.settings.get("text_scale", 1.0)), 1.0, 1.6)
+	var requested := modal_base_size * text_scale
+	panel.custom_minimum_size = Vector2(minf(requested.x, available.x), minf(requested.y, available.y))
 	center.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -6308,7 +6505,13 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 
 func refresh_modal() -> void:
 	if modal_builder.is_valid():
-		open_modal(modal_title, modal_builder, 760, 540, true)
+		open_modal(
+			modal_title,
+			modal_builder,
+			int(modal_base_size.x),
+			int(modal_base_size.y),
+			true
+		)
 
 
 func close_modal() -> void:

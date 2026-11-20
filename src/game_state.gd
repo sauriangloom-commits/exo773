@@ -60,6 +60,16 @@ var playtest_root := ""
 
 
 func _ready() -> void:
+	# A headless CI process has no window manager, so the dummy window starts at a
+	# handful of pixels while the real game refuses to run below 1280x720. Since
+	# the logical layout surface now follows the client, pin the minimum here so
+	# headless layout checks measure the same surface a player gets.
+	if DisplayServer.get_name() == "headless":
+		var headless_window := get_window()
+		headless_window.size = Vector2i(
+			maxi(headless_window.size.x, 1280),
+			maxi(headless_window.size.y, 720)
+		)
 	campaigns = CampaignDB.new()
 	campaigns.load_registry()
 	for campaign_error in campaigns.errors:

@@ -1,9 +1,10 @@
 # Ravenloft Foundation
 
 > **Editable copy.** This is the independent `RL_Edit` working copy of the
-> maintained project. It has no Git repository and uses its own Godot user-data
-> directory (`%APPDATA%\RavenloftFoundationEdit`), so saves and settings here
-> cannot reach the original. See `EDIT_COPY.md` for exclusions and verification.
+> maintained project. Since 2026-11-14 it is a local Git repository (baseline
+> commit `a64eead`, no remote) and it uses its own Godot user-data directory
+> (`%APPDATA%\RavenloftFoundationEdit`), so saves and settings here cannot reach
+> the original. See `EDIT_COPY.md` for exclusions and verification.
 
 A playable, data-driven foundation for a single-player **D&D 3.5 / Ravenloft-inspired**
 first-person party RPG, built in **Godot 4.7.2** with **GUT 9.6.1**.

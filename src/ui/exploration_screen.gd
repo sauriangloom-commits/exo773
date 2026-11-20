@@ -43,7 +43,8 @@ func _build() -> void:
 	root.add_child(header)
 	location_label = ThemeBuilder.heading("", 20)
 	location_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	location_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	location_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	location_label.custom_minimum_size.x = 0
 	header.add_child(location_label)
 	gold_label = ThemeBuilder.short("Gold: %d gp" % Game.gold, true, 13)
 	gold_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -68,7 +69,7 @@ func _build() -> void:
 	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(left)
 	view = FirstPersonView.new()
-	view.custom_minimum_size = Vector2(0, 360)
+	view.custom_minimum_size = Vector2(0, 140)
 	view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(view)
@@ -150,9 +151,11 @@ func _build() -> void:
 	quest_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quest_box.add_child(quest_label)
 
-	# Narration log.
+	# Narration log. The label scrolls inside the panel, so the panel only reserves
+	# two lines at the maximum text size instead of a fixed 140 logical pixels that
+	# made the whole page taller than a 1280x720 client.
 	var log_panel := PanelContainer.new()
-	log_panel.custom_minimum_size = Vector2(0, 140)
+	log_panel.custom_minimum_size = Vector2(0, 80)
 	root.add_child(log_panel)
 	var log_margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:

@@ -115,6 +115,16 @@ Presentation defects found and fixed in this phase:
 3. The dialogue panel grew past the viewport at 1.6× and clipped its footer. It is
    now capped to the viewport with an internal vertical scroll.
 
+> **Correction (2026-11-20).** Two claims in the table above no longer hold and
+> are kept only as the record of this phase. **1024×600 is not a supported
+> size** — the window minimum is 1280×720, so that capture showed a *scaled-down*
+> render of a 1280×720 layout, not a layout that had been given 1024×600. And the
+> 1.6× rows were **superseded**: once the client is the layout surface (2026-11-20)
+> the 160 % exploration header, combat right column, dialogue panel and fixed-size
+> modals were found to clip or overlap at 1280×720, and were fixed. The supported
+> sizes are 1280×720 and up, at 100 % and 160 % text; see `PROGRAM_PROGRESS.md`
+> (2026-11-20) and `TEST_REPORT.md`.
+
 **Not verified:** mouse wheel scrolling, keyboard focus traversal, every modal
 button, audio quality, and a complete click-through of the objective with native
 input automation. The construction tests and screenshots do not prove those

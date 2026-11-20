@@ -2606,3 +2606,54 @@ executable and no new checkpoint — so the claims stay separate: the full suite
 (541/541, 6,364 assertions) passed at the previous implementation boundary, the
 eight new combat-inspection assertions passed, and the broader windowed probe still
 carries its seven known failures and is not a passing probe.
+
+## UI scaling correction — layout and the client area (2026-11-20)
+
+*Implementation and verification record. Supersedes the 1.6x text and 1024x600
+claims in `PHASE2_VERIFICATION.md`; it does not rewrite that phase's history.*
+
+### Defect
+
+The UI was composed in a fixed 1280x720 logical canvas and magnified to the window
+(`stretch/mode="canvas_items"`, `aspect="expand"`), while the Settings text scale
+enlarged only fonts. At 160 % text the exploration header overlapped the 3D view and
+the newest log line was clipped, the combat right column sat outside the client at
+1280x720, the dialogue panel ran past both edges, the fixed 760x540 modals clipped
+their own content, the text-size readout wrapped across two lines, and fullscreen
+reported a 1920x1082 client on a 1920x1080 display. Behaviour is summarized with
+evidence paths in `PROGRAM_PROGRESS.md` (2026-11-20) and the assessment run in
+`builds/qa/runs/2026-11-15_ui_scaling/`.
+
+### What changed
+
+`display/window/stretch/mode="disabled"` (client is the layout surface; 1280x720
+window floor unchanged), lower shrinkable page minimums for exploration and combat,
+a wrapping location title, a dialogue panel capped to the client and re-clamped on
+resize, modal sizes scaled by text scale and then capped, `refresh_modal` keeping
+the caller's size, a text-sized slider readout, a top margin on the character-sheet
+tab page, a Settings list that clears the scrollbar, and a 1280x720 headless window
+pin so CI measures the same surface a player gets.
+
+### Verification actually run
+
+| Check | Result |
+| --- | --- |
+| Full GUT suite (`--headless -s addons/gut/gut_cmdln.gd -gdir=res://tests`) | **550/550 tests, 6,403 assertions, 45 scripts, exit 0** |
+| `tests/test_layout_scaling.gd` (new) | **9/9**, including "nothing escapes a 1280x720 client" for exploration and combat at 160 % |
+| `--validate-campaigns` / `--validate-diagnostics` | PASS / PASS, exit 0 |
+| `--layout-probe` matrix, source tree | **32/32** runs: 1280x720, 1600x900, 1920x1017 (maximized) x 100 %/160 % x exploration, combat, dialogue, Settings, inspect modal; plus fullscreen 1920x1080 at both scales |
+| `--demo-inspect --inspect-probe` | **PASS** (was 5 failed checks / 7 counted; the checks were not changed) |
+| `--party-layout-probe`, `--intro-layout-probe`, `--campaign-list-probe`, `--party-limits-probe` | PASS (the first three need the `qa_list_*` fixture profile) |
+| Exported candidate `ui_scaling_2026-11-20b`, SHA-256 `6d38c18d8f533a245343ae4df9731e7ae41ad27e2d7b7477c4b2c5a17435dbd7` | `--list-campaigns`, both validators, `--inspect-probe` and an 18-run windowed layout matrix (1280x720 at 100 %/160 % for all five screens, 1920x1017 at 160 %, fullscreen 1920x1080 at 100 %/160 %) — **18/18, exit 0** |
+
+Evidence: `builds/qa/runs/2026-11-20_ui_fix/` — `layout/` (source runs, captures in
+`shots/`), `accept/` (exported runs, `acceptance.log`, `shots/`), `matrix.log`.
+The pre-fix baseline of the same probe is `.../probe_before/inspect.log` (5 failures).
+
+### Limits
+
+No human playtest; no subjective judgement of the new proportions. Keyboard input
+still cannot be injected through this harness, so keyboard-only reachability rests
+on construction tests. Windows display scaling other than 100 % was not exercised.
+Journal raw-flag text, exploration log length and the "Recorded world events"
+heading overlap are outside this correction and unchanged.

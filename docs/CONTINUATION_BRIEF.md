@@ -8,7 +8,9 @@ authoritative starting point for the next model instance. Historical documents
 ## 0. Latest verified state (2026-11-14): Ashwick Second Ring
 
 Bounded content expansion in `RL_Edit` only. The foundation candidate, its
-checkpoint and every earlier artifact are unchanged. `RL_Edit` still has no Git
+checkpoint and every earlier artifact are unchanged. **Corrected 2026-11-14:**
+`RL_Edit` is now a local Git repository (baseline `a64eead`); the sentence below
+described the tree before that. At the time it still had no Git
 repository; nothing was committed, pushed, published or rewritten.
 
 **The Ashwick Ferry: The Second Ring** (`content_version` 2) adds a substantive

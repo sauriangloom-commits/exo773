@@ -1,7 +1,9 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-14).** 538/538 tests, 6,263 assertions, 44 scripts,
-> exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS. Earlier
+> **Current boundary (2026-11-20).** 550/550 tests, 6,403 assertions, 45 scripts,
+> exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
+> exported `ui_scaling_2026-11-20b` candidate repeats them. (The 2026-11-14
+> boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue
 > holds **41** entries. Items marked **Done** are complete and are kept for the
@@ -115,9 +117,13 @@ are not claimed as proof.
    mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
 2. **Audio review.** Listen to all 14 placeholders in a windowed run; confirm loops,
    volume sliders and ducking behavior. Replace only after the hooks are proven.
-3. **Resolution/DPI pass.** Done for 1280×720, 1366×768, 1920×1080, 1024×600 and
-   1.6× text; remaining high-DPI and mouse-wheel/focus checks are listed in
-   [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
+3. **Resolution/DPI pass.** **Corrected 2026-11-20.** The client area is the
+   layout surface (`display/window/stretch/mode="disabled"`), so a bigger window
+   now gives the UI more room instead of magnifying a fixed 1280×720 canvas.
+   1280×720, 1600×900, 1920×1017 maximized and 1920×1080 fullscreen are verified
+   at 100 % and 160 % text by `--layout-probe`; 1024×600 was never a supported
+   size (the window minimum is 1280×720). Remaining: high-DPI and
+   mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
 4. **Save migration policy.** Add a schema migration hook before the first public
    content update; keep the version refusal until then.
 5. **Export build.** **Done, with limits.** `export_presets.cfg` is present and

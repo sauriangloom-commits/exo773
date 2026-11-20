@@ -83,14 +83,14 @@ func _build() -> void:
 	view = CombatView.new()
 	view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	view.custom_minimum_size = Vector2(0, 420)
+	view.custom_minimum_size = Vector2(0, 140)
 	view.cell_clicked.connect(_on_cell_clicked)
 	left.add_child(view)
 	message_label = ThemeBuilder.body("", false, 14)
 	message_label.custom_minimum_size = Vector2(0, 24)
 	left.add_child(message_label)
 	var log_panel := PanelContainer.new()
-	log_panel.custom_minimum_size = Vector2(0, 150)
+	log_panel.custom_minimum_size = Vector2(0, 90)
 	left.add_child(log_panel)
 	var log_margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -114,7 +114,7 @@ func _build() -> void:
 	sidebar.add_theme_constant_override("separation", 6)
 	sidebar_scroll.add_child(sidebar)
 	var init_panel := PanelContainer.new()
-	init_panel.custom_minimum_size = Vector2(340, 150)
+	init_panel.custom_minimum_size = Vector2(340, 90)
 	sidebar.add_child(init_panel)
 	var init_margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -248,7 +248,7 @@ func _build() -> void:
 	sidebar.add_child(turn_label)
 	sidebar.add_child(ThemeBuilder.body("Combatants — enemies first", true, 12))
 	var target_scroll := ScrollContainer.new()
-	target_scroll.custom_minimum_size = Vector2(0, 120)
+	target_scroll.custom_minimum_size = Vector2(0, 96)
 	target_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sidebar.add_child(target_scroll)
 	target_box = VBoxContainer.new()
