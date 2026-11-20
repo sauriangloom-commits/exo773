@@ -6,6 +6,9 @@ var current_screen: Control = null
 var modal: Control = null
 ## The control that opened the active modal, so closing returns focus there.
 var modal_return_focus: Control = null
+## The scrolling body of the active modal, the target of PageUp/PageDown and the
+## arrows. Null while no modal is open.
+var modal_scroll: ScrollContainer = null
 var modal_builder: Callable
 var modal_title := ""
 ## The modal size a caller asked for at 100 % text, kept so `refresh_modal()`
@@ -28,6 +31,16 @@ var creator_dirty := false
 var creator_probe_failures := 0
 var creator_focus := ""
 var layout_scenario := "screen"
+
+## Keyboard scrolling of a modal body. PageUp/PageDown move by 90 % of the
+## visible page, so a sliver of the previous text stays on screen as context.
+## Up/Down move by two rendered text lines: the body is prose, and two lines read
+## like one paragraph step. The line height comes from the theme's default font at
+## its current size, which ThemeBuilder derives from the text scale, so the step
+## grows at 160 % instead of crawling. One press moves once; holding a key does
+## not repeat (the same rule every other modal key follows).
+const MODAL_PAGE_STEP := 0.9
+const MODAL_LINE_STEP := 2
 
 ## Exit status for a command line the application cannot act on. 1 already means
 ## "ran, and a validation or probe check failed"; 2 means "the invocation itself
@@ -6642,6 +6655,7 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(content_scroll)
+	modal_scroll = content_scroll
 	var content: Control = builder.call()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -6668,6 +6682,7 @@ func close_modal(restore_focus := true) -> void:
 			focus_owner.release_focus()
 		modal.queue_free()
 		modal = null
+	modal_scroll = null
 	modal_builder = Callable()
 	modal_title = ""
 	awaiting_rebind = ""
@@ -6752,6 +6767,133 @@ func _cycle_modal_focus(direction: int) -> void:
 	elif direction < 0:
 		next = focusables.size() - 1
 	focusables[next].grab_focus()
+
+
+## Scrolls the open modal's body with the keyboard and reports whether the event
+## was consumed. Focus is never touched, so the ring stays on the control it was
+## on and focus containment is exactly as it was; a body that fits does not move;
+## and a control that needs the key keeps it.
+func _scroll_modal_body(event: InputEventKey) -> bool:
+	if modal == null or modal_scroll == null or not _modal_owns_keyboard():
+		return false
+	var page := event.is_action_pressed("ui_page_down") or event.is_action_pressed("ui_page_up")
+	var direction := 0
+	if event.is_action_pressed("ui_page_down") or event.is_action_pressed("ui_down"):
+		direction = 1
+	elif event.is_action_pressed("ui_page_up") or event.is_action_pressed("ui_up"):
+		direction = -1
+	if direction == 0:
+		return false
+	if _focused_control_needs_vertical_keys(page):
+		return false
+	var body := _modal_body_target()
+	if body == null:
+		return false
+	var step := 0
+	if page:
+		step = int(round(MODAL_PAGE_STEP * float(_modal_body_page_height())))
+	else:
+		step = MODAL_LINE_STEP * _modal_body_line_height()
+	step = maxi(step, 1)
+	var target := clampi(body.scroll_vertical + direction * step, 0, _modal_body_scroll_range())
+	body.scroll_vertical = target
+	# Handled even when the body did not move: letting an arrow fall through would
+	# move the focus ring with Godot's traversal, possibly onto the dimmed world.
+	return true
+
+
+## True while the modal has the keyboard to itself. A popup opened from inside a
+## modal (an OptionButton list, a menu) takes focus into its own window, and the
+## body behind it must not scroll while the player navigates the popup.
+func _modal_owns_keyboard() -> bool:
+	var owner := get_viewport().gui_get_focus_owner()
+	return owner == null or (modal != null and modal.is_ancestor_of(owner))
+
+
+## The focused control, or one of its ancestors inside the modal, that uses these
+## keys for itself: a caret (Up/Down), a value (SpinBox, Slider), a list or tree
+## selection, or a multi-line editor that pages its own text (PageUp/PageDown).
+## While one holds focus the key is left alone rather than taken away from the
+## player's editing. Every other control - a Button, a CheckBox, a prose body -
+## has no use for it, so it scrolls the modal.
+func _focused_control_needs_vertical_keys(page: bool) -> bool:
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner == null:
+		return false
+	var node: Node = owner
+	while node != null and node != modal:
+		var control := node as Control
+		if control != null:
+			if control is TextEdit:
+				return true
+			if not page and (
+				control is LineEdit
+				or control is Range
+				or control is ItemList
+				or control is Tree
+				or control is TabBar
+			):
+				return true
+		node = node.get_parent()
+	return false
+
+
+## Pixels one arrow press moves: two rendered text lines at the current text
+## scale. The theme's default font is sized by ThemeBuilder from the text
+## setting, so 160 % text moves about 1.6x as far per press.
+func _modal_body_line_height() -> int:
+	var size := 16
+	var font: Font = ThemeDB.fallback_font
+	if theme != null:
+		if theme.default_font_size > 0:
+			size = theme.default_font_size
+		if theme.default_font != null:
+			font = theme.default_font
+	return maxi(1, int(round(font.get_height(size))))
+
+
+## The container the scroll keys should actually move. Usually the modal's own
+## body. Some panels wrap their text in a second ScrollContainer of their own (the
+## Journal does), so the outer body fits exactly while the inner one holds the
+## overflow; then the inner one is the visible body. The outer container wins when
+## it can travel, because moving it scrolls the whole panel.
+func _modal_body_target() -> ScrollContainer:
+	if modal_scroll == null:
+		return null
+	if _scroll_travel(modal_scroll) > 0:
+		return modal_scroll
+	for node in modal_scroll.find_children("*", "ScrollContainer", true, false):
+		var inner := node as ScrollContainer
+		if inner == null or not inner.is_visible_in_tree():
+			continue
+		if inner.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED:
+			continue
+		if _scroll_travel(inner) > 0:
+			return inner
+	return modal_scroll
+
+
+## How far a container can travel. The container clamps too, but clamping here
+## keeps the bounds one testable rule for both the modal body and a nested panel.
+func _scroll_travel(scroll: ScrollContainer) -> int:
+	if scroll == null:
+		return 0
+	var bar := scroll.get_v_scroll_bar()
+	return maxi(0, int(bar.max_value - bar.page))
+
+
+## The height of the part of the body currently on screen, which a page step is
+## a fraction of. Zero before layout, which keeps PageUp/PageDown harmless.
+func _modal_body_page_height() -> int:
+	var body := _modal_body_target()
+	if body == null:
+		return 0
+	return maxi(0, int(body.get_v_scroll_bar().page))
+
+
+## How far the body can actually travel.
+func _modal_body_scroll_range() -> int:
+	return _scroll_travel(_modal_body_target())
 
 
 func _open_load_modal() -> void:
@@ -6851,6 +6993,12 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if modal != null:
+			# Keyboard access to a body taller than its panel. Handled before Tab
+			# because Godot's GUI traversal also listens to the arrows, and an arrow
+			# that fell through could move the focus ring off the modal.
+			if _scroll_modal_body(event as InputEventKey):
+				get_viewport().set_input_as_handled()
+				return
 			# Focus containment: Tab and Shift+Tab cycle the modal's own controls
 			# and never reach the world behind it. Handled here, before the GUI,
 			# because Godot's automatic traversal walks the whole tree.

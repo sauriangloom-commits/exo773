@@ -54,6 +54,12 @@ No build step is required. GUT is vendored under `addons/gut`.
 | Journal | `J` |
 | Pause, save, load, settings | `Esc` |
 
+Open dialogs (Journal, Settings, inventory and the rest) scroll their own text with
+`PageUp` / `PageDown` for a page and `↑` / `↓` for two text lines; the line step
+grows with the text size. A focused text field, number field, slider or list keeps
+those keys for its own cursor or selection, and `Tab` / `Shift+Tab` still move
+between a dialog's controls.
+
 Mouse and on-screen buttons work for every action. Combat also accepts clicks on
 the tactical grid. Bindings can be changed in **Settings → Controls**.
 

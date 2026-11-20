@@ -5,11 +5,13 @@ extends GutTest
 ## (or a usable fallback). These cover the shared path every modal uses.
 
 var main: Control = null
+var original_scale := 1.0
 
 
 func before_each() -> void:
 	Game.load_campaign("ravenloft_demo")
 	Game.new_game(["kaelen", "sera", "aldric", "ysolde"], 4242)
+	original_scale = float(Game.settings.get("text_scale", 1.0))
 	main = load("res://scenes/Main.tscn").instantiate()
 	add_child_autofree(main)
 	await wait_frames(3)
@@ -19,6 +21,7 @@ func after_each() -> void:
 	if main != null:
 		main.queue_free()
 		main = null
+	Game.settings["text_scale"] = original_scale
 	Game.reset_to_menu()
 	Game.load_campaign("ravenloft_demo")
 
@@ -216,3 +219,287 @@ func test_rebind_capture_keeps_priority_over_the_focus_trap() -> void:
 	await wait_frames(1)
 	assert_eq(String(main.get("awaiting_rebind")), "", "the capture consumed the key instead of Tab moving focus")
 	assert_not_null(_modal(), "the modal is still open after the capture")
+
+
+# ------------------------------------------------ keyboard scrolling of the body
+
+## A body that deliberately overflows its 660x380 panel. `extra` adds one control
+## below the fold whose own use of Up/Down or PageUp/PageDown is the point.
+func _open_tall_modal(extra := "") -> void:
+	main.call("open_modal", "QA Tall", func() -> Control:
+		var box := VBoxContainer.new()
+		box.custom_minimum_size = Vector2(600, 0)
+		box.add_theme_constant_override("separation", 2)
+		for index in 40:
+			box.add_child(ThemeBuilder.body(
+				"QA scrolling line %02d of a deliberately tall modal body." % index, false, 15
+			))
+		if extra == "field":
+			var field := LineEdit.new()
+			field.text = "caret here"
+			box.add_child(field)
+		if extra == "list":
+			var list := ItemList.new()
+			list.custom_minimum_size = Vector2(0, 150)
+			for item in 6:
+				list.add_item("QA list row %d" % item)
+			box.add_child(list)
+		return box
+	, 660, 380)
+	await wait_frames(2)
+
+
+func _scroll() -> ScrollContainer:
+	return main.get("modal_scroll") as ScrollContainer
+
+
+func _first_of_type(node: Node, type_name: String) -> Control:
+	var found := node.find_children("*", type_name, true, false)
+	return found[0] as Control if not found.is_empty() else null
+
+
+func test_page_down_moves_about_ninety_percent_of_the_page() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	assert_not_null(scroll, "the modal exposes its scrolling body")
+	if scroll == null:
+		return
+	var page := int(scroll.get_v_scroll_bar().page)
+	assert_gt(page, 0, "the body has a measured page")
+	var owner := _focus_owner()
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_almost_eq(float(scroll.scroll_vertical), 0.9 * float(page), 2.0, "PageDown moves 90 % of the page")
+	assert_eq(_focus_owner(), owner, "the focus ring stays on the control it was on")
+	_send_key(KEY_PAGEUP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 0, "PageUp returns to the top")
+
+
+func test_arrows_move_two_text_lines() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	if scroll == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var line: int = main.call("_modal_body_line_height")
+	assert_gt(line, 0, "a text line has a positive height")
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 2 * line, "Down moves exactly two text lines")
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 4 * line, "a second Down moves two more")
+	_send_key(KEY_UP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 2 * line, "Up moves two lines back")
+
+
+func test_the_arrow_step_follows_the_text_scale() -> void:
+	await _open_tall_modal()
+	var base: int = main.call("_modal_body_line_height")
+	Game.settings["text_scale"] = 1.6
+	main.theme = ThemeBuilder.build(16)
+	var scaled: int = main.call("_modal_body_line_height")
+	assert_gt(scaled, base, "160 % text has a taller line")
+	assert_almost_eq(float(scaled), float(base) * 1.6, 2.0, "the step grows with the text scale")
+
+
+func test_scrolling_stops_at_both_bounds() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	if scroll == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var travel: int = main.call("_modal_body_scroll_range")
+	assert_gt(travel, 0, "the overflowing body can travel")
+	_send_key(KEY_PAGEUP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 0, "PageUp at the top stays at the top")
+	for step in 12:
+		_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, travel, "PageDown stops at the last page")
+	for step in 3:
+		_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, travel, "Down at the bottom does not overshoot")
+	_send_key(KEY_PAGEUP)
+	await wait_frames(1)
+	assert_lt(scroll.scroll_vertical, travel, "PageUp leaves the bottom again")
+
+
+func test_content_that_fits_does_not_scroll() -> void:
+	main.call("open_modal", "QA Short", func() -> Control:
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 8)
+		box.add_child(ThemeBuilder.body("A short confirmation that fits its panel.", true, 14))
+		var action := Button.new()
+		action.text = "QA short action"
+		action.custom_minimum_size = Vector2(0, 40)
+		box.add_child(action)
+		return box
+	, 520, 300)
+	await wait_frames(2)
+	var scroll := _scroll()
+	if scroll == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	assert_eq(int(main.call("_modal_body_scroll_range")), 0, "the short body cannot travel")
+	var owner := _focus_owner()
+	for code in [KEY_PAGEDOWN, KEY_DOWN, KEY_DOWN, KEY_UP, KEY_PAGEUP]:
+		_send_key(code)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 0, "a body that fits does not move")
+	assert_eq(_focus_owner(), owner, "the ring stays on the same control")
+	assert_not_null(_modal(), "the modal is still open")
+
+
+func test_focus_stays_contained_while_the_body_scrolls() -> void:
+	await _open_tall_modal()
+	var outside := _outside_controls()
+	for code in [KEY_PAGEDOWN, KEY_PAGEDOWN, KEY_DOWN, KEY_UP, KEY_PAGEUP]:
+		_send_key(code)
+	await wait_frames(1)
+	var owner := _focus_owner()
+	assert_not_null(owner, "a control still holds focus")
+	assert_true(_modal().is_ancestor_of(owner), "scrolling did not move focus out of the modal")
+	assert_false(outside.has(owner), "scrolling did not move focus onto the dimmed world")
+	_send_key(KEY_TAB)
+	await wait_frames(1)
+	assert_true(_modal().is_ancestor_of(_focus_owner()), "Tab still cycles inside after scrolling")
+
+
+func test_escape_still_closes_and_restores_focus_after_scrolling() -> void:
+	var opener := await _opener()
+	await _open_tall_modal()
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	_send_key(KEY_ESCAPE)
+	await wait_frames(2)
+	assert_null(_modal(), "Escape still closes the modal")
+	assert_eq(_focus_owner(), opener, "Escape still returns focus to the opener")
+	opener.queue_free()
+
+
+func test_rebind_capture_still_wins_over_scrolling() -> void:
+	await _open_tall_modal()
+	main.set("awaiting_rebind", "not_a_real_action")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(String(main.get("awaiting_rebind")), "", "the capture consumed the page key")
+	var scroll := _scroll()
+	if scroll != null:
+		assert_eq(scroll.scroll_vertical, 0, "the body did not scroll while capturing a rebind")
+
+
+func test_a_focused_text_field_keeps_the_arrows() -> void:
+	await _open_tall_modal("field")
+	var scroll := _scroll()
+	var field := _first_of_type(_modal(), "LineEdit") as LineEdit
+	assert_not_null(field, "the tall body offers a text field")
+	if field == null or scroll == null:
+		return
+	field.grab_focus()
+	await wait_frames(2)
+	scroll.scroll_vertical = 100
+	await wait_frames(1)
+	var before := scroll.scroll_vertical
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, before, "a focused text field keeps Down for its caret")
+	assert_eq(_focus_owner(), field, "the caret keeps focus")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_gt(scroll.scroll_vertical, before, "PageDown still pages the body from a text field")
+
+
+func test_a_focused_list_keeps_the_arrows_and_moves_its_own_selection() -> void:
+	await _open_tall_modal("list")
+	var scroll := _scroll()
+	var list := _first_of_type(_modal(), "ItemList") as ItemList
+	assert_not_null(list, "the tall body offers a list")
+	if list == null or scroll == null:
+		return
+	list.select(0)
+	list.grab_focus()
+	await wait_frames(2)
+	var before := scroll.scroll_vertical
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, before, "a focused list keeps Down for its selection")
+	var selected := list.get_selected_items()
+	assert_eq(selected.size(), 1, "the list still has a selection")
+	if selected.size() == 1:
+		assert_eq(selected[0], 1, "the list moved its own selection")
+
+
+## The Journal's shape: the shared body fits exactly and the panel wraps its text
+## in a ScrollContainer of its own. The scrolling keys must move the body the
+## player can actually see, not the outer one that cannot travel.
+func test_a_body_that_wraps_its_own_scroll_container_still_scrolls() -> void:
+	main.call("open_modal", "QA Nested", func() -> Control:
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(600, 0)
+		var inner := ScrollContainer.new()
+		inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var text := RichTextLabel.new()
+		text.fit_content = true
+		var lines: Array[String] = []
+		for index in 60:
+			lines.append("QA nested journal line %02d of a deliberately long panel." % index)
+		text.text = "\n".join(PackedStringArray(lines))
+		inner.add_child(text)
+		root.add_child(inner)
+		return root
+	, 660, 380)
+	await wait_frames(3)
+	var outer := _scroll()
+	if outer == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var inner_nodes := outer.find_children("*", "ScrollContainer", true, false)
+	assert_false(inner_nodes.is_empty(), "the panel wraps its own scroll container")
+	if inner_nodes.is_empty():
+		return
+	var inner := inner_nodes[0] as ScrollContainer
+	assert_eq(int(main.call("_scroll_travel", outer)), 0, "the shared body itself fits")
+	assert_gt(int(main.call("_modal_body_scroll_range")), 0, "the visible body can travel")
+	assert_eq(main.call("_modal_body_target"), inner, "the scrolling keys target the inner body")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_gt(inner.scroll_vertical, 0, "PageDown moves the text the player can see")
+	assert_eq(outer.scroll_vertical, 0, "the outer body stays where it was")
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	var line: int = main.call("_modal_body_line_height")
+	assert_gt(inner.scroll_vertical, int(round(0.9 * float(inner.get_v_scroll_bar().page))), "Down adds two more lines")
+	assert_gt(line, 0, "the line step is positive")
+
+
+func test_the_scroll_helper_ignores_keys_it_does_not_own() -> void:
+	await _open_tall_modal()
+	for code in [KEY_ENTER, KEY_TAB, KEY_ESCAPE, KEY_W]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = true
+		assert_false(bool(main.call("_scroll_modal_body", event)), "key %d is not a body scroll key" % code)
+
+
+func test_a_closed_modal_has_no_body_to_scroll() -> void:
+	main.call("open_modal", "QA Tall", func() -> Control:
+		var box := VBoxContainer.new()
+		box.custom_minimum_size = Vector2(600, 2400)
+		return box
+	, 660, 380)
+	await wait_frames(2)
+	main.call("close_modal")
+	await wait_frames(1)
+	assert_null(main.get("modal_scroll"), "closing drops the body reference")
+	var event := InputEventKey.new()
+	event.keycode = KEY_PAGEDOWN
+	event.physical_keycode = KEY_PAGEDOWN
+	event.pressed = true
+	assert_false(bool(main.call("_scroll_modal_body", event)), "nothing scrolls without a modal")

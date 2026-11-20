@@ -1934,8 +1934,9 @@ text scales, save-compat UI).
 Native input confirms the reported Tab-twice/Enter sequence now closes the
 Journal and leaves the party where it stood, at 100 % and 160 %. Journal wheel
 scrolling, previously unverified because the demo notes fit the modal, is proven
-with a 70-question user fixture at both scales. Shift+Tab could not be injected
-as a real chord; its manual step is in the test report.
+with a 70-question user fixture at both scales. Shift+Tab is verified natively at
+both scales; the earlier harness limitation was the action-matching bug fixed in
+`b5dfd9b`, not the injection path, so that manual step is withdrawn.
 
 ## Keyboard modal scrolling assessed; Shift+Tab verified (2026-11-20)
 
@@ -1945,7 +1946,7 @@ overflowing Journal exactly where it was at 160 % (verified with the 70-question
 fixture). Arrows also drop the visible focus ring, though Enter there stayed
 inert and the world was unchanged.
 
-The smallest fix is proposed but not implemented: reference the modal body,
+The smallest fix is proposed here and was implemented the same day (last section): reference the modal body,
 handle PageUp/PageDown as a page and Up/Down as two lines in `_input`, mark them
 handled, and leave focus, activation, rebind capture and Escape untouched. The
 tests this fix needs are defined in the report.
@@ -1953,3 +1954,31 @@ tests this fix needs are defined in the report.
 Shift+Tab is verified natively at 100 % and 160 % on the current candidate; the
 earlier harness limitation was the action-matching bug, now fixed, so the manual
 step is withdrawn.
+
+## Keyboard scrolling of modal text (2026-11-20)
+
+The proposed fix is implemented. `open_modal` keeps `modal_scroll`, `_input`
+handles PageDown/PageUp as 90 % of the visible page and Up/Down as two
+text-scale-aware lines before the Tab branch, and any control that needs those
+keys (a caret, a number field, a slider, a list, a tree) keeps them. Focus never
+moves, a fitting body does not move, and the key is consumed either way so an
+arrow cannot fall through to traversal and take the ring off the modal.
+
+Measuring the real Journal corrected the proposal: `Panels.journal()` wraps its
+text in its own `ScrollContainer`, so the shared body fits exactly (travel 0) and
+the first implementation scrolled nothing - six native frames, byte-identical.
+`_modal_body_target()` now prefers the shared body when it travels and otherwise
+the first visible inner one that does (the Journal's inner body travels 2961 px).
+
+Tests: 13 new cases in `tests/test_modal_focus.gd`; suite **599/599, 6,690
+assertions, 48 scripts, exit 0**. Validators and the Inspect probe pass. Exported
+candidate `modal_scroll_2026-11-20` (`0c2f982e`, 110,667,352 bytes) scrolls the
+70-question Journal natively at 100 % and 160 % with PageUp/PageDown and the
+arrows, keeps the ring on Close, returns to a byte-identical top frame, and closes
+on Escape; export acceptance 9/9.
+
+Limits: no key repeat while holding; gamepad page keys are not handled; the
+arrow-owning control list is maintained by hand (`OptionButton` is not on it);
+only one inner scrolling body is chosen; focus retention is asserted in unit
+tests and inferred natively from the ring, because the harness cannot read the
+focus owner.

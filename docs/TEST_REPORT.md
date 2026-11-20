@@ -2937,15 +2937,17 @@ earlier empty-notes fixture with its manifest id and `content_root` retargeted;
 shipped content is untouched. Wheel up at the top is a no-op, which is why the
 scroll-down turn carries the evidence.
 
-**Still unverified**: Shift+Tab as a real OS chord. The synthetic shift state
-never reaches Godot's modifier mask, so the game received a plain Tab (two
-attempts, `VK_SHIFT` and `VK_LSHIFT`); the backward cycle rests on two unit
-tests. Manual step: open Pause (Esc), hold Shift, press Tab — the ring should
-move from Close to Return to main menu; press again to walk backwards. Enter
-activating a focused button is native-verified only: headless GUI key activation
-does not fire in the harness, so no unit test covers that half.
+**Shift+Tab is verified natively (corrected 2026-11-20).** This paragraph used
+to say the harness could not inject a Shift chord, so the backward cycle rested
+on unit tests and a manual step. That was wrong: the failure was the Tab
+action-matching bug fixed in `b5dfd9b`, not the injection path. On the fixed
+candidate one Shift+Tab on Pause moves the ring Close -> Return to main menu
+and the next walks back to Settings, at 100 % and 160 %. The manual step is
+withdrawn. Enter activating a focused button is still native-verified only:
+headless GUI key activation does not fire in the harness, so no unit test
+covers that half.
 
-## Assessment: keyboard access to scrollable modal text (2026-11-20, no code change)
+## Assessment: keyboard access to scrollable modal text (2026-11-20; implemented the same day, below)
 
 **Measured.** The shared modal builds one body `ScrollContainer`
 (`content_scroll` in `open_modal`) whose `focus_mode` is `FOCUS_NONE` and whose
@@ -2967,7 +2969,7 @@ The earlier "harness cannot inject Shift" note is withdrawn: that failure was
 the action-matching bug fixed in `b5dfd9b`, not the injection path. No manual
 step is needed for it any more.
 
-### Smallest proposed fix (not implemented)
+### Smallest proposed fix (as proposed; implemented in the section below)
 
 1. Keep a `modal_scroll` reference to the `content_scroll` created in
    `open_modal`, and clear it in `close_modal`.
@@ -2989,7 +2991,7 @@ visible focus untouched, no theme change, no new stop); Enter and Space are not
 intercepted (activation unchanged); the rebind branch stays first (capture
 unchanged); Escape is handled after it exactly as now.
 
-### Tests defined for the fix (to run then, not now)
+### Tests defined for the fix (as defined; results in the section below)
 
 - Unit, `tests/test_modal_focus.gd`: a tall modal scrolls about a page per
   PageDown and back with PageUp, two lines per arrow, clamps at top and bottom,
@@ -3008,3 +3010,80 @@ unchanged); Escape is handled after it exactly as now.
 - The arrow-key focus loss is inferred from a missing ring plus an inert Enter;
   the harness cannot read which control holds focus, and at 160 % the dimmed
   background hides a ring drawn under the modal.
+
+## Keyboard scrolling of modal text (implemented 2026-11-20)
+
+The shared modal now scrolls its own text from the keyboard. `open_modal` keeps
+a `modal_scroll` reference to the body it builds and `close_modal` drops it;
+`_input` calls `_scroll_modal_body()` after the rebind branch and before the Tab
+branch, so a rebind capture still wins and a scroll key never reaches Godot's
+focus traversal.
+
+**Keys (documented in the README).** PageDown/PageUp move by 90 % of the visible
+page, so a sliver of the previous text stays as context. Up/Down move by two
+rendered text lines, with the line height read from the theme's default font;
+`ThemeBuilder.fs()` derives that size from the text setting, so the same press
+moves 44 px at 100 % text and about 70 px at 160 % instead of crawling. One
+press moves once: held-key echo is filtered for every modal key, this one
+included. Home/End stay unbound, and the body is still not a Tab stop.
+
+**Keys a focused control needs stay with it.** While focus sits in a `LineEdit`,
+`TextEdit`, `Range` (SpinBox, Slider), `ItemList`, `Tree` or `TabBar` - or a child
+of one - Up/Down are left alone. PageUp/PageDown are only yielded to a `TextEdit`,
+which pages its own caret. A popup opened from a modal takes focus into its own
+window, and then nothing in the body is intercepted. Every other control (a
+Button, a CheckBox, a prose body) has no use for those keys, so they scroll.
+
+**Nested bodies are the Journal's real shape.** `Panels.journal()` wraps its text
+in a `ScrollContainer` of its own, so the shared body fits exactly and cannot
+travel. The first version of this fix therefore did nothing at all in the Journal,
+and the frames proved it (six captures, byte-identical). Measured on the real
+Journal: the shared body reports `max 420 / page 420` (travel 0) while its inner
+body reports `max 3414 / page 453` (travel 2961). `_modal_body_target()` now
+returns the shared body when it can travel and otherwise the first visible inner
+`ScrollContainer` that can, so the keys move the text the player can see. A body
+that fits everywhere still does not move; the key is consumed anyway so an arrow
+cannot fall through to focus traversal and take the ring off the modal.
+
+**Tests.** `tests/test_modal_focus.gd` gained 13 cases: a page step of 90 % and
+its return, exactly two lines per arrow, the step growing with the text scale,
+clamping at both bounds, a fitting body staying at 0, focus containment and the
+same focus owner after scrolling, Escape still restoring the opener, the rebind
+capture still winning, a focused text field keeping Down but not PageDown, a
+focused list keeping Down and moving its own selection, the helper refusing
+keys it does not own, no body reference after closing, and the nested-body case
+above. Suite **599/599, 6,690 assertions, 48 scripts, exit 0**; the two
+validators and the Inspect probe pass in source.
+
+**Native, exported candidate** `modal_scroll_2026-11-20`
+(110,667,352 bytes, SHA-256 `0c2f982e`), 70-question Journal fixture, one window
+per scale, OS-level keys:
+
+| Step | 100 % | 160 % |
+| --- | --- | --- |
+| Open Journal | questions 01-04, ring on Close | questions 01-04, ring on Close |
+| PageDown | questions 06-15 | questions 04-11 |
+| PageDown x2 more | later questions, thumb moves down | later questions |
+| PageUp x3 | back to questions 01-04, frame identical to the opening one | same |
+| Down x3 (six lines) | text moves by a small step | visible step, smaller than a page |
+| Up x3 | frame identical to the opening one again | same |
+| Escape | Journal closes, world frame equals the earlier run's | same |
+
+The ring stayed on Close in every frame; no arrow removed it. Captures are in
+`builds/qa/runs/2026-11-20_scrollfix/native/t1.0` and `t1.6`.
+
+**Export acceptance:** 9/9 (three validators, the Inspect probe, the journal and
+refusal layouts at 100 % and 160 %, and the existing-save load path), log at
+`builds/qa/runs/2026-11-20_scrollfix/acceptance.log`.
+
+**Limits and what is not covered.** The harness cannot read the focus owner, so
+focus retention rests on the ring staying on Close plus the unit assertions; the
+ring is also the only evidence that a focused field or list kept its keys in the
+native runs (the unit tests assert those two). Holding a key does not repeat.
+Gamepad page keys are not handled - only keyboard events are. The arrow-owning
+list is maintained by hand: `OptionButton` is deliberately not on it (it opens on
+Enter/Space), so arrows scroll the body while one has focus. With several
+scrollable children the outer body wins when it travels, otherwise the first
+inner one that can; a modal with two independently scrolling panes would scroll
+only the first. The wheel is untouched, and its behaviour is still evidenced by
+the earlier fixture run rather than repeated here.
