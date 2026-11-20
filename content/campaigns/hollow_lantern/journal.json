@@ -1,0 +1,29 @@
+{
+  "format_version": 1,
+  "facts": [
+    {
+      "flag": "lantern_notice_read",
+      "text": "The watch notice names three keepers. Only Ivy's name is not struck through."
+    },
+    {
+      "flag": "lantern_met_keeper",
+      "text": "Ivy gave you the watch key and told you to read the notice before deciding about the cistern."
+    },
+    {
+      "flag": "lantern_trusted",
+      "text": "Ivy told you about her brother, the last keeper, and pressed a vial into your hand."
+    },
+    {
+      "flag": "cistern_cleared",
+      "text": "The cistern below the yard is quiet. The lamp above is still waiting."
+    }
+  ],
+  "questions": [
+    {
+      "text": "Why is only Ivy's name left on the watch notice?",
+      "revealed_by": "lantern_notice_read",
+      "resolved_by": "lantern_trusted"
+    }
+  ],
+  "internal": []
+}

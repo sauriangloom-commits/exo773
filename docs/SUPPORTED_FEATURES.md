@@ -13,7 +13,7 @@ supported, it is not implemented, even if D&D 3.5 defines it.
 | Persistent area travel | Supported | Manifest-driven area ids and explicit travel effects; per-area doors, removed objects, searched state and visited cells are saved |
 | Character sheet | Supported | Abilities, saves, AC, HP, attacks, skill breakdowns, feat benefit rows, equipment, conditions, XP |
 | Inventory and equipment | Supported | Equip weapons/armor/shields and use potions; dropping/trading is not supported |
-| Quest journal | Supported | Two quests, flag-driven objectives, world-event list |
+| Quest journal | Supported | Two quests, flag-driven objectives, authored facts and spoiler-gated open questions |
 | Dialogue | Supported | Miruna, Corvin and Ashlyn; narrator/creature/NPC speakers; branches, checks, effects |
 | DM narration | Supported | Intro, room descriptions, combat log, victory/defeat text |
 | Combat encounters | Supported | The Flooded Stores (2 zombies), The Gate-Warden's Crypt (ghoul + zombie), E3 Town Square (2 infected zombies) |

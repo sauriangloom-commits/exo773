@@ -1872,6 +1872,11 @@ func _layout_probe(scenario: String) -> void:
 			if Game.dialogue == null:
 				failures += 1
 				print("  LAYOUT WRONG SCREEN no conversation open")
+		"journal":
+			_seed_journal_probe()
+			open_modal("Journal", func() -> Control:
+				return Panels.journal()
+			, 800, 560)
 		"fullscreen":
 			Game.set_fullscreen(true)
 			# Switching to exclusive fullscreen is asynchronous; a fixed frame count
@@ -1912,11 +1917,17 @@ func _layout_probe(scenario: String) -> void:
 		var modal_report: Array = await _layout_report(modal, "modal")
 		failures += int(modal_report[0])
 		checked += int(modal_report[1])
-	elif scenario == "settings" or scenario == "inspect":
+	elif scenario == "settings" or scenario == "inspect" or scenario == "journal":
 		failures += 1
 		print("  LAYOUT MISSING modal for scenario '%s'" % scenario)
-	# A screen that never built would otherwise pass with nothing to check.
-	if checked < 5:
+	if scenario == "journal":
+		var journal_report: Array = await _layout_journal()
+		failures += int(journal_report[0])
+		checked += int(journal_report[1])
+	# A screen that never built would otherwise pass with nothing to check. The
+	# journal is one text surface plus the modal's own button, so its floor is 2.
+	var minimum_checked := 2 if scenario == "journal" else 5
+	if checked < minimum_checked:
 		failures += 1
 		print("  LAYOUT TOO FEW controls checked (%d)" % checked)
 	if capture_dir != "":
@@ -1951,6 +1962,78 @@ func _capture_layout_shot(scenario: String) -> void:
 		print("CAPTURED %s" % shot_path)
 	else:
 		print("CAPTURE FAILED %s" % shot_name)
+
+
+## Shows one earned fact so the journal's layout covers wrapped prose instead of
+## the empty-state line. The probe process never writes a save, so this is local.
+func _seed_journal_probe() -> void:
+	var facts: Variant = Game.content.journal.get("facts", []) if Game.content != null else []
+	if not facts is Array or Array(facts).is_empty():
+		return
+	var first: Variant = Array(facts)[0]
+	if not first is Dictionary:
+		return
+	var flag := String(Dictionary(first).get("flag", ""))
+	if flag != "":
+		Game.flags[flag] = true
+	# Reveal the first question as well, so the probe lays out both sections.
+	var questions: Variant = Game.content.journal.get("questions", [])
+	if questions is Array and not Array(questions).is_empty():
+		var first_question: Variant = Array(questions)[0]
+		if first_question is Dictionary:
+			var reveal := String(Dictionary(first_question).get("revealed_by", ""))
+			if reveal != "":
+				Game.flags[reveal] = true
+
+
+## The Journal is one RichTextLabel rather than a set of interactive controls, so
+## reachability alone would not notice an empty or raw-id body. This checks the
+## rendered sections, the authored wording and the body's bounds.
+func _layout_journal() -> Array:
+	if modal == null:
+		print("  LAYOUT JOURNAL NO MODAL")
+		return [1, 0]
+	var bodies := modal.find_children("*", "RichTextLabel", true, false)
+	if bodies.is_empty():
+		print("  LAYOUT JOURNAL NO BODY")
+		return [1, 0]
+	var body := bodies[0] as RichTextLabel
+	var parsed := body.get_parsed_text()
+	var failures := 0
+	var notes := Panels.journal_notes(Game.flags)
+	var expected_facts: Array = notes["facts"]
+	var expected_questions: Array = notes["questions"]
+	if not expected_facts.is_empty() and not parsed.contains("What you know"):
+		failures += 1
+		print("  LAYOUT JOURNAL MISSING FACTS SECTION")
+	if not expected_questions.is_empty() and not parsed.contains("Still open"):
+		failures += 1
+		print("  LAYOUT JOURNAL MISSING QUESTIONS SECTION")
+	for line in expected_facts:
+		if not parsed.contains(String(line)):
+			failures += 1
+			print("  LAYOUT JOURNAL MISSING FACT TEXT")
+	# The body is a fit_content label inside a ScrollContainer, so it is *meant*
+	# to be taller than the panel: the scroller must be inside the client and the
+	# text starts inside it. Requiring the label's own rect to fit would fail on
+	# any journal long enough to scroll.
+	var scroller := body.get_parent() as ScrollContainer
+	if scroller == null:
+		failures += 1
+		print("  LAYOUT JOURNAL BODY IS NOT SCROLLABLE")
+	elif not get_viewport().get_visible_rect().encloses(scroller.get_global_rect()):
+		failures += 1
+		print("  LAYOUT JOURNAL SCROLLER OUTSIDE CLIENT rect=%s" % str(scroller.get_global_rect()))
+	var facts: Variant = Game.content.journal.get("facts", []) if Game.content != null else []
+	if facts is Array:
+		for raw in Array(facts):
+			if not raw is Dictionary:
+				continue
+			var flag := String(Dictionary(raw).get("flag", ""))
+			if flag != "" and parsed.contains(flag):
+				failures += 1
+				print("  LAYOUT JOURNAL RAW FLAG '%s'" % flag)
+	return [failures, 1]
 
 
 ## Walks one screen (or modal) and returns [violations, interactive controls seen].

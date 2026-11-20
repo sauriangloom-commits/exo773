@@ -16,6 +16,9 @@ const CONTENT_ROOT := "res://content"
 const SHARED_ROOT := "res://content/shared"
 const CAMPAIGNS_ROOT := "res://content/campaigns"
 const CAMPAIGN_FORMAT_VERSION := 1
+## Format version of the optional `journal.json` notes file. A journal written by
+## a newer format is refused rather than half-read.
+const JOURNAL_FORMAT_VERSION := 1
 const SUPPORTED_CAPABILITIES := [
 	"exploration",
 	"dialogue",
@@ -39,6 +42,11 @@ var dungeon_data: Dictionary = {}
 var areas: Dictionary = {}
 var area_manifest: Dictionary = {}
 var narration: Dictionary = {}
+## Optional authored Journal notes: facts tied to flags, open questions with
+## reveal/resolve conditions, and bookkeeping flags that must never surface.
+## Empty means the campaign has no `journal.json`; the Journal then shows only
+## the quest log.
+var journal: Dictionary = {}
 var campaign: Dictionary = {}
 var campaign_id := ""
 var content_version := 1
@@ -155,6 +163,15 @@ func _load_story(root: String) -> void:
 	_load_dialogue_dir(root.path_join("dialogue"))
 	var narration_variant = _read_json(root.path_join("narration.json"), false)
 	narration = narration_variant if narration_variant is Dictionary else {}
+	# Notes are optional so campaigns written before this file existed still load.
+	var journal_variant = _read_json(root.path_join("journal.json"), false)
+	if journal_variant == null:
+		journal = {}
+	elif journal_variant is Dictionary:
+		journal = journal_variant
+	else:
+		journal = {}
+		errors.append("journal.json must be a JSON object.")
 
 
 ## Campaign-local instance table merged onto the shared table. A local entry may
@@ -651,6 +668,133 @@ func validate() -> void:
 		)
 	for dialogue_id in dialogues.keys():
 		_validate_dialogue(dialogues[dialogue_id], dialogue_id)
+	_validate_journal()
+
+
+## Every flag this campaign's own content can set, as a set for reference checks.
+## Dialogue choices, object interactions, triggers, entry effects, encounter
+## victory effects and openable doors all count. Engine-generated flags
+## (`trigger_<id>`, quest-objective counters) are deliberately not content and
+## are not listed here.
+func authored_flags() -> Dictionary:
+	var flags: Dictionary = {}
+	_collect_authored_flags(dialogues, flags)
+	_collect_authored_flags(areas, flags)
+	_collect_authored_flags(encounters, flags)
+	return flags
+
+
+func _collect_authored_flags(node: Variant, out: Dictionary) -> void:
+	if node is Dictionary:
+		var entry: Dictionary = node
+		if String(entry.get("type", "")) == "set_flag":
+			var named := String(entry.get("flag", ""))
+			if named != "":
+				out[named] = true
+		var door_flag := String(entry.get("open_flag", ""))
+		if door_flag != "":
+			out[door_flag] = true
+		for key in entry.keys():
+			_collect_authored_flags(entry[key], out)
+	elif node is Array:
+		for item in Array(node):
+			_collect_authored_flags(item, out)
+
+
+## Journal notes are presentation, but a broken note is still a content error:
+## a typo in a flag name would silently drop a fact the player earned.
+func _validate_journal() -> void:
+	if journal.is_empty():
+		return
+	var version: Variant = journal.get("format_version", null)
+	if not (version is int or version is float):
+		errors.append("journal.json has no numeric format_version.")
+	elif int(version) != JOURNAL_FORMAT_VERSION:
+		errors.append(
+			"journal.json format_version %d is not supported (expected %d)."
+			% [int(version), JOURNAL_FORMAT_VERSION]
+		)
+	var authored := authored_flags()
+	var internal := {}
+	for raw in _journal_entries("internal"):
+		if not raw is String or String(raw).strip_edges() == "":
+			errors.append("journal.json internal entries must be non-empty strings.")
+			continue
+		var internal_flag := String(raw)
+		if internal.has(internal_flag):
+			errors.append("journal.json lists flag '%s' as internal twice." % internal_flag)
+		internal[internal_flag] = true
+		if not authored.has(internal_flag):
+			errors.append(
+				"journal.json internal flag '%s' is not set anywhere in the campaign." % internal_flag
+			)
+	var seen_facts := {}
+	var facts := _journal_entries("facts")
+	for raw in facts:
+		if not raw is Dictionary:
+			errors.append("journal.json facts entries must be objects.")
+			continue
+		var fact: Dictionary = raw
+		var flag := String(fact.get("flag", ""))
+		var text_value := String(fact.get("text", ""))
+		if flag == "":
+			errors.append("journal.json fact is missing 'flag'.")
+		if text_value.strip_edges() == "":
+			errors.append("journal.json fact '%s' has no text." % flag)
+		if flag != "":
+			if seen_facts.has(flag):
+				errors.append("journal.json records flag '%s' as a fact twice." % flag)
+			seen_facts[flag] = true
+			if not authored.has(flag):
+				errors.append("journal.json fact flag '%s' is not set anywhere in the campaign." % flag)
+			if internal.has(flag):
+				errors.append("journal.json flag '%s' is both a fact and internal." % flag)
+		var conflicts: Variant = fact.get("conflicts_with", [])
+		if not conflicts is Array:
+			errors.append("journal.json fact '%s' conflicts_with must be an array." % flag)
+			continue
+		for other in Array(conflicts):
+			var other_flag := String(other)
+			if other_flag == "" or other_flag == flag:
+				errors.append("journal.json fact '%s' conflicts with itself." % flag)
+			elif not authored.has(other_flag):
+				errors.append(
+					"journal.json fact '%s' conflicts with unknown flag '%s'." % [flag, other_flag]
+				)
+	var questions := _journal_entries("questions")
+	for raw in questions:
+		if not raw is Dictionary:
+			errors.append("journal.json questions entries must be objects.")
+			continue
+		var question: Dictionary = raw
+		var question_text := String(question.get("text", ""))
+		if question_text.strip_edges() == "":
+			errors.append("journal.json question has no text.")
+		var reveal := String(question.get("revealed_by", ""))
+		var resolve := String(question.get("resolved_by", ""))
+		for key in ["revealed_by", "resolved_by"]:
+			var reference := String(question.get(key, ""))
+			if reference == "":
+				continue
+			if not authored.has(reference):
+				errors.append(
+					"journal.json question '%s' has %s flag '%s' that the campaign never sets."
+					% [question_text.left(40), key, reference]
+				)
+		if reveal != "" and reveal == resolve:
+			errors.append(
+				"journal.json question '%s' is revealed and resolved by the same flag." % question_text.left(40)
+			)
+
+
+func _journal_entries(key: String) -> Array:
+	var value: Variant = journal.get(key, [])
+	if value == null:
+		return []
+	if not value is Array:
+		errors.append("journal.json '%s' must be an array." % key)
+		return []
+	return Array(value)
 
 
 func _validate_actor(actor: Dictionary, label: String, is_character: bool) -> void:

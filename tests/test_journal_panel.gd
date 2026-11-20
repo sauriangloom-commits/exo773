@@ -188,7 +188,7 @@ func test_active_ashwick_journal_lists_every_objective() -> void:
 			"[ ] Clear the drowned dead from the tack room.",
 			"[ ] Recover Ivo's bell token.",
 			"[ ] Hear Maela's account of the crossing.",
-			"Recorded world events",
+			"Nothing recorded yet.",
 		],
 		"active Ashwick quest"
 	)
@@ -314,6 +314,6 @@ func test_journal_layout_at_minimum_window_and_maximum_text_scale() -> void:
 	var view := await _journal_view(Vector2(720, 420))
 	_assert_rendered(
 		view,
-		["The Ashwick Ferry", "[ ] Hear Maela's account of the crossing.", "Recorded world events"],
+		["The Ashwick Ferry", "[ ] Hear Maela's account of the crossing.", "Nothing recorded yet."],
 		"1.6 text scale"
 	)

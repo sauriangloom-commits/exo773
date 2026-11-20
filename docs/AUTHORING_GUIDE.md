@@ -435,6 +435,42 @@ Location: `content/campaigns/<campaign_id>/narration.json`:
 the corresponding screens; `controls_hint` appears on the main menu. Lines are
 plain strings; no BBCode is required.
 
+## Journal notes
+
+Location: `content/campaigns/<campaign_id>/journal.json` (optional):
+
+```json
+{
+  "format_version": 1,
+  "facts": [
+    {"flag": "ledger_found", "text": "The ledger names Ivo's debt."},
+    {"flag": "told_truth", "text": "You told her what the ledger shows.", "conflicts_with": ["spared_her"]}
+  ],
+  "questions": [
+    {"text": "Who paid for the passage?", "revealed_by": "notice_read", "resolved_by": "epilogue"}
+  ],
+  "internal": ["tack_room_door_open"]
+}
+```
+
+The Journal shows `What you know` from `facts` and `Still open` from
+`questions`. A fact appears only once its flag is true, in file order, as the
+authored sentence — raw flag ids are never printed. `conflicts_with` names the
+other half of a mutually exclusive pair; if a save holds both, the fact written
+first wins and its partner is suppressed, so the page never shows two versions
+of one event.
+
+Questions surface while unresolved: `revealed_by` (optional) must be true before
+the question is asked, and `resolved_by` (optional) hides it once answered. Use
+`internal` for flags that repeat a fact or only record a door.
+
+Validation rejects a `format_version` other than 1, an entry of the wrong type,
+empty text, a flag the campaign never sets, a flag recorded twice, a flag that is
+both a fact and internal, and a question revealed and resolved by the same flag.
+The shipped-content test additionally requires every flag a campaign can set to be
+a fact or internal. A campaign with no `journal.json` keeps working: the Journal
+shows the quest log only.
+
 ## Areas and travel
 
 Additional locations live in the campaign's `areas/<id>.json`. An optional

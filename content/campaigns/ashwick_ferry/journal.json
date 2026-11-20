@@ -1,0 +1,98 @@
+{
+  "format_version": 1,
+  "facts": [
+    {
+      "flag": "ashwick_notice_read",
+      "text": "The landing notice offers three answers to the bell. The rope was cut where it was knotted."
+    },
+    {
+      "flag": "maela_spoken",
+      "text": "You spoke with Maela Vey at the landing. She sent you to the boathouse ledger for what she could not say."
+    },
+    {
+      "flag": "ledger_found",
+      "text": "The ferryman's ledger places Ivo on the water after the last lawful crossing. The bell was not rung for a passenger."
+    },
+    {
+      "flag": "maela_trust",
+      "text": "Maela gave you the tack-room key and a potion.",
+      "conflicts_with": ["maela_refused"]
+    },
+    {
+      "flag": "maela_refused",
+      "text": "Maela kept the tack-room key and the potion. The spare key or Sera's lockpicks were the way in.",
+      "conflicts_with": ["maela_trust"]
+    },
+    {
+      "flag": "last_page_found",
+      "text": "A receipt names one passage paid in silver, the bell to be rung twice, and a note in Ivo's hand about Maela's draught."
+    },
+    {
+      "flag": "last_page_shared",
+      "text": "You showed Maela the last page. She read Ivo's hand herself."
+    },
+    {
+      "flag": "drowned_cleared",
+      "text": "The drowned dead in the tack room are down."
+    },
+    {
+      "flag": "ivo_token_found",
+      "text": "Ivo's bronze oar-token came out of the last drowned ferryman's fist."
+    },
+    {
+      "flag": "maela_truth",
+      "text": "You told Maela what the ledger shows: Ivo's debt was real and she was part of it.",
+      "conflicts_with": ["maela_mercy"]
+    },
+    {
+      "flag": "maela_mercy",
+      "text": "You told Maela that Ivo died bringing a passenger home, and let her keep that.",
+      "conflicts_with": ["maela_truth"]
+    },
+    {
+      "flag": "ferry_bell_rung",
+      "text": "You rang the bell once. One clear note crossed the water and did not return.",
+      "conflicts_with": ["bell_silenced"]
+    },
+    {
+      "flag": "bell_silenced",
+      "text": "You broke Ivo's token against the stone. The socket is empty and the bell has nothing to say.",
+      "conflicts_with": ["ferry_bell_rung", "bell_called"]
+    },
+    {
+      "flag": "bell_called",
+      "text": "You rang twice, and something out in the water answered.",
+      "conflicts_with": ["bell_silenced"]
+    },
+    {
+      "flag": "bell_answer_survived",
+      "text": "You put down whatever answered the second ring."
+    },
+    {
+      "flag": "bell_resolved",
+      "text": "The crossing has its answer. The token is spent."
+    },
+    {
+      "flag": "maela_epilogue",
+      "text": "Maela told you how the crossing ended and what she means to carry from it."
+    }
+  ],
+  "questions": [
+    {
+      "text": "What does the ledger say about Ivo's last crossing?",
+      "revealed_by": "maela_spoken",
+      "resolved_by": "ledger_found"
+    },
+    {
+      "text": "Who was the second ring meant for?",
+      "revealed_by": "last_page_found",
+      "resolved_by": "maela_epilogue"
+    },
+    {
+      "text": "What will Maela tell the village?",
+      "revealed_by": "maela_decision",
+      "resolved_by": "maela_epilogue"
+    }
+  ],
+  "internal": ["maela_spoken_once", "maela_decision", "ivo_rested", "tack_room_door_open"]
+}

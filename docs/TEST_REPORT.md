@@ -2657,7 +2657,8 @@ No human playtest; no subjective judgement of the new proportions. Keyboard inpu
 still cannot be injected through this harness, so keyboard-only reachability rests
 on construction tests. Windows display scaling other than 100 % was not exercised.
 Journal raw-flag text, exploration log length and the "Recorded world events"
-heading overlap are outside this correction and unchanged.
+heading overlap are outside this correction and unchanged. The raw notes and the
+heading were addressed later the same day (see "Journal notes").
 
 ### Reconciliation — the Inspect probe's failure count (2026-11-20)
 
@@ -2694,3 +2695,64 @@ double-count of the duplicated duelist label (5 + 2) in a record written from
 console output rather than the log; that explanation is plausible but unproven,
 so the number is corrected rather than explained away. Nothing in `tests/` was
 changed for this reconciliation.
+## Journal notes (2026-11-20)
+
+*Implementation and verification record for the Journal's authored notes. The
+save format is unchanged: `SAVE_VERSION` is still 1 and `Game.serialize()` was
+not touched.*
+
+### Defect
+
+The Journal listed flags, not events: every truthy flag key with underscores
+replaced by spaces, alphabetically — `ledger found`, `maela decision`,
+`last page shared`, `tack room door open`. It mixed settled events with open
+questions, exposed internal state (`maela_refused`, `maela_trust`), showed both
+halves of a mutually exclusive pair when a save held both, and its empty-state
+check watched the wrong thing (`keys.is_empty()` rather than "no true flag").
+The heading looked overlapped because `[b]` on a font without a bold face is
+drawn as an offset embolden pass; an isolated render of the same string with and
+without `[b]` (`builds/qa/bold_probe.gd`, `builds/qa/bold_probe.png`) showed the
+ghost only in the bold run, and not with the Label shadow either.
+
+### What changed
+
+Optional `journal.json` per campaign with `format_version`, `facts`, `questions`
+and `internal`; loader and validator in `ContentDB`; `Panels.journal_notes()` as
+a pure selector with authored-order conflict resolution; two rendered sections
+with hidden-when-empty behaviour; headings sized and coloured instead of bold;
+`--layout-scenario=journal`; 12 new tests. Authoring rules are documented in
+`docs/AUTHORING_GUIDE.md`, and the package layout in `docs/CAMPAIGN_PACKAGE.md`.
+
+### Verification actually run
+
+| Check | Result |
+| --- | --- |
+| Full suite (`--headless -s addons/gut/gut_cmdln.gd -gdir=res://tests`) | **562/562 tests, 6,523 assertions, 46 scripts, exit 0** |
+| `tests/test_journal_entries.gd` (new) | **12/12**: shipped notes valid, every authored flag covered, authored order, no raw ids, reveal gating, resolution, conflicts both ways, empty states, missing file, malformed notes rejected, save round trip |
+| `tests/test_journal_panel.gd` (existing) | all pass; two assertions retargeted from the old flag heading to the empty-notes line, none removed |
+| `--validate-campaigns` / `--validate-diagnostics` | PASS / PASS, exit 0 |
+| `--layout-probe --layout-scenario=journal` | **6/6**: 1280x720, 1600x900, 1920x1017 x 100 %/160 %, 18 controls, 0 failures (`builds/qa/runs/2026-11-20_journal/matrix.log`) |
+| `--demo-inspect --inspect-probe` | PASS, 53 checks, 0 failures |
+| `--layout-scenario=screen` spot check, 1280x720 at 160 % | PASS (16 controls) |
+
+Evidence: `builds/qa/runs/2026-11-20_journal/` — `suite.log`, `matrix.log`,
+`inspect.log`, `shots/layout_journal_exploration_screen_*.png`.
+
+### Findings during implementation
+
+- The first version of the probe's body check required the RichTextLabel itself
+  to fit the client. A `fit_content` label inside a ScrollContainer is meant to
+  be taller than its viewport, so 1280x720 at 160 % failed on a correct layout.
+  The check now bounds the scroll container and asserts expected text, which is
+  what "reachable" means here; it is stricter about content and looser about the
+  label's own rectangle.
+- Seeding one fact was not enough to cover the second section, so the probe now
+  also sets the first question's `revealed_by` flag and asserts "Still open".
+
+### Limits
+
+No human playtest. Notes were not proofread by a writer; they restate content
+details and use past-tense second person. At 160 % a fully-earned journal scrolls
+(the scroller is bounded and checked). The creator does not author `journal.json`
+yet, so creator-made campaigns show the quest log alone, and the
+every-flag-covered rule is a shipped-content test rather than a runtime error.

@@ -1,0 +1,76 @@
+{
+  "format_version": 1,
+  "facts": [
+    {
+      "flag": "ashlyn_met",
+      "text": "You found Ashlyn holding the square with what was left of her company."
+    },
+    {
+      "flag": "ashlyn_asked",
+      "text": "Ashlyn asked you to search the church for Thendrick and Mathilda."
+    },
+    {
+      "flag": "barricade_repaired",
+      "text": "The eastern barricade is repaired. The square is no longer open to the street."
+    },
+    {
+      "flag": "met_miruna",
+      "text": "Miruna set you on the drowned bell: find the clapper in the flooded stores."
+    },
+    {
+      "flag": "miruna_trusts",
+      "text": "Miruna told you what she knows about the crypt, and that something down there calls her by name."
+    },
+    {
+      "flag": "found_clapper",
+      "text": "The bell's clapper is out of the flooded store."
+    },
+    {
+      "flag": "storeroom_cleared",
+      "text": "The dead in the storeroom are down. The water is still."
+    },
+    {
+      "flag": "rested_at_shrine",
+      "text": "You camped under the sun-disc. Wounds closed and prepared spells came back."
+    },
+    {
+      "flag": "bell_rung",
+      "text": "The bell spoke once over the mist, and answering lights kindled in the village below."
+    },
+    {
+      "flag": "town_square_saved",
+      "text": "The last of the infected fell in the square, and the square held."
+    },
+    {
+      "flag": "ashlyn_survived",
+      "text": "Ashlyn came through the fight in the square alive."
+    },
+    {
+      "flag": "warden_pact",
+      "text": "Corvin yielded the crypt without a fight and gave you the bell's tongue.",
+      "conflicts_with": ["warden_destroyed"]
+    },
+    {
+      "flag": "warden_destroyed",
+      "text": "The Gate-Warden came apart like wet parchment.",
+      "conflicts_with": ["warden_pact"]
+    },
+    {
+      "flag": "warden_resolved",
+      "text": "The crypt is open and whatever held the bell's memory has let go."
+    }
+  ],
+  "questions": [
+    {
+      "text": "Where is the bell's clapper?",
+      "revealed_by": "met_miruna",
+      "resolved_by": "found_clapper"
+    },
+    {
+      "text": "What is still talking in the crypt?",
+      "revealed_by": "miruna_trusts",
+      "resolved_by": "warden_resolved"
+    }
+  ],
+  "internal": ["crypt_door_open", "store_door_open"]
+}

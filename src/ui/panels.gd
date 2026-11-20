@@ -279,18 +279,27 @@ static func journal() -> Control:
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var lines: Array[String] = []
-	lines.append("[b][color=#d6b45f]Quest Journal[/color][/b]")
+	lines.append(_journal_heading("Quest Journal"))
 	lines.append("")
 	lines.append(Game.quests.journal_text())
-	lines.append("")
-	lines.append("[b]Recorded world events[/b]")
-	var keys: Array = Game.flags.keys()
-	keys.sort()
-	for key in keys:
-		if bool(Game.flags[key]):
-			lines.append("  • %s" % String(key).replace("_", " "))
-	if keys.is_empty():
-		lines.append("  (none yet)")
+	var notes := journal_notes(Game.flags)
+	var facts: Array = notes["facts"]
+	var questions: Array = notes["questions"]
+	if not facts.is_empty():
+		lines.append("")
+		lines.append(_journal_heading("What you know"))
+		for fact in facts:
+			lines.append("  • %s" % String(fact))
+	if not questions.is_empty():
+		lines.append("")
+		lines.append(_journal_heading("Still open"))
+		for question in questions:
+			lines.append("  • %s" % String(question))
+	# A campaign with notes but no earned facts yet says so; a campaign with no
+	# notes file adds nothing at all rather than an empty heading.
+	if facts.is_empty() and questions.is_empty() and not journal_data().is_empty():
+		lines.append("")
+		lines.append("[color=#a7b4c0]Nothing recorded yet.[/color]")
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -298,6 +307,77 @@ static func journal() -> Control:
 	scroll.add_child(text)
 	root.add_child(scroll)
 	return root
+
+
+## The optional authored notes for the current campaign (empty when the campaign
+## ships no `journal.json`).
+static func journal_data() -> Dictionary:
+	if Game.content == null:
+		return {}
+	var data: Variant = Game.content.journal
+	return data if data is Dictionary else {}
+
+
+## Player-facing Journal lines, derived read-only from the flag dictionary.
+##
+## Facts appear only once their flag is set, in authored order. A fact whose
+## `conflicts_with` partner was already shown is suppressed, and showing a fact
+## claims its partners: first entry in the authored list wins, so a save holding
+## both sides of a mutually exclusive pair (a hand-edited or corrupted save)
+## still produces one deterministic line instead of two contradictory ones.
+##
+## Questions appear while unresolved: `revealed_by` (optional) must be set for
+## the question to surface, and `resolved_by` (optional) hides it once answered.
+static func journal_notes(flags: Dictionary) -> Dictionary:
+	var facts: Array[String] = []
+	var questions: Array[String] = []
+	var data := journal_data()
+	if data.is_empty():
+		return {"facts": facts, "questions": questions}
+	var claimed := {}
+	for raw in Array(data.get("facts", [])):
+		if not raw is Dictionary:
+			continue
+		var entry: Dictionary = raw
+		var flag := String(entry.get("flag", ""))
+		var line := String(entry.get("text", ""))
+		if flag == "" or line == "" or claimed.has(flag):
+			continue
+		if not bool(flags.get(flag, false)):
+			continue
+		var suppressed := false
+		for other in Array(entry.get("conflicts_with", [])):
+			if claimed.has(String(other)):
+				suppressed = true
+				break
+		if suppressed:
+			continue
+		claimed[flag] = true
+		for other in Array(entry.get("conflicts_with", [])):
+			claimed[String(other)] = true
+		facts.append(line)
+	for raw in Array(data.get("questions", [])):
+		if not raw is Dictionary:
+			continue
+		var entry: Dictionary = raw
+		var line := String(entry.get("text", ""))
+		if line == "":
+			continue
+		var reveal := String(entry.get("revealed_by", ""))
+		if reveal != "" and not bool(flags.get(reveal, false)):
+			continue
+		var resolve := String(entry.get("resolved_by", ""))
+		if resolve != "" and bool(flags.get(resolve, false)):
+			continue
+		questions.append(line)
+	return {"facts": facts, "questions": questions}
+
+
+## A heading inside the Journal's rich text. Deliberately not bold: the bundled
+## font has no bold face, so `[b]` is drawn as a synthetic offset pass and reads
+## as doubled glyphs. Size and gold carry the hierarchy instead.
+static func _journal_heading(text_value: String) -> String:
+	return "[font_size=%d][color=#d6b45f]%s[/color][/font_size]" % [ThemeBuilder.fs(20), text_value]
 
 
 static func settings(awaiting_action: String, on_rebind: Callable, on_scale_changed: Callable, on_restore_defaults: Callable) -> Control:

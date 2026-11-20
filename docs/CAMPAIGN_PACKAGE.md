@@ -32,6 +32,7 @@ content/
       quests.json              campaign-local quests
       encounters.json          campaign-local tactical encounters
       narration.json           intro / victory / defeat / controls hint
+      journal.json             optional; authored Journal notes (facts, questions, internal flags)
 ```
 
 Player-authored campaigns use the same layout under

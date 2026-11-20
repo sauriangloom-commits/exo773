@@ -1755,4 +1755,97 @@ display scaling other than 100 % was not exercised (it needs a system-wide chang
 — if a player's failure comes from OS DPI rather than the text slider, it remains
 unverified. Journal raw-flag rendering, exploration log length and the
 "Recorded world events" heading overlap seen once at 100 % are outside this
-correction and unchanged; no checkpoint was created for it.
+correction and unchanged; no checkpoint was created for it. The notes and the
+heading were addressed later on 2026-11-20 (see "Journal notes" below).
+## Journal notes: authored facts and open questions (2026-11-20)
+
+**Scope.** Player-facing Journal notes only: an optional `journal.json` per
+campaign, its loader and validator, the Journal's rendering, one layout-probe
+scenario and the tests that pin them. Quests, flags, rules, dialogue, encounters
+and the save format are untouched — `SAVE_VERSION` stays 1, `Game.serialize()`
+is unchanged, and the Journal only *reads* `Game.flags`.
+
+**Defect.** "Recorded world events" printed every truthy flag as an internal id
+(`ledger found`, `maela decision`, `last page shared`), alphabetically, with no
+prose and no separation between settled events and open questions. Two further
+flaws were found while assessing it: `if keys.is_empty()` tested for keys rather
+than true values, so a save holding only false flags produced an empty heading,
+and the heading's apparent overlap was synthetic bold — `[b]` in a RichTextLabel
+whose font has no bold face is drawn as an offset embolden pass, which reads as a
+doubled line at heading sizes. Both were reproduced in isolation
+(`builds/qa/bold_probe.png`) before being fixed.
+
+**Correction.**
+
+1. `content/campaigns/<id>/journal.json`: authored `facts` (`flag`, `text`,
+   optional `conflicts_with`), `questions` (`text`, optional `revealed_by` and
+   `resolved_by`) and `internal` bookkeeping flags, with `format_version: 1`.
+2. `ContentDB` loads the file when present, exposes `authored_flags()` (every
+   flag the campaign's dialogue, areas, encounters and doors can set) and
+   validates entry types, format version, flag references, duplicates, a flag
+   that is both fact and internal, self-conflicts, and a question revealed and
+   resolved by the same flag.
+3. `Panels.journal_notes()` is the pure selection step: facts appear once their
+   flag is true, in authored order; `conflicts_with` is resolved by authored
+   order (first fact claims the pair, later partners are suppressed), so a
+   corrupted save holding both halves renders one deterministic line. Questions
+   appear while `revealed_by` is true (or absent) and `resolved_by` is false.
+4. The Journal renders "What you know" and "Still open", hides a section with no
+   lines, says "Nothing recorded yet." when notes exist but nothing is earned,
+   and adds nothing at all when the campaign has no notes file.
+5. Headings use `[font_size]` and gold instead of `[b]`, removing the synthetic
+   bold that caused the doubled heading.
+6. `--layout-scenario=journal` seeds one fact and one revealed question, then
+   checks both section headings, every expected fact line, the absence of raw
+   flag ids, and that the body's ScrollContainer is inside the client.
+
+**Wording decisions.**
+
+- Notes are past tense and second person ("You rang the bell once..."), matching
+  the exploration log; no numbers, rules terms or destinations appear in them.
+- No "(ORIGINAL PLACEHOLDER)" prefix in notes: the campaign title and its
+  narration already carry that banner, and prefixing every Journal line would
+  read as shouting. Notes restate details the content already establishes
+  (the ledger, the receipt, the notice) instead of inventing new lore.
+- One fact per flag, so a save cannot show the same event twice. Where two
+  outcomes are exclusive (`maela_truth`/`maela_mercy`, `maela_trust`/
+  `maela_refused`, `ferry_bell_rung`/`bell_silenced`, `bell_called`/
+  `bell_silenced`, `warden_pact`/`warden_destroyed`) both sides declare
+  `conflicts_with`.
+- The mercy fact says what the player did ("...and let her keep that"), not that
+  it is true; the truth fact names the debt. Neither implies the other happened.
+- `bell_resolved` is set on both endings, so its line says "the crossing has its
+  answer" rather than naming which one.
+- Bookkeeping flags are `internal`: `maela_decision` (the chosen account is
+  already a fact), `maela_spoken_once`, `ivo_rested` (covered by the ring), and
+  the door flags (`tack_room_door_open`, `crypt_door_open`, `store_door_open`).
+- Questions are phrased in-world and never name a flag or a destination. Their
+  `revealed_by` flag is the moment the question becomes askable (reading the
+  notice, hearing about the ledger, committing to an account); their
+  `resolved_by` flag is the moment it is answered.
+- One question for Hollow Lantern: the campaign sets four flags and has one real
+  mystery, so a second question would have had nothing to resolve it.
+- The demo's "what became of Thendrick and Mathilda" was left out: no flag in
+  that campaign answers it, and a question that can never close is worse than no
+  question.
+
+**Verification.** Full suite **562/562 tests, 6,523 assertions, 46 scripts, exit
+0**, including 12 new tests (coverage of every authored flag, authored order,
+raw-id absence, reveal gating, resolution, conflicts in both directions, empty
+states, a missing notes file, malformed-note validation, and a save round trip
+that asserts `save_version` stays 1 and no journal key is written). Both
+validators PASS. `--layout-scenario=journal` passes **6/6** runs across
+1280x720, 1600x900 and 1920x1017 at 100 % and 160 % (18 controls, 0 failures),
+with captures in `builds/qa/runs/2026-11-20_journal/shots/`. `--inspect-probe`
+still PASSES (53 checks), and the exploration screen still passes at
+1280x720/160 %.
+
+**Limits.** No human playtest; the wording was reviewed as text against the
+content it restates, not by a player. Journal length is bounded by content: a
+save with every flag set shows every authored fact, and at 160 % that needs
+scrolling (the scroll container is bounded and counted by the probe). Campaigns
+written in the creator without a notes file show the quest log alone — the
+creator does not author notes yet. The coverage rule that every settable flag
+must be a fact or internal is enforced by the test over shipped campaigns, not
+by the runtime validator, so a creator package may leave flags unexplained
+without failing to load.
