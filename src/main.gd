@@ -6854,12 +6854,11 @@ func _input(event: InputEvent) -> void:
 			# Focus containment: Tab and Shift+Tab cycle the modal's own controls
 			# and never reach the world behind it. Handled here, before the GUI,
 			# because Godot's automatic traversal walks the whole tree.
-			if event.is_action_pressed("ui_focus_next"):
-				_cycle_modal_focus(1)
-				get_viewport().set_input_as_handled()
-				return
-			if event.is_action_pressed("ui_focus_prev"):
-				_cycle_modal_focus(-1)
+			# Godot matches actions without comparing modifiers by default, so a
+			# shifted Tab matches ui_focus_next too; the shift decides direction.
+			if event.is_action_pressed("ui_focus_next") or event.is_action_pressed("ui_focus_prev"):
+				var backward := (event as InputEventWithModifiers).shift_pressed
+				_cycle_modal_focus(-1 if backward else 1)
 				get_viewport().set_input_as_handled()
 				return
 			# If focus somehow sits outside the modal, activation is swallowed

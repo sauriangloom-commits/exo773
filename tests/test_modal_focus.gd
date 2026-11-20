@@ -114,6 +114,19 @@ func test_tab_wraps_from_the_last_control_to_the_first() -> void:
 	assert_eq(_focus_owner(), focusables[0], "Tab on the last stop wraps to the first")
 
 
+func test_a_shift_tab_event_moves_focus_backwards() -> void:
+	await _open_modal()
+	var focusables: Array = main.call("_modal_focusables")
+	focusables[2].grab_focus()
+	var event := InputEventKey.new()
+	event.keycode = KEY_TAB
+	event.physical_keycode = KEY_TAB
+	event.shift_pressed = true
+	event.pressed = true
+	main._input(event)
+	assert_eq(_focus_owner(), focusables[1], "a Shift+Tab event moves focus backwards")
+
+
 func test_shift_tab_wraps_from_the_first_control_to_the_last() -> void:
 	await _open_modal()
 	var focusables: Array = main.call("_modal_focusables")
