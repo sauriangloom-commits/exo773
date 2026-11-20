@@ -59,7 +59,7 @@ Open dialogs (Journal, Settings, inventory and the rest) scroll their own text w
 grows with the text size. A focused text field, list, tree or vertical slider keeps
 those keys for its own cursor or selection; a horizontal slider or tab strip
 scrolls instead, and `←` / `→` still change it. `Tab` / `Shift+Tab` move between
-a dialog's controls.
+a dialog's controls, and the list scrolls to the control the focus lands on.
 
 Mouse and on-screen buttons work for every action. Combat also accepts clicks on
 the tactical grid. Bindings can be changed in **Settings → Controls**.

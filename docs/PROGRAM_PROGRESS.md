@@ -2012,3 +2012,40 @@ panel lists do not follow focus, so Tab can land on a row below the fold (Enter
 still activates it); one pane is chosen per scroll; `SpinBox` remains exempt
 although Godot 4.7 ignores Up/Down for it; gamepad page keys and key repeat remain
 out of scope.
+
+## Settings clipping and off-screen focus fixed (2026-11-20)
+
+Both limits from the pane-selection unit are closed. `Panels.settings()` no longer
+gives its content root a 720x480 minimum - at 100 % text that overflowed the 453 px
+body by 27 px, and because the keys and the wheel both moved the list inside, the
+strip never scrolled and cut the bottom of "Restore Default Controls". The root now
+sets only a width, so the body fits (travel 27 -> 0) and the list gets the whole
+height (463 -> 490 px at 100 %, 679 at 160 %).
+
+Focus now reveals itself through nested panes. `_reveal_modal_focus()` walks from
+the focus owner up to the modal and adjusts every `ScrollContainer` on the way,
+asking each wrapper to show the pane inside it rather than the deep control, with
+an 8 px pad and clamping at each pane's own travel; it stops at a popup `Window`, so
+a confirmation dialog keeps its own geometry. It is driven by the viewport's
+`gui_focus_changed`, so Tab, Shift+Tab, a click and a control grabbing focus itself
+all reveal the row. On the real Settings at 100 %, Tab x18 put "Restore Default
+Controls" at y = 1043 outside a 163-616 body before; it now scrolls the list to its
+end and the row sits at y = 580, fully visible, while Enter still opens the
+confirmation over an unmoved list.
+
+Four tests were added (body fits and the list reaches its last row; Tab reaches that
+row visibly at both scales with Shift+Tab walking back; a nested-list button is
+revealed and un-revealed while the wrapper and focus containment hold; a popup
+leaves the list at its offset). Suite **608/608, 6,767 assertions, 48 scripts, exit
+0**; validators and the Inspect probe pass; export acceptance 11/11. Candidate
+`modal_focus_2026-11-20` (110,668,280 bytes, `42b003c9`) was verified natively at
+100 % and 160 %: the whole Restore button is visible at the end of the list, Tab x18
+puts the ring on it with the list scrolled, Shift+Tab moves the ring to the row
+above with the list one step up, Tab returns to a byte-identical frame, and the
+confirmation opens and closes without moving the list.
+
+Remaining limits: the reveal runs only while a modal is open (the campaign creator
+keeps its own scrolling); a control taller than its pane is aligned to the pane's
+top and can still be clipped; one pane follows the focus per key press; the shared
+body keeps `follow_focus` alongside the new walk; no key repeat, and no reveal if a
+pane is re-laid out while the focus owner is unchanged.

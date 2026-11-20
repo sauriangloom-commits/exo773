@@ -685,3 +685,172 @@ func test_a_closed_modal_has_no_body_to_scroll() -> void:
 	event.physical_keycode = KEY_PAGEDOWN
 	event.pressed = true
 	assert_false(bool(main.call("_scroll_modal_body", event)), "nothing scrolls without a modal")
+
+
+## Opens the real Settings panel the way the pause menu does, at a text scale.
+func _open_settings_modal(scale: float) -> void:
+	Game.settings["text_scale"] = scale
+	main.theme = ThemeBuilder.build(16)
+	main.call("_open_settings")
+	await wait_frames(4)
+
+
+func _button_titled(node: Node, text: String) -> Button:
+	for found in node.find_children("*", "Button", true, false):
+		var button := found as Button
+		if button.text == text:
+			return button
+	return null
+
+
+## True when the control's whole height sits inside the pane that clips it.
+func _fully_inside(control: Control, pane: ScrollContainer) -> bool:
+	var rect := control.get_global_rect()
+	var view := pane.get_global_rect()
+	return rect.position.y >= view.position.y - 0.5 and rect.end.y <= view.end.y + 0.5
+
+
+## Settings' real shape at 100 %: a body that fits, and a list that holds the
+## rows. The body used to overflow by 27 px and clip the last row.
+func test_the_settings_body_fits_and_the_list_reaches_its_last_row() -> void:
+	await _open_settings_modal(1.0)
+	var outer := _scroll()
+	var inner := main.call("_modal_body_target") as ScrollContainer
+	assert_not_null(outer, "the settings body exists")
+	assert_not_null(inner, "the settings list exists")
+	if outer == null or inner == null:
+		return
+	assert_eq(int(main.call("_scroll_travel", outer)), 0, "the shared body no longer overflows")
+	assert_ne(inner, outer, "the list is the pane the keys move")
+	var restore := _button_titled(_modal(), "Restore Default Controls")
+	assert_not_null(restore, "the last row exists")
+	if restore == null:
+		return
+	for step in 4:
+		_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(inner.scroll_vertical, int(main.call("_scroll_travel", inner)), "PageDown reaches the end of the list")
+	assert_true(_fully_inside(restore, inner), "the Restore button is fully visible, not clipped")
+	assert_eq(outer.scroll_vertical, 0, "the wrapper never moves")
+
+
+## The row below the fold used to take focus while staying invisible: Tab walked
+## onto "Restore Default Controls" at y = 1043 inside a 136-616 body.
+func test_tab_reveals_the_last_settings_row_at_both_scales() -> void:
+	for scale in [1.0, 1.6]:
+		await _open_settings_modal(scale)
+		var outer := _scroll()
+		var inner := main.call("_modal_body_target") as ScrollContainer
+		var restore := _button_titled(_modal(), "Restore Default Controls")
+		assert_not_null(restore, "the last row exists at %s" % scale)
+		if outer == null or inner == null or restore == null:
+			return
+		var start := inner.scroll_vertical
+		for step in 40:
+			if _focus_owner() == restore:
+				break
+			_send_key(KEY_TAB)
+			await wait_frames(1)
+		assert_eq(_focus_owner(), restore, "Tab walks to the last row at %s" % scale)
+		await wait_frames(2)
+		assert_gt(inner.scroll_vertical, start, "the list scrolls to the focused row")
+		assert_true(_fully_inside(restore, inner), "the focused row is fully visible at %s" % scale)
+		assert_eq(outer.scroll_vertical, 0, "the shared body stays where it was")
+		_send_key(KEY_TAB, true)
+		await wait_frames(2)
+		var previous := _focus_owner()
+		assert_ne(previous, restore, "Shift+Tab leaves the last row")
+		assert_true(_fully_inside(previous, inner), "the previous row is inside the list too")
+		main.call("close_modal")
+		await wait_frames(2)
+
+
+func _open_nested_rows_modal() -> void:
+	main.call("open_modal", "QA Rows", func() -> Control:
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(600, 0)
+		root.add_theme_constant_override("separation", 4)
+		var inner := ScrollContainer.new()
+		inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var list := VBoxContainer.new()
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var top := Button.new()
+		top.text = "QA top row"
+		list.add_child(top)
+		for index in 40:
+			list.add_child(ThemeBuilder.body("QA nested row %02d of a long list." % index, false, 15))
+		var last := Button.new()
+		last.text = "QA last row"
+		list.add_child(last)
+		inner.add_child(list)
+		root.add_child(inner)
+		return root
+	, 660, 380)
+	await wait_frames(3)
+
+
+func test_tab_reveals_a_row_inside_a_nested_list_and_shift_tab_reveals_back() -> void:
+	await _open_nested_rows_modal()
+	var outer := _scroll()
+	var inner := main.call("_modal_body_target") as ScrollContainer
+	var top := _button_titled(_modal(), "QA top row")
+	var last := _button_titled(_modal(), "QA last row")
+	assert_not_null(outer, "the modal body exists")
+	assert_not_null(inner, "the nested list exists")
+	assert_not_null(top, "the top row exists")
+	assert_not_null(last, "the last row exists")
+	if outer == null or inner == null or top == null or last == null:
+		return
+	assert_eq(int(main.call("_scroll_travel", outer)), 0, "the wrapper fits, the list travels")
+	assert_eq(_focus_owner(), _button_titled(_modal(), "Close (Esc)"), "the modal opens with focus on Close")
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	assert_eq(_focus_owner(), top, "Tab reaches the top row")
+	assert_eq(inner.scroll_vertical, 0, "a visible row needs no scrolling")
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	assert_eq(_focus_owner(), last, "Tab reaches the row at the bottom of the list")
+	assert_gt(inner.scroll_vertical, 0, "the nested list scrolls to show the focused row")
+	assert_true(_fully_inside(last, inner), "the last row is fully visible")
+	assert_eq(outer.scroll_vertical, 0, "the wrapper stays where it was")
+	_send_key(KEY_TAB, true)
+	await wait_frames(2)
+	assert_eq(_focus_owner(), top, "Shift+Tab walks back to the top row")
+	assert_eq(inner.scroll_vertical, 0, "the list scrolls back up with it")
+	assert_true(_fully_inside(top, inner), "the top row is visible again")
+	assert_eq(outer.scroll_vertical, 0, "the wrapper stayed put the whole way")
+	for step in 5:
+		_send_key(KEY_TAB)
+	await wait_frames(2)
+	assert_true(_modal().is_ancestor_of(_focus_owner()), "focus stays inside the modal")
+
+
+## A popup raised from the modal has its own window and must not move the body.
+func test_a_popup_from_the_modal_leaves_the_list_where_it_is() -> void:
+	await _open_settings_modal(1.0)
+	var inner := main.call("_modal_body_target") as ScrollContainer
+	var restore := _button_titled(_modal(), "Restore Default Controls")
+	assert_not_null(inner, "the settings list exists")
+	assert_not_null(restore, "the last row exists")
+	if inner == null or restore == null:
+		return
+	restore.grab_focus()
+	await wait_frames(2)
+	var before := inner.scroll_vertical
+	assert_gt(before, 0, "focusing the last row scrolls the list")
+	var dialog: ConfirmationDialog = null
+	for found in _modal().find_children("*", "ConfirmationDialog", true, false):
+		dialog = found as ConfirmationDialog
+		break
+	assert_not_null(dialog, "the confirmation dialog exists")
+	if dialog == null:
+		return
+	dialog.popup_centered()
+	await wait_frames(3)
+	assert_true(dialog.visible, "the last row opens the confirmation")
+	assert_eq(inner.scroll_vertical, before, "the popup does not scroll the list behind it")
+	dialog.hide()
+	await wait_frames(2)
+	assert_not_null(_modal(), "the settings modal is still open")
+	assert_eq(inner.scroll_vertical, before, "the list is unchanged after the popup closes")

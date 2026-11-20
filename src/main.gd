@@ -204,6 +204,9 @@ func _ready() -> void:
 	get_window().min_size = Vector2i(1280, 720)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = ThemeBuilder.build(16)
+	# Focus moves without our Tab handler too (a click, a control grabbing focus
+	# itself, a refresh), so the modal follows the focus owner from the viewport.
+	get_viewport().gui_focus_changed.connect(_on_modal_focus_changed)
 	Game.mode_changed.connect(_on_mode_changed)
 	Game.state_changed.connect(_on_state_changed)
 	Game.combat_finished.connect(_on_combat_finished)
@@ -6731,7 +6734,8 @@ func _first_focusable(root: Node) -> Control:
 
 ## The controls Tab may visit inside the active modal, in tree order. Scroll
 ## bodies are skipped: they have no focus style, so a stop there would make the
-## ring vanish mid-cycle; content still scrolls into view through follow_focus.
+## ring vanish mid-cycle; `_reveal_modal_focus` scrolls the chosen control into
+## view, through every pane that holds it.
 func _modal_focusables() -> Array[Control]:
 	var out: Array[Control] = []
 	if modal == null:
@@ -6767,6 +6771,70 @@ func _cycle_modal_focus(direction: int) -> void:
 	elif direction < 0:
 		next = focusables.size() - 1
 	focusables[next].grab_focus()
+
+
+func _on_modal_focus_changed(_control: Control) -> void:
+	_reveal_modal_focus()
+
+
+## Scrolls every pane that holds the focused control - the inner list first, then
+## each wrapper up to the shared body - so it sits inside the pane the player can
+## see. The shared body's own `follow_focus` only ever moves the body, and panels
+## wrap their content in a ScrollContainer of their own (Settings, the party
+## sheet, inventory), so a row below the fold used to keep focus while staying
+## invisible. Each wrapper is asked to show the pane inside it rather than the
+## deep control: that is what the player sees, and it keeps every step independent
+## of the others' scroll offsets.
+##
+## A control inside a popup raised from the modal is left alone: the popup has its
+## own coordinates and its own scrolling, and the body behind it must not move.
+func _reveal_modal_focus() -> void:
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner == null or modal == null or not modal.is_ancestor_of(owner):
+		return
+	var panes: Array[ScrollContainer] = []
+	var node: Node = owner
+	while node != null and node != modal:
+		if node is Window:
+			return
+		if node is ScrollContainer:
+			panes.append(node as ScrollContainer)
+		node = node.get_parent()
+	for index in panes.size():
+		var target: Control = owner if index == 0 else panes[index - 1]
+		_reveal_in_pane(panes[index], target)
+
+
+## Moves one pane just far enough to show the control, aligning its top when the
+## control is taller than the pane, and clamped to the pane's own travel.
+func _reveal_in_pane(container: ScrollContainer, control: Control) -> void:
+	if container == null or control == null or not container.is_visible_in_tree():
+		return
+	var content: Control = null
+	for child in container.get_children():
+		if child is Control and not child is ScrollBar:
+			content = child as Control
+			break
+	if content == null:
+		return
+	# Positions inside the content do not change while the pane scrolls, so the
+	# order the panes are adjusted in does not matter.
+	var top := control.global_position.y - content.global_position.y
+	var height := control.size.y
+	var view_top := float(container.scroll_vertical)
+	var view_height := container.size.y
+	var pad := 8.0
+	var delta := 0.0
+	if height + pad * 2.0 >= view_height:
+		delta = top - view_top
+	elif top - pad < view_top:
+		delta = top - pad - view_top
+	elif top + height + pad > view_top + view_height:
+		delta = top + height + pad - (view_top + view_height)
+	if is_zero_approx(delta):
+		return
+	var moved := int(round(view_top + delta))
+	container.scroll_vertical = clampi(moved, 0, _scroll_travel(container))
 
 
 ## Scrolls the open modal's body with the keyboard and reports whether the event

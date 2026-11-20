@@ -3159,18 +3159,9 @@ existing-save load path - log at `builds/qa/runs/2026-11-20_panefix/acceptance.l
 
 ### Limits (measured, not fixed here)
 
-- **The wrapper still clips its last 27 px at 100 %.** `Panels.settings()` gives
-  its content root a 720x480 minimum inside a body that is 453 px tall, and with
-  the keys and the wheel both moving the 463 px list, that 27 px sliver never
-  scrolls: the bottom edge of "Restore Default Controls" is cut in the
-  100 % bottom frame (fully visible at 160 %, where the wrapper cannot travel).
-  Removing that minimum, or chaining to the wrapper once the list is at its end,
-  would close it.
-- **Inner panel lists do not follow focus.** Only the shared body has
-  `follow_focus = true`. Tabbing to the 19th control in Settings focuses "Restore
-  Default Controls" at y = 1043 while the body spans 136-616, so the row is
-  off-screen; `Enter` still activates it (the confirmation dialog opened natively,
-  `reach10/01_confirm_open.png`). PageDown reaches it, Tab does not reveal it.
+- **The wrapper clipped its last 27 px at 100 %** and **inner panel lists did not
+  follow focus** - both measured here and **fixed later the same day**; see
+  "Settings clipping and focus reveal" at the end of this report.
 - **One pane per scroll.** The rule chooses a single pane; a modal with two
   independently scrolling panes would still move only the one with more travel.
 - **`SpinBox` stays exempt** as a conservative default even though Godot 4.7
@@ -3180,3 +3171,82 @@ existing-save load path - log at `builds/qa/runs/2026-11-20_panefix/acceptance.l
   confirmation dialog keeps the keys with the body at 0, an `OptionButton` opens
   on Enter and ignores Down, and no modal contains one.
 - Gamepad page keys are still unhandled, and holding a key still does not repeat.
+
+## Settings clipping and focus reveal (2026-11-20)
+
+The two limits recorded above are fixed. Neither was cosmetic: the first cut the
+bottom of the last Settings row, and the second let Tab move the ring onto a
+control the player could not see.
+
+**The content minimum.** `Panels.settings()` gave its content root a 720x480
+`custom_minimum_size`. The modal body is 453 px tall at 100 % text, so the shared
+body overflowed by 27 px - and since both the keys and the wheel moved the 463 px
+list inside, that strip never scrolled: the list sat at its end while its bottom
+27 px, including most of the "Restore Default Controls" button, stayed clipped.
+The minimum is now `Vector2(720, 0)`: the width still keeps the columns apart, the
+panel keeps the size the modal asks for, and the body simply fits. Measured after:
+shared body travel **0** (was 27) and the list travels **490** px (was 463) at
+100 %, **679** at 160 %; PageDown reaches the end with nothing left unreachable.
+
+**Revealing the focused control.** Only the shared body had `follow_focus`, and
+that flag can only ever move the body - which, holding a list that clips its own
+rows, moved nothing useful. `_reveal_modal_focus()` now walks from the focus owner
+up to the modal and adjusts every `ScrollContainer` on the way, innermost first.
+Each wrapper is asked to show the *pane inside it* rather than the deep control:
+that is what the player can see, and it keeps every step independent of the
+others' scroll offsets. A control taller than its pane is aligned to the pane's
+top; each step is clamped to that pane's own travel; an 8 px pad keeps a focus
+ring off the clip edge. The walk stops at a popup `Window`, so a dialog raised from
+the modal keeps its own geometry and the body behind it does not move. The hook is
+the viewport's `gui_focus_changed`, so it covers Tab, Shift+Tab, clicks, a refresh
+and a control grabbing focus itself - not just the Tab helper.
+
+Measured on the real Settings at 100 %: Tab x18 focuses "Restore Default Controls",
+the list scrolls to 490 and the row sits at y = 580 inside the body's 163-616 -
+visible, where it used to sit at y = 1043 outside it. `Enter` still opens the
+confirmation dialog and leaves the list where it was.
+
+**Tests.** Four cases added to `tests/test_modal_focus.gd`: the real Settings body
+no longer overflows and PageDown leaves the Restore button fully inside the list;
+Tab reaches that last row at 100 % and 160 % with the row fully visible and
+Shift+Tab walking back to a visible row; a synthetic modal whose button sits at the
+bottom of a nested list has it revealed by Tab, then the nested list returns to 0
+on Shift+Tab with the wrapper untouched and focus still inside the modal; and a
+confirmation popup leaves the list at its offset and the modal open. Suite
+**608/608, 6,767 assertions, 48 scripts, exit 0**; both validators and the Inspect
+probe pass in source.
+
+**Native, exported candidate** `modal_focus_2026-11-20` (110,668,280 bytes,
+SHA-256 `42b003c9`), 1280x720, Settings opened from Pause, OS-level keys:
+
+| Step | 100 % | 160 % |
+| --- | --- | --- |
+| PageDown x4 | last row and the whole Restore button visible, no clipped edge | same |
+| PageUp x6 | frame byte-identical to the opening one | same |
+| Tab x18 | ring on "Restore Default Controls", list at its end, row whole | same |
+| Shift+Tab x1 | ring on the "Pause - Escape" row above it, list one step up | same |
+| Tab x1 | frame byte-identical to the Tab x18 frame | same |
+| Enter, Escape | confirmation opens over the untouched list; Escape closes only the dialog, frame identical again | same |
+
+Captures: `builds/qa/runs/2026-11-20_focusfix/native/focus1.0` and `focus1.6`.
+
+**Export acceptance:** 11/11 (list-campaigns, both validators, the Inspect probe,
+settings/journal/refusal layouts at 100 % and 160 %, save-compat UI), log at
+`builds/qa/runs/2026-11-20_focusfix/acceptance.log`.
+
+### Remaining limits
+
+- **Reveal is modal-only.** `_reveal_modal_focus` runs while a modal is open; the
+  campaign creator screen and other non-modal screens keep their own scrolling
+  (the creator uses `ensure_control_visible` directly).
+- **A control taller than its pane is aligned to the top**, so its bottom can
+  still be clipped - no shipped control is that tall, but a wrapped paragraph in
+  a short pane would be.
+- **One pane scrolls per key press.** The greatest-travel rule still moves a
+  single pane; with two independently scrolling panes the other one does not
+  follow the focus.
+- **`follow_focus` stays on the shared body** (a layout test asserts it). Where a
+  wrapper can travel, the engine may nudge it in the same frame we set the inner
+  list; the measured results are identical, but the wrapper is the redundant half.
+- **No key repeat**, gamepad page keys remain unhandled, and the reveal does not
+  run again if a pane's content is re-laid out while the focus owner is unchanged.

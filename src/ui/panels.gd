@@ -382,7 +382,12 @@ static func _journal_heading(text_value: String) -> String:
 
 static func settings(awaiting_action: String, on_rebind: Callable, on_scale_changed: Callable, on_restore_defaults: Callable) -> Control:
 	var root := VBoxContainer.new()
-	root.custom_minimum_size = Vector2(720, 480)
+	# Width only: the panel already has a size of its own, and a fixed 480 px
+	# height overflowed the 453 px body at 100 % text. That 27 px strip was the
+	# body's own travel, which nothing could scroll (the keys and the wheel both
+	# move the list inside), so the bottom row stayed clipped. Without it the body
+	# fits, the list gets the whole height and its last row is fully reachable.
+	root.custom_minimum_size = Vector2(720, 0)
 	root.add_theme_constant_override("separation", 10)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
