@@ -2,7 +2,7 @@
 
 > **Current boundary (2026-11-20).** 574/574 tests, 6,591 assertions, 47 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
-> exported `ui_scaling_2026-11-20b` candidate repeats them. (The 2026-11-14
+> exported `refusals_2026-11-20` candidate repeats them. (The 2026-11-14
 > boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue

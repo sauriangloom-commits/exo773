@@ -2820,3 +2820,23 @@ Ran: full suite **574/574, 6,591 assertions, 47 scripts, exit 0**
 needs `--demo-inspect`: with plain `--demo` the encounter screen is never built
 and its "combat screen with an encounter exists" check fails, which is an
 invocation difference, not a regression.
+Candidate `refusals_2026-11-20` repeats the checks in the export
+(`builds/qa/candidates/refusals_2026-11-20/RavenloftFoundationEdit.exe`,
+110,662,808 bytes, SHA-256
+`06883c8254ed8cf2411ae7174adb847b4ca0f7818a2b45903a2b6ccd1ef29d7d`, source
+`c3ede47`): both validators PASS, `--demo-inspect --inspect-probe` PASS, and
+`--layout-scenario=refusal` PASS at 1280x720 on 100 % and 160 % (17 controls, 0
+failures each; logs in `builds/qa/runs/2026-11-20_refusals/`). The exported
+captures in `shots_export/` show "Cold stone blocks the way." as the newest,
+readable line of the narration log at both scales.
+
+Limits of that check: the scenario calls `Game.move_forward()` and refreshes,
+which is what the keyboard handler does, but it does not inject a real key
+event, so the key binding itself rests on the existing input tests rather than
+this capture. "On screen" is established by the widget's rectangle inside the
+client, no modal over it, a nonzero visible-line count and the capture; there is
+no per-pixel occlusion test. Only the wall refusal is exercised in the export —
+the other seven families are covered by the suite. The export needs export
+templates in its `APPDATA`; unsetting the variable makes Godot look in
+`./Godot` inside the project, so the build used an isolated profile holding a
+copy of the templates.
