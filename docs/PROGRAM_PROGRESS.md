@@ -1936,3 +1936,20 @@ Journal and leaves the party where it stood, at 100 % and 160 %. Journal wheel
 scrolling, previously unverified because the demo notes fit the modal, is proven
 with a 70-question user fixture at both scales. Shift+Tab could not be injected
 as a real chord; its manual step is in the test report.
+
+## Keyboard modal scrolling assessed; Shift+Tab verified (2026-11-20)
+
+Keyboard scrolling of modal text is missing: the body `ScrollContainer` is
+`FOCUS_NONE`, Tab never reaches it, and PageUp/PageDown or arrows leave an
+overflowing Journal exactly where it was at 160 % (verified with the 70-question
+fixture). Arrows also drop the visible focus ring, though Enter there stayed
+inert and the world was unchanged.
+
+The smallest fix is proposed but not implemented: reference the modal body,
+handle PageUp/PageDown as a page and Up/Down as two lines in `_input`, mark them
+handled, and leave focus, activation, rebind capture and Escape untouched. The
+tests this fix needs are defined in the report.
+
+Shift+Tab is verified natively at 100 % and 160 % on the current candidate; the
+earlier harness limitation was the action-matching bug, now fixed, so the manual
+step is withdrawn.

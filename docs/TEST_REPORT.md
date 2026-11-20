@@ -2944,3 +2944,67 @@ tests. Manual step: open Pause (Esc), hold Shift, press Tab — the ring should
 move from Close to Return to main menu; press again to walk backwards. Enter
 activating a focused button is native-verified only: headless GUI key activation
 does not fire in the harness, so no unit test covers that half.
+
+## Assessment: keyboard access to scrollable modal text (2026-11-20, no code change)
+
+**Measured.** The shared modal builds one body `ScrollContainer`
+(`content_scroll` in `open_modal`) whose `focus_mode` is `FOCUS_NONE` and whose
+vertical bar reached 1616 px against a 293 px page in a 60-line fixture;
+`scroll_vertical` is writable and the wheel moves it (fixture runs at 100 % and
+160 %). Keyboard cannot: `_modal_focusables()` skips `ScrollContainer`, and the
+container is not focusable in the first place.
+
+**Verified at 160 % with the 70-question Journal** (`--campaign=qa_journal_overflow`):
+three PageDown presses and six Down presses left the text at questions 01-04 —
+identical frames. One Down also removed the focus ring from Close and nothing
+else became ringed; Enter then did nothing and the world was unchanged after
+Escape (position 4,4 facing North). So arrows neither scroll nor keep focus
+visible; in that run they did not reach an actionable background control either.
+
+**Shift+Tab is now verified natively** at 100 % and 160 %: with Pause open, one
+Shift+Tab wraps Close -> Return to main menu, the next walks back to Settings.
+The earlier "harness cannot inject Shift" note is withdrawn: that failure was
+the action-matching bug fixed in `b5dfd9b`, not the injection path. No manual
+step is needed for it any more.
+
+### Smallest proposed fix (not implemented)
+
+1. Keep a `modal_scroll` reference to the `content_scroll` created in
+   `open_modal`, and clear it in `close_modal`.
+2. In `_input`, after the rebind branch and before the Tab branch, while a modal
+   is open:
+   - `ui_page_down` / `ui_page_up` scroll the body by about 90 % of a page;
+   - `ui_down` / `ui_up` scroll it by two lines.
+   Mark the event handled and return.
+3. A helper (`_scroll_modal_body(event)`) adjusts
+   `modal_scroll.scroll_vertical`; the container clamps at both ends, so a body
+   that fits does not move. Arrow keys stop reaching Godot's focus traversal as
+   a side effect, which closes the ring-loss above.
+
+New scrolling keys, then: **PageDown/PageUp = one page, Down/Up = two lines**,
+wheel unchanged, Home/End and a Tab stop on the body deliberately left out.
+
+Why it keeps the existing guarantees: focus is never moved (containment and
+visible focus untouched, no theme change, no new stop); Enter and Space are not
+intercepted (activation unchanged); the rebind branch stays first (capture
+unchanged); Escape is handled after it exactly as now.
+
+### Tests defined for the fix (to run then, not now)
+
+- Unit, `tests/test_modal_focus.gd`: a tall modal scrolls about a page per
+  PageDown and back with PageUp, two lines per arrow, clamps at top and bottom,
+  keeps the same focus owner throughout, still cycles with Tab, still closes
+  with Enter on Close, still restores focus on Escape, and still lets a rebind
+  capture win; a modal whose content fits stays at 0.
+- Native, fixture campaign: at 100 % and 160 %, PageDown reveals later
+  questions, PageUp returns, arrows move by lines, the Close ring stays put, and
+  Tab/Enter behave as they do today.
+
+### Assumptions to hold the tests to
+
+- `ScrollContainer` clamps `scroll_vertical` at its bounds; that is standard
+  container behaviour and was not separately measured (writing a value inside
+  the range was).
+- The arrow-key focus loss is inferred from a missing ring plus an inert Enter;
+  the harness cannot read which control holds focus, and at 160 % the dimmed
+  background hides a ring drawn under the modal.
