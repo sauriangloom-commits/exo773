@@ -4,6 +4,8 @@ extends Control
 
 var current_screen: Control = null
 var modal: Control = null
+## The control that opened the active modal, so closing returns focus there.
+var modal_return_focus: Control = null
 var modal_builder: Callable
 var modal_title := ""
 ## The modal size a caller asked for at 100 % text, kept so `refresh_modal()`
@@ -6580,7 +6582,13 @@ func _show_victory() -> void:
 
 func open_modal(title: String, builder: Callable, width := 760, height := 540, preserve_rebind := false) -> void:
 	var pending_rebind := awaiting_rebind
-	close_modal()
+	# The opener is the control focused before this modal stack began. A refresh,
+	# or a modal that opens another, keeps it, so closing returns to the world
+	# control the player actually used rather than to a freed modal button.
+	var opener := modal_return_focus
+	if modal == null:
+		opener = get_viewport().gui_get_focus_owner()
+	close_modal(false)
 	if preserve_rebind:
 		awaiting_rebind = pending_rebind
 	modal_title = title
@@ -6639,6 +6647,7 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_scroll.add_child(content)
 	close.grab_focus()
+	modal_return_focus = opener
 
 
 func refresh_modal() -> void:
@@ -6652,7 +6661,7 @@ func refresh_modal() -> void:
 		)
 
 
-func close_modal() -> void:
+func close_modal(restore_focus := true) -> void:
 	if modal != null:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner != null and modal.is_ancestor_of(focus_owner):
@@ -6662,6 +6671,87 @@ func close_modal() -> void:
 	modal_builder = Callable()
 	modal_title = ""
 	awaiting_rebind = ""
+	if restore_focus:
+		_restore_modal_focus()
+
+
+## Returns focus to the control that opened the modal, or to the first usable
+## control on the screen when that control is gone (a screen rebuild, a probe,
+## or a launch where nothing had focus yet).
+func _restore_modal_focus() -> void:
+	var target := modal_return_focus
+	modal_return_focus = null
+	if _can_take_focus(target):
+		target.grab_focus()
+		return
+	var fallback := _first_focusable(current_screen)
+	if fallback != null:
+		fallback.grab_focus()
+
+
+func _can_take_focus(control: Control) -> bool:
+	return (
+		control != null
+		and is_instance_valid(control)
+		and control.is_inside_tree()
+		and control.is_visible_in_tree()
+		and control.focus_mode != Control.FOCUS_NONE
+		and not control is ScrollContainer
+	)
+
+
+func _first_focusable(root: Node) -> Control:
+	if root == null:
+		return null
+	for child in root.get_children():
+		if child is Control:
+			var control := child as Control
+			if _can_take_focus(control):
+				return control
+		var nested := _first_focusable(child)
+		if nested != null:
+			return nested
+	return null
+
+
+## The controls Tab may visit inside the active modal, in tree order. Scroll
+## bodies are skipped: they have no focus style, so a stop there would make the
+## ring vanish mid-cycle; content still scrolls into view through follow_focus.
+func _modal_focusables() -> Array[Control]:
+	var out: Array[Control] = []
+	if modal == null:
+		return out
+	_collect_focusables(modal, out)
+	return out
+
+
+func _collect_focusables(node: Node, out: Array[Control]) -> void:
+	for child in node.get_children():
+		if child is Control:
+			var control := child as Control
+			if (
+				control.focus_mode != Control.FOCUS_NONE
+				and control.is_visible_in_tree()
+				and not control is ScrollContainer
+			):
+				out.append(control)
+		_collect_focusables(child, out)
+
+
+## Tab and Shift+Tab stay inside the modal and wrap at either end; background
+## controls can no longer receive focus while it is open.
+func _cycle_modal_focus(direction: int) -> void:
+	var focusables := _modal_focusables()
+	if focusables.is_empty():
+		return
+	var owner := get_viewport().gui_get_focus_owner()
+	var index := focusables.find(owner)
+	var next := 0
+	if index >= 0:
+		next = wrapi(index + direction, 0, focusables.size())
+	elif direction < 0:
+		next = focusables.size() - 1
+	focusables[next].grab_focus()
 
 
 func _open_load_modal() -> void:
@@ -6760,6 +6850,25 @@ func _input(event: InputEvent) -> void:
 			refresh_modal()
 			get_viewport().set_input_as_handled()
 			return
+		if modal != null:
+			# Focus containment: Tab and Shift+Tab cycle the modal's own controls
+			# and never reach the world behind it. Handled here, before the GUI,
+			# because Godot's automatic traversal walks the whole tree.
+			if event.is_action_pressed("ui_focus_next"):
+				_cycle_modal_focus(1)
+				get_viewport().set_input_as_handled()
+				return
+			if event.is_action_pressed("ui_focus_prev"):
+				_cycle_modal_focus(-1)
+				get_viewport().set_input_as_handled()
+				return
+			# If focus somehow sits outside the modal, activation is swallowed
+			# rather than reaching a background button.
+			if event.is_action_pressed("ui_accept"):
+				var focus_owner := get_viewport().gui_get_focus_owner()
+				if focus_owner == null or not modal.is_ancestor_of(focus_owner):
+					get_viewport().set_input_as_handled()
+					return
 		if event.is_action_pressed("pause_menu"):
 			if modal != null:
 				close_modal()

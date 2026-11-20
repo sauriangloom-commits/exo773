@@ -179,7 +179,10 @@ func test_intro_uses_the_shared_modal_and_dismisses_to_exploration() -> void:
 		begin.emit_signal("pressed")
 		await get_tree().process_frame
 		assert_null(main.get("modal"), "Begin dismisses the intro")
-		assert_null(main.get_viewport().gui_get_focus_owner(), "Begin dismissal releases modal focus")
+		var after_begin := main.get_viewport().gui_get_focus_owner() as Control
+		assert_not_null(after_begin, "Begin dismissal returns focus to the screen")
+		if after_begin != null:
+			assert_true(main.current_screen.is_ancestor_of(after_begin), "the restored control is on the screen")
 		assert_eq(Game.campaign_id, campaign_before, "Begin keeps the campaign identity")
 		assert_eq(Game.mode, mode_before, "Begin leaves the game in exploration")
 		assert_true(main.get("current_screen") != null, "exploration receives input after Begin")
@@ -195,7 +198,10 @@ func test_intro_uses_the_shared_modal_and_dismisses_to_exploration() -> void:
 				close.emit_signal("pressed")
 				await get_tree().process_frame
 				assert_null(main.get("modal"), "Close dismisses the reopened intro")
-				assert_null(main.get_viewport().gui_get_focus_owner(), "Close dismissal releases modal focus")
+				var after_close := main.get_viewport().gui_get_focus_owner() as Control
+				assert_not_null(after_close, "Close dismissal returns focus to the screen")
+				if after_close != null:
+					assert_true(main.current_screen.is_ancestor_of(after_close), "the restored control is on the screen")
 				assert_eq(Game.campaign_id, campaign_before, "Close keeps the campaign identity")
 				assert_eq(Game.mode, mode_before, "Close leaves the game in exploration")
 				main.call("_show_intro")
