@@ -2049,3 +2049,48 @@ keeps its own scrolling); a control taller than its pane is aligned to the pane'
 top and can still be clipped; one pane follows the focus per key press; the shared
 body keeps `follow_focus` alongside the new walk; no key repeat, and no reveal if a
 pane is re-laid out while the focus owner is unchanged.
+
+## Candidate audit, migration readiness and status split (2026-11-20)
+
+**No candidate replaced another.** Three distinct builds sit under
+`builds/qa/candidates/` and every on-disk hash matches its `BUILD.txt`:
+`modal_scroll_2026-11-20` (built 17:46:48, head `2b3ba36`, 2 dirty entries,
+110,667,352 bytes, `0c2f982e`), `modal_pane_2026-11-20` (18:03:47, head
+`1d89925`, 2 dirty entries, 110,667,640 bytes, `6217fe39`) and
+`modal_focus_2026-11-20` (18:18:04, head `60c1221`, 3 dirty entries, 110,668,280
+bytes, `42b003c9`). The three worktree diff hashes (`d5ace748`, `3842d180`,
+`cdd57a78`) differ, so each is its own source state; `modal_focus` is the newest,
+not a relabel of `modal_pane`. Nothing was overwritten or deleted.
+
+Each result is now tied to a build: the 9/9 acceptance and Journal frames to
+`modal_scroll`; the 11/11 acceptance, the 27 px reproduction frames (`settings10`)
+and the pane/slider/party frames to `modal_pane`; the 11/11 acceptance and the
+`focus1.0`/`focus1.6` frames to `modal_focus`. GUT suite logs and probe output are
+source-tree runs and support no binary. Attribution rests on BUILD.txt timestamps,
+each run's `EXE=` path and frame mtimes, because frames do not embed the exe hash.
+
+**Missing artifacts, recorded not repaired.** None of the three runs wrote an
+`acceptance.log` - the scripts print their summary and keep per-check logs only -
+so the three earlier citations were corrected. The focus candidate also carries a
+stale `export.log` (16:48, before its 18:18 build) with no build id, and the pane
+and focus native frames sit one run directory behind their acceptance runs
+(`scrollfix/native` and `panefix/native` respectively).
+
+**Status split.** Closed UI defects, each with the build that proves it: the
+unreachable Settings list and the HSlider/TabBar traversal (`60c1221`, verified on
+`modal_pane`), and the clipped last 27 px and the off-screen focused row
+(`01ced3a`, verified on `modal_focus`). Remaining limits are unchanged: reveal only
+inside modals, controls taller than their pane align to its top, one pane follows
+focus per key press, `follow_focus` stays beside the reveal walk, no key repeat or
+gamepad page keys, and no consolidated acceptance log for these runs.
+
+**Migration readiness (assessment only, nothing implemented).** Saves are
+version-refused rather than migrated: `SaveSystem` requires `save_version == 1`
+before validating, `load_game` refuses a `content_version` mismatch, the payload
+is validated against content ids and shapes before any live state changes, writes
+are atomic with a `.bak` that is never read back, and settings are an unversioned
+`ConfigFile` that is rewritten from a fresh object (so unknown keys are dropped)
+and whose `text_scale` is not clamped on load. The smallest design - a read-only
+migration table with a version floor, content version kept as a refusal, a settings
+`meta` section that merges instead of rewriting, and one fixture per step - is
+written out under ROADMAP P0 item 4, marked proposed and not implemented.

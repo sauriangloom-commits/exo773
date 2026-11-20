@@ -124,8 +124,42 @@ are not claimed as proof.
    at 100 % and 160 % text by `--layout-probe`; 1024×600 was never a supported
    size (the window minimum is 1280×720). Remaining: high-DPI and
    mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
-4. **Save migration policy.** Add a schema migration hook before the first public
-   content update; keep the version refusal until then.
+4. **Save migration policy.** **Proposed 2026-11-20, not implemented.** Today
+   `SaveSystem.read_save` refuses any `save_version` but 1 and `load_game` refuses
+   any `content_version` mismatch, before validating anything; the
+   `--save-compat-ui-probe` run proves a refused load leaves the file
+   byte-identical. The smallest design that satisfies this item:
+   - **Read-only hook.** After parsing, `read_save` hands the payload to a new
+     `SaveMigrations.upgrade(data, from, SAVE_VERSION)`: an ordered table of pure
+     `Dictionary -> Dictionary` steps (`1 -> 2`, `2 -> 3`, ...), applied in
+     sequence, each copying the payload so unknown fields survive. A step returns
+     `null` when it cannot honestly upgrade, which keeps today's refusal message.
+     A migrated save is **not** written on load - the upgrade lands only when the
+     player saves again - so a refused or interrupted save still cannot rewrite
+     player data. The existing `.tmp` + `.bak` write path is unchanged.
+   - **Version floor.** `SUPPORTED_MIN_VERSION = 1`: older files are refused with
+     "too old to migrate" rather than by accident, and a newer file than the
+     binary keeps the current incompatible-version refusal (no downgrade path).
+   - **Content stays separate.** `content_version` keeps its refusal. A save names
+     item, character and area ids that only the campaign author can re-map, so
+     content compatibility is an authoring decision per campaign, not a shared
+     hook; this also matches the existing compat-probe expectations.
+   - **Settings.** Add `[meta] version=1` to `settings.cfg`, clamp `text_scale`
+     (0.8-1.6, as the setter does) and volumes (0-1) on load, keep applying
+     keybinds only when `InputMap.has_action` passes, and make `save_settings`
+     merge into the loaded `ConfigFile` instead of writing a fresh one, so a newer
+     build's sections and keys are not dropped.
+   - **Policy, stated once:** saves are forward-migrated on read and rewritten
+     only on an explicit save; newer-than-binary and content-version mismatches are
+     refused with the file untouched; every migration step stays in the table
+     forever and is pinned by a fixture.
+   - **Tests (smallest set).** `tests/test_save_migrations.gd` with one shipped
+     fixture per step asserting added fields, preserved unknown fields and
+     unchanged file bytes on read; refusal for a future version and for a
+     below-floor version; a `null` step leaving session and file untouched; and a
+     `load_game` on a migrated payload. Extend the settings persistence test with
+     an unknown-section round trip and an out-of-range `text_scale`, and add the
+     unknown-field case to `--save-compat-ui-probe` rather than a new probe.
 5. **Export build.** **Done, with limits.** `export_presets.cfg` is present and
    candidates are exported to `builds/qa/candidates/<id>/` with a `BUILD.txt`
    identity and hash; the latest verified candidate and its probe results are
@@ -153,7 +187,8 @@ Ranked next work:
    must not be scripted.
 3. Data-driven passive feats (move `Feats.CATALOG` rows to JSON, keep compiled
    defaults for compatibility).
-4. Save schema migration hook before the first public content update.
+4. Save schema migration hook before the first public content update (design and
+   tests listed under P0 item 4).
 5. Spell resolution handler table, matching the effect-registry pattern.
 
 ## P1 — Campaign content pipeline

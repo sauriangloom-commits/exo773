@@ -3076,8 +3076,9 @@ The ring stayed on Close in every frame; no arrow removed it. Captures are in
 `builds/qa/runs/2026-11-20_scrollfix/native/t1.0` and `t1.6`.
 
 **Export acceptance:** 9/9 (three validators, the Inspect probe, the journal and
-refusal layouts at 100 % and 160 %, and the existing-save load path), log at
-`builds/qa/runs/2026-11-20_scrollfix/acceptance.log`.
+refusal layouts at 100 % and 160 %, and the existing-save load path). The
+per-check logs are in `builds/qa/runs/2026-11-20_scrollfix/`; no consolidated
+`acceptance.log` was written for this run - see "Candidate audit" below.
 
 **Limits and what is not covered.** The harness cannot read the focus owner, so
 focus retention rests on the ring staying on Close plus the unit assertions; the
@@ -3155,7 +3156,8 @@ Captures: `builds/qa/runs/2026-11-20_scrollfix/native/pane1.0` and `pane1.6`
 
 **Export acceptance:** 11/11 - list-campaigns, both validators, the Inspect probe,
 the settings, journal and refusal layouts at 100 % and 160 %, and the
-existing-save load path - log at `builds/qa/runs/2026-11-20_panefix/acceptance.log`.
+existing-save load path; per-check logs in `builds/qa/runs/2026-11-20_panefix/`
+(no consolidated `acceptance.log` - see "Candidate audit" below).
 
 ### Limits (measured, not fixed here)
 
@@ -3231,8 +3233,9 @@ SHA-256 `42b003c9`), 1280x720, Settings opened from Pause, OS-level keys:
 Captures: `builds/qa/runs/2026-11-20_focusfix/native/focus1.0` and `focus1.6`.
 
 **Export acceptance:** 11/11 (list-campaigns, both validators, the Inspect probe,
-settings/journal/refusal layouts at 100 % and 160 %, save-compat UI), log at
-`builds/qa/runs/2026-11-20_focusfix/acceptance.log`.
+settings/journal/refusal layouts at 100 % and 160 %, save-compat UI); per-check
+logs in `builds/qa/runs/2026-11-20_focusfix/` (no consolidated `acceptance.log` -
+see "Candidate audit" below).
 
 ### Remaining limits
 
@@ -3250,3 +3253,109 @@ settings/journal/refusal layouts at 100 % and 160 %, save-compat UI), log at
   list; the measured results are identical, but the wrapper is the redundant half.
 - **No key repeat**, gamepad page keys remain unhandled, and the reveal does not
   run again if a pane's content is re-laid out while the focus owner is unchanged.
+
+## Candidate audit and migration readiness (2026-11-20)
+
+**No candidate replaced another.** Three builds coexist under
+`builds/qa/candidates/`, each in its own directory with its own `BUILD.txt`;
+nothing was overwritten or deleted, and every on-disk hash matches its record.
+Re-hashing the three executables reproduces `BUILD.txt` exactly.
+
+| Candidate | built_at | source_head | dirty entries | exe bytes | exe_sha256 (8) | on disk |
+| --- | --- | --- | --- | --- | --- | --- |
+| modal_scroll_2026-11-20 | 17:46:48 | 2b3ba36 | 2 | 110,667,352 | 0c2f982e | matches |
+| modal_pane_2026-11-20 | 18:03:47 | 1d89925 | 2 | 110,667,640 | 6217fe39 | matches |
+| modal_focus_2026-11-20 | 18:18:04 | 60c1221 | 3 | 110,668,280 | 42b003c9 | matches |
+
+The three `worktree_diff_sha256` values are different (`d5ace748`, `3842d180`,
+`cdd57a78`), so the binaries are three distinct source states, not twins: each was
+exported from its unit's uncommitted work, and that work becomes the `source_head`
+of the next candidate. `modal_focus_2026-11-20` is therefore the *newest* build,
+not a relabelled `modal_pane_2026-11-20`.
+
+**Which result supports which build.**
+
+| Evidence | Build | Location note |
+| --- | --- | --- |
+| acceptance run, 9/9 | modal_scroll `0c2f982e` | `runs/2026-11-20_scrollfix/`, script names the exe |
+| native `t1.0`, `t1.6` (Journal) | modal_scroll `0c2f982e` | `runs/2026-11-20_scrollfix/native/` |
+| acceptance run, 11/11 | modal_pane `6217fe39` | `runs/2026-11-20_panefix/`, script names the exe |
+| native `settings10` (defect reproduction, 17:57) | modal_scroll `0c2f982e` | captured before the pane export |
+| native `pane1.0`, `pane1.6`, `slider1.0`, `slider1.6`, `slider2_1.0`, `slider2_1.6`, `party10`, `reach10` (18:04-18:07) | modal_pane `6217fe39` | stored under `runs/2026-11-20_scrollfix/native/` |
+| native `source_t1.0`, `source2_t1.0` | source tree, **no binary** | named for the source run |
+| acceptance run, 11/11 | modal_focus `42b003c9` | `runs/2026-11-20_focusfix/`, script names the exe |
+| native `focus1.0`, `focus1.6` | modal_focus `42b003c9` | stored under `runs/2026-11-20_panefix/native/` |
+| `suite.log` in the run directories | source tree, **no binary** | GUT always runs from source |
+| `probe.log`, matrix output | source tree, **no binary** | headless probes |
+
+The harness does not embed the executable hash in a frame, so these attributions
+rest on the `BUILD.txt` timestamps above, each run script's `EXE=` path, and the
+first-frame mtimes: 17:46/17:47 for modal_scroll, 17:57 for the pre-fix
+reproduction, 18:04-18:07 for modal_pane, 18:19-18:20 for modal_focus.
+`runs/2026-11-20_scrollfix/native/appdata` is a reused profile, not evidence.
+
+**Missing or misplaced artifacts (recorded, not repaired).**
+
+- **No `acceptance.log` exists for any of the three runs.** The scripts print their
+  summary to the terminal and write per-check logs only (`list.log`,
+  `validate_campaigns.log`, `validate_diagnostics.log`, `inspect.log`,
+  `journal_t1.*.log`, `refusal_t1.*.log`, `settings_t1.*.log`, `save_ui.log`,
+  `shots/`). The three sections above cited `acceptance.log`; that citation was
+  wrong and is corrected. By contrast,
+  `runs/2026-11-20_journal_accept/acceptance.log` and
+  `runs/2026-11-20_ui_fix/acceptance.log` exist, so the consolidated log is an
+  earlier script's behaviour that this one dropped.
+- **`candidates/modal_focus_2026-11-20/export.log` is stale.** Its mtime (16:48)
+  predates that candidate's `BUILD.txt` and exe (18:18) and it carries no build id,
+  so it cannot be the log of that export. `BUILD.txt` plus the matching on-disk
+  hash are the authority. The other two candidate directories contain no export
+  log at all.
+- **Native frames are one run directory behind.** The pane unit wrote its frames
+  under `2026-11-20_scrollfix/native/` and the focus unit under
+  `2026-11-20_panefix/native/`, while their acceptance logs sit in `panefix/` and
+  `focusfix/`. The frames are internally consistent with the hashes quoted above;
+  they are just not colocated with the run that cites them.
+
+**Status: closed UI defects.**
+
+| Defect | Closed by | Evidence on the named build |
+| --- | --- | --- |
+| Settings list unreachable (27 px wrapper pan) | `60c1221` | modal_pane `6217fe39`: probe `INNER(463)`, native `pane1.0` |
+| Up/Down from `HSlider`/`TabBar` ran traversal | `60c1221` | modal_pane: probe focus stays, native `slider2_*`, `party10` |
+| Settings' last 27 px clipped at 100 % | `01ced3a` | modal_focus `42b003c9`: native `focus1.0/01_bottom` |
+| Focus landing on a row below the fold | `01ced3a` | modal_focus: native `focus1.0/03_restore_focus`, Tab x18 |
+
+**Status: remaining limits** (unchanged by this audit, all recorded earlier).
+
+- Reveal runs only while a modal is open; the campaign creator keeps its own path.
+- A control taller than its pane aligns to the pane's top, so its bottom can clip.
+- One pane follows the focus per key press; two scrolling panes move only one.
+- `follow_focus` remains on the shared body beside the reveal walk (redundant half).
+- No key repeat; gamepad page keys unhandled; no reveal after a silent relayout.
+- Save and settings have version refusal only, and these three runs have no
+  consolidated acceptance log (see below).
+
+**Migration readiness (assessment only; nothing implemented).**
+
+- **Saves.** `SaveSystem` writes `save_version = 1` and `read_save` refuses any
+  other value before validating, with a message naming the found version; a
+  migrated path does not exist. `GameSession.load_game` additionally refuses a
+  `content_version` that differs from the installed campaign, and it validates
+  party ids, equipment and inventory items against content, dungeon/quest/flag
+  shapes, numeric fields, facing 0-3, and every saved area id before touching live
+  state. Writes are atomic (temp file, `.bak` restore on failure), but the `.bak`
+  is never read, so a crash between the two renames leaves an unread backup.
+- **Settings.** `user://settings.cfg` is a `ConfigFile` with `audio`, `display` and
+  `input` sections, no version key, and a tolerant read (missing keys default).
+  `save_settings` rebuilds a fresh `ConfigFile`, so unknown sections written by a
+  newer build would be dropped, and `load_settings` does not clamp `text_scale`
+  (the setter clamps to 0.8-1.6, the file path does not). Keybind entries are only
+  applied when `InputMap.has_action` passes, so removed actions linger harmlessly.
+- **Roadmap.** P0 item 4 already asks for "a schema migration hook before the first
+  public content update; keep the version refusal until then", and the debt list
+  records "no save migration beyond version refusal" and "settings persistence
+  path/versioning is minimal". The smallest design that satisfies it - a read-only
+  migration table, a version floor, a settings `meta` section that merges instead
+  of rewriting, and one fixture per step - is written out in ROADMAP.md under that
+  item, marked proposed and not implemented. `content_version` stays a refusal:
+  a save names ids that only the campaign author can re-map.
