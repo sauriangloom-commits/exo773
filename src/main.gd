@@ -6811,11 +6811,17 @@ func _modal_owns_keyboard() -> bool:
 
 
 ## The focused control, or one of its ancestors inside the modal, that uses these
-## keys for itself: a caret (Up/Down), a value (SpinBox, Slider), a list or tree
+## keys for itself: a caret (Up/Down), a vertical value (VSlider), a list or tree
 ## selection, or a multi-line editor that pages its own text (PageUp/PageDown).
 ## While one holds focus the key is left alone rather than taken away from the
-## player's editing. Every other control - a Button, a CheckBox, a prose body -
-## has no use for it, so it scrolls the modal.
+## player's editing.
+##
+## An HSlider and a TabBar are deliberately not on this list: they use Left/Right
+## (measured: Right moves 0.50 -> 0.55 and switches a tab; Up/Down change neither),
+## so leaving Up/Down with them only let Godot's focus traversal move the ring.
+## They scroll the body instead. A SpinBox stays listed as a conservative default
+## for a numeric field, although Godot 4.7 does not act on Up/Down for it either;
+## no shipped modal contains one.
 func _focused_control_needs_vertical_keys(page: bool) -> bool:
 	var owner := get_viewport().gui_get_focus_owner()
 	if owner == null:
@@ -6828,10 +6834,9 @@ func _focused_control_needs_vertical_keys(page: bool) -> bool:
 				return true
 			if not page and (
 				control is LineEdit
-				or control is Range
+				or (control is Range and not control is HSlider)
 				or control is ItemList
 				or control is Tree
-				or control is TabBar
 			):
 				return true
 		node = node.get_parent()
@@ -6852,25 +6857,33 @@ func _modal_body_line_height() -> int:
 	return maxi(1, int(round(font.get_height(size))))
 
 
-## The container the scroll keys should actually move. Usually the modal's own
-## body. Some panels wrap their text in a second ScrollContainer of their own (the
-## Journal does), so the outer body fits exactly while the inner one holds the
-## overflow; then the inner one is the visible body. The outer container wins when
-## it can travel, because moving it scrolls the whole panel.
+## The container the scroll keys should actually move: the visible pane with the
+## most vertical travel, and the shared body on a tie.
+##
+## Panels routinely wrap their content in a ScrollContainer of their own (the
+## Journal, Inventory, character sheet and Settings all do), so the shared body is
+## often just a wrapper whose own minimum size makes it travel a few pixels while
+## the list the player reads sits inside it. Choosing by travel picks the pane that
+## holds the content; choosing the wrapper first left the rest of Settings
+## unreachable. Ties keep the shared body, so a plain body still scrolls itself.
+## Invisible panes are skipped: a page that was never laid out reports a page of 0
+## and therefore a huge, meaningless travel (hidden tabs, for example).
 func _modal_body_target() -> ScrollContainer:
 	if modal_scroll == null:
 		return null
-	if _scroll_travel(modal_scroll) > 0:
-		return modal_scroll
+	var best := modal_scroll
+	var best_travel := _scroll_travel(modal_scroll)
 	for node in modal_scroll.find_children("*", "ScrollContainer", true, false):
 		var inner := node as ScrollContainer
 		if inner == null or not inner.is_visible_in_tree():
 			continue
 		if inner.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED:
 			continue
-		if _scroll_travel(inner) > 0:
-			return inner
-	return modal_scroll
+		var travel := _scroll_travel(inner)
+		if travel > best_travel:
+			best = inner
+			best_travel = travel
+	return best
 
 
 ## How far a container can travel. The container clamps too, but clamping here

@@ -1982,3 +1982,33 @@ arrow-owning control list is maintained by hand (`OptionButton` is not on it);
 only one inner scrolling body is chosen; focus retention is asserted in unit
 tests and inferred natively from the ring, because the harness cannot read the
 focus owner.
+
+## Modal pane selection and slider arrows fixed (2026-11-20)
+
+Both gaps from the scrolling assessment are closed. `_modal_body_target()` now
+picks the visible pane with the greatest vertical travel and keeps the shared body
+on ties, so Settings at 100 % scrolls its 463 px list instead of a 27 px wrapper
+(reach 27 -> 463 px, unreachable 436 -> 0); and `HSlider` and `TabBar` left the
+arrow exemption, so Up/Down scroll from them while Left/Right still adjust the
+slider and switch tabs. `VSlider`, `SpinBox`, `LineEdit`, `TextEdit`, `ItemList`
+and `Tree` keep the keys. Before the change a Down from a volume slider moved the
+ring to the Fullscreen check box (100 %) or the "D" rebind button (160 %); now the
+ring stays and the list moves.
+
+Five tests were added to `tests/test_modal_focus.gd`: wrapper-and-list shape,
+long body with a short inner list, focused horizontal slider, focused tab bar, and
+a vertical slider keeping the arrows. Suite **604/604, 6,720 assertions, 48
+scripts, exit 0**; both validators and the Inspect probe pass; export acceptance
+11/11. Candidate `modal_pane_2026-11-20` (110,667,640 bytes, `6217fe39`) was
+verified natively at 100 % and 160 %: PageDown x4 reveals the last rebind row and
+"Restore Default Controls", further PageDowns are byte-identical at the end, the
+music slider steps 55 -> 70 % on Right with Down scrolling two lines per press and
+Up returning to the identical frame, and the party tab strip switches on Right
+and scrolls on Down.
+
+Recorded limits: Settings still clips its last ~27 px through the wrapper's own
+minimum-size overflow (the list is at its end, the wrapper never moves); inner
+panel lists do not follow focus, so Tab can land on a row below the fold (Enter
+still activates it); one pane is chosen per scroll; `SpinBox` remains exempt
+although Godot 4.7 ignores Up/Down for it; gamepad page keys and key repeat remain
+out of scope.

@@ -3028,9 +3028,11 @@ press moves once: held-key echo is filtered for every modal key, this one
 included. Home/End stay unbound, and the body is still not a Tab stop.
 
 **Keys a focused control needs stay with it.** While focus sits in a `LineEdit`,
-`TextEdit`, `Range` (SpinBox, Slider), `ItemList`, `Tree` or `TabBar` - or a child
-of one - Up/Down are left alone. PageUp/PageDown are only yielded to a `TextEdit`,
-which pages its own caret. A popup opened from a modal takes focus into its own
+`TextEdit`, `SpinBox`, a `VSlider`, `ItemList`, `Tree` - or a child of one -
+Up/Down are left alone. `HSlider` and `TabBar` no longer keep them; both act on
+Left/Right and their Up/Down did nothing but hand the ring to Godot's traversal,
+so they scroll now (see "Pane selection and slider arrows" below).
+PageUp/PageDown are only yielded to a `TextEdit`, which pages its own caret. A popup opened from a modal takes focus into its own
 window, and then nothing in the body is intercepted. Every other control (a
 Button, a CheckBox, a prose body) has no use for those keys, so they scroll.
 
@@ -3039,9 +3041,10 @@ in a `ScrollContainer` of its own, so the shared body fits exactly and cannot
 travel. The first version of this fix therefore did nothing at all in the Journal,
 and the frames proved it (six captures, byte-identical). Measured on the real
 Journal: the shared body reports `max 420 / page 420` (travel 0) while its inner
-body reports `max 3414 / page 453` (travel 2961). `_modal_body_target()` now
-returns the shared body when it can travel and otherwise the first visible inner
-`ScrollContainer` that can, so the keys move the text the player can see. A body
+body reports `max 3414 / page 453` (travel 2961). `_modal_body_target()`
+picks the visible pane with the most vertical travel (the shared body on a tie),
+so the keys move the text the player can see; the rule and its limits are
+recorded in "Pane selection and slider arrows" below. A body
 that fits everywhere still does not move; the key is consumed anyway so an arrow
 cannot fall through to focus traversal and take the ring off the modal.
 
@@ -3083,7 +3086,97 @@ native runs (the unit tests assert those two). Holding a key does not repeat.
 Gamepad page keys are not handled - only keyboard events are. The arrow-owning
 list is maintained by hand: `OptionButton` is deliberately not on it (it opens on
 Enter/Space), so arrows scroll the body while one has focus. With several
-scrollable children the outer body wins when it travels, otherwise the first
-inner one that can; a modal with two independently scrolling panes would scroll
-only the first. The wheel is untouched, and its behaviour is still evidenced by
+scrollable children the pane with the most travel wins (see below); a modal with
+two independently scrolling panes would still scroll only one. The wheel is untouched, and its behaviour is still evidenced by
 the earlier fixture run rather than repeated here.
+
+## Pane selection and slider arrows (2026-11-20)
+
+The scrolling unit shipped with two gaps, both reproduced before this change.
+Settings at 100 % text scrolled its wrapper (27 px of travel) instead of the list
+inside it (463 px), so six PageDowns stopped at 27 px and 94 % of the dialog was
+unreachable; and Up/Down on a focused `HSlider` or on the party sheet's tab strip
+did not scroll at all - they ran Godot's focus traversal instead, taking the ring
+from a volume slider to the Fullscreen check box at 100 % and to the "D" rebind
+button at 160 %, which also contradicted the rule that arrows scroll and never
+move focus.
+
+**Pane rule (new).** `_modal_body_target()` returns the visible pane with the
+greatest vertical travel, and the shared body on a tie. Invisible panes are
+skipped because a pane that was never laid out reports `page = 0` and therefore a
+huge, meaningless travel (a hidden character-sheet tab reported 21,643 px; an
+unfiltered rule picked it). Ties keep the shared body, so a plain dialog still
+scrolls itself and a long prose body with a short nested list keeps the body
+(measured 527 px versus 0 px). Measured targets after the change: Settings
+463 px (100 %) and 679 px (160 %), party sheet 402 px, inventory 744 px, Journal
+inner body 2,961 px, Save/Load/Pause/Training 0, Create campaign 14, combat
+potions 7, combat inspect 517.
+
+**Arrow rule (changed).** `HSlider` and `TabBar` left the exemption list: both act
+on Left/Right (Right moved the music slider 55 % -> 70 %, switched the party tab
+0 -> 1), and in Godot 4.7 their Up/Down is unhandled by the control, so holding
+them only let traversal take the focus. From either one Up/Down now scroll the
+body and the ring stays put. `VSlider` (measured 0.50 -> 0.45 on Down), `SpinBox`,
+`LineEdit`, `TextEdit`, `ItemList` and `Tree` keep the keys.
+
+**Tests.** Five cases added to `tests/test_modal_focus.gd`: a wrapper whose list
+travels further scrolls that list to its end while the wrapper stays at 0; a long
+body with a short inner list keeps the body; a focused horizontal slider scrolls
+the body by exactly two lines, keeps focus and still changes value on Right
+without scrolling; a focused tab bar scrolls on Down, keeps its tab and still
+switches tabs on Right; a focused vertical slider consumes the arrows and the body
+does not move. Suite **604/604, 6,720 assertions, 48 scripts, exit 0**; both
+validators and the Inspect probe pass in source.
+
+**Headless measurement on the real modal** (`probe_modal_matrix.gd`): Settings at
+100 % now reports `outer=27 target=INNER(463)` with six PageDowns reaching 463 and
+`unreachable=0` (before: `target=OUTER`, reaching 27); at 160 % `INNER(679)`.
+Every volume and text-size slider keeps focus through Down at both scales
+(`focus HSlider->HSlider`, value unchanged), and the Settings confirmation dialog
+still leaves the body at 0 with focus on Close.
+
+**Native, exported candidate** `modal_pane_2026-11-20` (110,667,640 bytes,
+SHA-256 `6217fe39`), 1280x720, Settings opened from Pause (`Esc`, `Tab` x4,
+`Enter`), OS-level keys:
+
+| Step | 100 % | 160 % |
+| --- | --- | --- |
+| PageDown x4 | last rebind row ("Pause - Escape") and "Restore Default Controls" visible | same |
+| PageDown x2 more | frame byte-identical (clamped at the end) | same |
+| PageUp x6 | frame byte-identical to the opening one | same |
+| Focus Music slider, Right x3 | 55 % -> 70 %, ring stays on the slider | same |
+| Down x1, then x2 | list steps down two lines, then two more; ring still on the slider | same |
+| Up x3 | frame byte-identical to the post-Right frame | same |
+| Party sheet tab strip, Right | second tab (Sera Vane), ring on the strip | - |
+| Down x2, Up x2 | text scrolls four lines, then returns byte-identically | - |
+
+Captures: `builds/qa/runs/2026-11-20_scrollfix/native/pane1.0` and `pane1.6`
+(PageDown reach), `slider2_1.0` and `slider2_1.6` (slider), `party10` (tab strip).
+
+**Export acceptance:** 11/11 - list-campaigns, both validators, the Inspect probe,
+the settings, journal and refusal layouts at 100 % and 160 %, and the
+existing-save load path - log at `builds/qa/runs/2026-11-20_panefix/acceptance.log`.
+
+### Limits (measured, not fixed here)
+
+- **The wrapper still clips its last 27 px at 100 %.** `Panels.settings()` gives
+  its content root a 720x480 minimum inside a body that is 453 px tall, and with
+  the keys and the wheel both moving the 463 px list, that 27 px sliver never
+  scrolls: the bottom edge of "Restore Default Controls" is cut in the
+  100 % bottom frame (fully visible at 160 %, where the wrapper cannot travel).
+  Removing that minimum, or chaining to the wrapper once the list is at its end,
+  would close it.
+- **Inner panel lists do not follow focus.** Only the shared body has
+  `follow_focus = true`. Tabbing to the 19th control in Settings focuses "Restore
+  Default Controls" at y = 1043 while the body spans 136-616, so the row is
+  off-screen; `Enter` still activates it (the confirmation dialog opened natively,
+  `reach10/01_confirm_open.png`). PageDown reaches it, Tab does not reveal it.
+- **One pane per scroll.** The rule chooses a single pane; a modal with two
+  independently scrolling panes would still move only the one with more travel.
+- **`SpinBox` stays exempt** as a conservative default even though Godot 4.7
+  ignores Up/Down for it (measured: value unchanged, focus lost). No shipped modal
+  contains one - it appears only on the creator screen.
+- **Popups and `OptionButton`** behave as recorded in the assessment: a
+  confirmation dialog keeps the keys with the body at 0, an `OptionButton` opens
+  on Enter and ignores Down, and no modal contains one.
+- Gamepad page keys are still unhandled, and holding a key still does not repeat.

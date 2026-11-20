@@ -478,6 +478,188 @@ func test_a_body_that_wraps_its_own_scroll_container_still_scrolls() -> void:
 	assert_gt(line, 0, "the line step is positive")
 
 
+## Settings' shape at 100 %: a wrapper whose own minimum size gives it a sliver of
+## travel, and the list the player reads inside it. The list is the pane.
+func _open_wrapped_modal() -> void:
+	main.call("open_modal", "QA Wrapped", func() -> Control:
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(600, 420)
+		root.add_theme_constant_override("separation", 4)
+		var inner := ScrollContainer.new()
+		inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var list := VBoxContainer.new()
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for index in 40:
+			list.add_child(ThemeBuilder.body("QA wrapped row %02d of a long settings list." % index, false, 15))
+		inner.add_child(list)
+		root.add_child(inner)
+		return root
+	, 660, 380)
+	await wait_frames(3)
+
+
+## A tall prose body with one short nested list: the body must keep the keys.
+func _open_body_with_short_list() -> void:
+	main.call("open_modal", "QA Body", func() -> Control:
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(600, 0)
+		root.add_theme_constant_override("separation", 4)
+		for index in 40:
+			root.add_child(ThemeBuilder.body("QA prose line %02d of a long body." % index, false, 15))
+		var inner := ScrollContainer.new()
+		inner.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		inner.custom_minimum_size = Vector2(0, 60)
+		var short_list := VBoxContainer.new()
+		short_list.add_child(ThemeBuilder.body("One short row.", true, 13))
+		short_list.add_child(ThemeBuilder.body("Another short row.", true, 13))
+		inner.add_child(short_list)
+		root.add_child(inner)
+		return root
+	, 660, 380)
+	await wait_frames(3)
+
+
+func _open_control_modal(kind: String) -> void:
+	main.call("open_modal", "QA Control", func() -> Control:
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(600, 0)
+		root.add_theme_constant_override("separation", 4)
+		if kind == "hs":
+			var slider := HSlider.new()
+			slider.min_value = 0.0
+			slider.max_value = 1.0
+			slider.step = 0.05
+			slider.value = 0.5
+			root.add_child(slider)
+		elif kind == "vs":
+			var vertical := VSlider.new()
+			vertical.min_value = 0.0
+			vertical.max_value = 1.0
+			vertical.step = 0.05
+			vertical.value = 0.5
+			vertical.custom_minimum_size = Vector2(40, 80)
+			root.add_child(vertical)
+		elif kind == "tabs":
+			var bar := TabBar.new()
+			bar.add_tab("One")
+			bar.add_tab("Two")
+			root.add_child(bar)
+		for index in 40:
+			root.add_child(ThemeBuilder.body("QA control filler %02d." % index, false, 15))
+		return root
+	, 660, 380)
+	await wait_frames(3)
+
+
+func test_a_wrapper_with_a_taller_list_scrolls_the_list() -> void:
+	await _open_wrapped_modal()
+	var outer := _scroll()
+	if outer == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var inner := _first_of_type(outer, "ScrollContainer") as ScrollContainer
+	assert_not_null(inner, "the wrapper holds its own list")
+	if inner == null:
+		return
+	var outer_travel := int(main.call("_scroll_travel", outer))
+	var inner_travel := int(main.call("_scroll_travel", inner))
+	assert_gt(outer_travel, 0, "the wrapper itself can travel a sliver")
+	assert_gt(inner_travel, outer_travel, "the list travels further than the wrapper")
+	assert_eq(main.call("_modal_body_target"), inner, "the keys move the list, not the wrapper")
+	for step in 3:
+		_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(inner.scroll_vertical, inner_travel, "PageDown reaches the end of the list")
+	assert_eq(outer.scroll_vertical, 0, "the wrapper stays where it was")
+
+
+func test_a_long_body_with_a_short_inner_list_scrolls_the_body() -> void:
+	await _open_body_with_short_list()
+	var outer := _scroll()
+	if outer == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var inner := _first_of_type(outer, "ScrollContainer") as ScrollContainer
+	assert_not_null(inner, "the body holds a short nested list")
+	if inner == null:
+		return
+	assert_gt(int(main.call("_scroll_travel", outer)), int(main.call("_scroll_travel", inner)), "the body travels further")
+	assert_eq(main.call("_modal_body_target"), outer, "the prose body keeps the keys")
+	var line: int = main.call("_modal_body_line_height")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_gt(outer.scroll_vertical, 0, "PageDown moves the body")
+	assert_eq(inner.scroll_vertical, 0, "the short list does not move")
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_gt(line, 0, "the line step is positive")
+
+
+func test_a_focused_horizontal_slider_scrolls_the_body_without_changing_its_value() -> void:
+	await _open_control_modal("hs")
+	var slider := _first_of_type(_modal(), "HSlider") as HSlider
+	var scroll := _scroll()
+	assert_not_null(slider, "the modal offers a horizontal slider")
+	if slider == null or scroll == null:
+		return
+	slider.grab_focus()
+	await wait_frames(2)
+	var line: int = main.call("_modal_body_line_height")
+	var before_value := slider.value
+	var before_scroll := scroll.scroll_vertical
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, before_scroll + 2 * line, "Down scrolls the body from a slider")
+	assert_eq(slider.value, before_value, "Down does not change the slider's value")
+	assert_eq(_focus_owner(), slider, "the slider keeps focus")
+	var scrolled := scroll.scroll_vertical
+	_send_key(KEY_RIGHT)
+	await wait_frames(1)
+	assert_gt(slider.value, before_value, "Right still adjusts the slider")
+	assert_eq(scroll.scroll_vertical, scrolled, "Right does not scroll the body")
+	assert_eq(_focus_owner(), slider, "the slider still holds focus after Right")
+
+
+func test_a_focused_tab_bar_scrolls_the_body_and_right_still_switches_tabs() -> void:
+	await _open_control_modal("tabs")
+	var bar := _first_of_type(_modal(), "TabBar") as TabBar
+	var scroll := _scroll()
+	assert_not_null(bar, "the modal offers a tab bar")
+	if bar == null or scroll == null:
+		return
+	bar.grab_focus()
+	await wait_frames(2)
+	var line: int = main.call("_modal_body_line_height")
+	assert_eq(_focus_owner(), bar, "the tab bar holds focus")
+	_send_key(KEY_RIGHT)
+	await wait_frames(1)
+	assert_eq(bar.current_tab, 1, "Right still switches tabs")
+	assert_eq(scroll.scroll_vertical, 0, "Right does not scroll the body")
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 2 * line, "Down scrolls the body from the tab bar")
+	assert_eq(bar.current_tab, 1, "Down does not change the tab")
+	assert_eq(_focus_owner(), bar, "the tab bar keeps focus")
+
+
+func test_a_focused_vertical_slider_keeps_the_arrows() -> void:
+	await _open_control_modal("vs")
+	var slider := _first_of_type(_modal(), "VSlider") as VSlider
+	var scroll := _scroll()
+	assert_not_null(slider, "the modal offers a vertical slider")
+	if slider == null or scroll == null:
+		return
+	slider.grab_focus()
+	await wait_frames(2)
+	var before := slider.value
+	_send_key(KEY_DOWN)
+	await wait_frames(1)
+	assert_lt(slider.value, before, "a vertical slider still uses Down for its value")
+	assert_eq(scroll.scroll_vertical, 0, "the body does not scroll from a vertical slider")
+	assert_eq(_focus_owner(), slider, "the vertical slider keeps focus")
+
+
 func test_the_scroll_helper_ignores_keys_it_does_not_own() -> void:
 	await _open_tall_modal()
 	for code in [KEY_ENTER, KEY_TAB, KEY_ESCAPE, KEY_W]:
