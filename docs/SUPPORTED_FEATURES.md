@@ -218,6 +218,7 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Responsive Control-based UI at a 1280×720 reference size.
 - Keyboard, mouse and on-screen buttons; focusable controls with visible states.
 - Combat log with rolls, modifiers, DCs, damage, conditions and resource changes.
+- Modals keep keyboard focus: Tab and Shift+Tab cycle only the modal's own controls and wrap, background actions stay blocked while one is open, and closing returns focus to the control that opened it (or the first usable control on the screen).
 - Refused exploration actions (a wall, a closed door, an NPC in the way, nothing
   in reach, no one who can pick a lock, a used-up or empty object) write one
   line to the narration log and return the same failure dictionary as before; a

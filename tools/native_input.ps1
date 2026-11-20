@@ -90,6 +90,21 @@ function Save-Shot([string]$name) {
 }
 
 function Send-Key([string]$name, [int]$count) {
+    if ($name -eq 'shifttab') {
+        if ([Native]::GetForegroundWindow() -ne $handle) { Focus-Game | Out-Null }
+        for ($i = 0; $i -lt $count; $i++) {
+            [Native]::keybd_event(0xA0, [byte]([Native]::MapVirtualKey(0xA0, 0)), 0, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 60
+            [Native]::keybd_event(0x09, [byte]([Native]::MapVirtualKey(0x09, 0)), 0, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 60
+            [Native]::keybd_event(0x09, [byte]([Native]::MapVirtualKey(0x09, 0)), 2, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 60
+            [Native]::keybd_event(0xA0, [byte]([Native]::MapVirtualKey(0xA0, 0)), 2, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 240
+        }
+        Write-Output "KEY shifttab x$count"
+        return
+    }
     if (-not $keys.ContainsKey($name)) { throw "unknown key '$name'" }
     if ([Native]::GetForegroundWindow() -ne $handle) { Focus-Game | Out-Null }
     $vk = [byte]$keys[$name]

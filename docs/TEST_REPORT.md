@@ -2892,3 +2892,55 @@ move. Repeat with `--text-scale=1.6`.
 2. **Closing a modal leaves no visible focus.** After Close (by mouse or
    Escape) no control shows a focus ring until Tab is pressed again. Minor;
    evidence `t100/seq/09_close_click.png`, `t160/focus/04_close_click.png`.
+
+## Modal focus containment and restoration (2026-11-20)
+
+**Fixed** (`e9a5086`, then `b5dfd9b` for the Shift+Tab direction):
+`open_modal` records the control that had focus, `_input` routes Tab and
+Shift+Tab to `_cycle_modal_focus` (modal controls only, wrapping at both ends,
+scroll bodies skipped), activation is swallowed when focus is not inside the
+modal, and `close_modal` returns focus to the opener or to the screen's first
+usable control. A refresh, or a modal opened from another modal, keeps the
+original opener. The rebind capture still consumes its key before the trap.
+
+**Tests**: `tests/test_modal_focus.gd` (12) covers opening focus, Tab and
+Shift+Tab containment across six stops, both wraps, a Shift+Tab event routed
+backwards, the reported Tab-twice/Enter sequence, world keys while a modal is
+open, restore to the opener, fallback after the opener is gone, refresh keeping
+the opener, Escape, and rebind priority. `tests/test_modal_layout.gd` now
+asserts where focus is restored to instead of that it is released.
+
+**Ran**: full suite **586/586 tests, 6,640 assertions, 48 scripts, exit 0**
+(`builds/qa/suite_modal3.log`). Exported candidate `modal_focus_2026-11-20`
+(110,665,048 bytes, SHA-256
+`fe7511b335be0b56c6dee93a56f9225798f23c4b93ac7214b2eab706a986e368`, source
+`b5dfd9b`): `--list-campaigns`, both validators, `--demo-inspect --inspect-probe`,
+the journal layout scenario at 100 % and 160 %, the refusal scenario at 100 %
+and 160 %, and `--save-compat-ui-probe` — **9/9 runs, 0 failures**
+(`builds/qa/runs/2026-11-20_modal/export/`).
+
+**Native input at 1280x720** (`tools/native_input.ps1`, OS-level keys, wheel and
+clicks against the candidate):
+
+| Check | 100 % | 160 % |
+| --- | --- | --- |
+| Tab twice with the Journal open | ring stays on Close | same |
+| Tab three times in Paused | Close -> Resume -> Save -> Load, all inside | (same at 100 %) |
+| Tab twice then Enter (the reported sequence) | Journal closes; the world stays 5,10 facing West | same |
+| Close by mouse | modal closes | modal closes |
+| Focus after closing | visible ring on Pause | visible ring on Pause |
+| Wheel over an overflowing Journal | questions 09-18, then back to the top | questions 06-13, then back |
+
+The overflow is a **user** fixture under the run's isolated `APPDATA`
+(`qa_journal_overflow`: 70 questions with no `revealed_by`), built from the
+earlier empty-notes fixture with its manifest id and `content_root` retargeted;
+shipped content is untouched. Wheel up at the top is a no-op, which is why the
+scroll-down turn carries the evidence.
+
+**Still unverified**: Shift+Tab as a real OS chord. The synthetic shift state
+never reaches Godot's modifier mask, so the game received a plain Tab (two
+attempts, `VK_SHIFT` and `VK_LSHIFT`); the backward cycle rests on two unit
+tests. Manual step: open Pause (Esc), hold Shift, press Tab — the ring should
+move from Close to Return to main menu; press again to walk backwards. Enter
+activating a focused button is native-verified only: headless GUI key activation
+does not fire in the harness, so no unit test covers that half.

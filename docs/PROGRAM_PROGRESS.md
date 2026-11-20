@@ -1916,3 +1916,23 @@ control with visible focus. Neither is caused by the refusal logging.
 The `.uid` question is settled: `tests/*` is excluded from the preset and the
 candidate contains no test script names, so the untracked sidecar did not touch
 the build. It is committed now (`b203a1d`).
+
+## Modals own their focus now (2026-11-20)
+
+The two focus defects recorded yesterday are fixed: Tab and Shift+Tab cycle only
+the active modal's controls and wrap, background activation is swallowed, and
+closing returns focus to the opener (or the screen's first usable control),
+including across a refresh or a modal opened from another modal. The rebind
+capture keeps priority.
+
+`tests/test_modal_focus.gd` adds 12 cases and two layout assertions were
+retargeted from "focus released" to "focus restored". Suite **586/586, 6,640
+assertions, 48 scripts**; exported candidate `modal_focus_2026-11-20` passes
+9/9 acceptance runs (validators, Inspect, journal and refusal layouts at both
+text scales, save-compat UI).
+
+Native input confirms the reported Tab-twice/Enter sequence now closes the
+Journal and leaves the party where it stood, at 100 % and 160 %. Journal wheel
+scrolling, previously unverified because the demo notes fit the modal, is proven
+with a 70-question user fixture at both scales. Shift+Tab could not be injected
+as a real chord; its manual step is in the test report.
