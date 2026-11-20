@@ -1608,7 +1608,9 @@ The reported combat turn loss did not reproduce: a party token opens the
 character sheet and the encounter is untouched; the lost turn in the assessment
 came from the clicks after it. That is now pinned by eight checks added to the
 existing `--demo-inspect --inspect-probe` (they pass in source and candidate; the
-probe keeps seven pre-existing layout failures that also fail without the new
+probe keeps five pre-existing layout failures that also fail without the new
+(recorded here at the time as seven; corrected against the saved baseline log on
+2026-11-20)
 block).
 
 Maela's account became a deliberate decision, in content only: one named entry,
@@ -1664,7 +1666,8 @@ executable (`ashwick_second_ring_2026-11-14`, SHA-256 `457e3b88...`), which was
 not rerun; no human playtest or balance judgement. No suite, validator, package audit
 or checkpoint was produced for this pass — the 541/541 and eight-inspection
 results belong to the earlier implementation boundary, and the windowed probe's
-seven known failures are unchanged and reported, not fixed.
+five known layout failures (recorded as seven at the time; see the 2026-11-20
+reconciliation) are unchanged and reported, not fixed.
 
 Accepted and closed. No further implementation or verification work is authorized
 for this assessment; the epilogue placement and the bell-page wording stay
@@ -1725,11 +1728,15 @@ across 1280x720, 1600x900 and 1920x1017 at 100 % and 160 % for exploration, comb
 dialogue, Settings and the inspect modal, plus fullscreen at 1920x1080 for both
 scales (a 1920x1082 client would now fail).
 
-`--demo-inspect --inspect-probe` now **PASSES**: its five failing checks (seven
-counted in earlier records because two run twice) were the combat sidebar's
-controls being laid out outside the 1280x720 client. No check was relaxed or
-removed. `--party-layout-probe`, `--intro-layout-probe`, `--campaign-list-probe`
-and `--party-limits-probe` also PASS (the first three need their QA fixture
+`--demo-inspect --inspect-probe` now **PASSES**: its five failing checks of 49
+(44 pass, 5 fail) were the combat sidebar's controls being laid out outside the
+1280x720 client. The passing run executes 53 checks, not 49: four `close modal`
+assertions only run once a sheet opens, and the duelist's sheet never opened
+before the fix. No check was relaxed or removed. The earlier "seven" in this file
+and in `TEST_REPORT.md` is unsourced by the saved logs; the reconciliation is in
+`TEST_REPORT.md` (2026-11-20). `--party-layout-probe`, `--intro-layout-probe`,
+`--campaign-list-probe` and
+`--party-limits-probe` also PASS (the first three need their QA fixture
 profile, as before).
 
 Candidate `builds/qa/candidates/ui_scaling_2026-11-20b/RavenloftFoundationEdit.exe`,

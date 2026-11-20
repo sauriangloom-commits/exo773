@@ -2440,9 +2440,10 @@ Evidence, in the existing windowed probe: `--demo-inspect --inspect-probe` now
 replays the grid click on the active party token and requires the sheet to open
 with round, active combatant, `turn_state`, every combatant's HP and the combat
 log length unchanged, then the same after closing. **Eight checks, PASS** in the
-source tree and in the candidate. The probe still reports its **seven
-pre-existing** failures (the first enemy's `Inspect` control is laid out below the
-1280x720 client): an A/B run with the new block removed fails identically, so they
+source tree and in the candidate. The probe still reports its **five pre-existing**
+failures of 49 checks (recorded as seven at the time — see the 2026-11-20
+reconciliation below): the first enemy's `Inspect` control is laid out below the
+1280x720 client. An A/B run with the new block removed fails identically, so they
 are not caused by this work and were left for their own scope.
 
 ### Maela's account is a deliberate decision
@@ -2605,7 +2606,7 @@ Per the authorization: no suite rerun, no validators, no package audit, no new
 executable and no new checkpoint — so the claims stay separate: the full suite
 (541/541, 6,364 assertions) passed at the previous implementation boundary, the
 eight new combat-inspection assertions passed, and the broader windowed probe still
-carries its seven known failures and is not a passing probe.
+carries its five known layout failures and is not a passing probe.
 
 ## UI scaling correction — layout and the client area (2026-11-20)
 
@@ -2642,7 +2643,7 @@ pin so CI measures the same surface a player gets.
 | `tests/test_layout_scaling.gd` (new) | **9/9**, including "nothing escapes a 1280x720 client" for exploration and combat at 160 % |
 | `--validate-campaigns` / `--validate-diagnostics` | PASS / PASS, exit 0 |
 | `--layout-probe` matrix, source tree | **32/32** runs: 1280x720, 1600x900, 1920x1017 (maximized) x 100 %/160 % x exploration, combat, dialogue, Settings, inspect modal; plus fullscreen 1920x1080 at both scales |
-| `--demo-inspect --inspect-probe` | **PASS** (was 5 failed checks / 7 counted; the checks were not changed) |
+| `--demo-inspect --inspect-probe` | **PASS** (baseline: 44 pass / 5 fail of 49; the pass run carries 53 checks because four conditional `close modal` assertions now execute — no check removed) |
 | `--party-layout-probe`, `--intro-layout-probe`, `--campaign-list-probe`, `--party-limits-probe` | PASS (the first three need the `qa_list_*` fixture profile) |
 | Exported candidate `ui_scaling_2026-11-20b`, SHA-256 `6d38c18d8f533a245343ae4df9731e7ae41ad27e2d7b7477c4b2c5a17435dbd7` | `--list-campaigns`, both validators, `--inspect-probe` and an 18-run windowed layout matrix (1280x720 at 100 %/160 % for all five screens, 1920x1017 at 160 %, fullscreen 1920x1080 at 100 %/160 %) — **18/18, exit 0** |
 
@@ -2657,3 +2658,39 @@ still cannot be injected through this harness, so keyboard-only reachability res
 on construction tests. Windows display scaling other than 100 % was not exercised.
 Journal raw-flag text, exploration log length and the "Recorded world events"
 heading overlap are outside this correction and unchanged.
+
+### Reconciliation — the Inspect probe's failure count (2026-11-20)
+
+Earlier records in this file and in `PROGRAM_PROGRESS.md` said the Inspect probe
+kept "seven" pre-existing failures. The saved logs do not support seven; they
+support **five**. Evidence, all from the same probe invocation on the pre-fix
+baseline (`builds/qa/runs/2026-11-20_ui_fix/probe_before/inspect.log`):
+
+| Figure | Value |
+| --- | --- |
+| `PROBE CHECK PASS` lines | 44 |
+| `PROBE CHECK FAIL` lines | 5 |
+| Checks emitted | 49 |
+| Summary line | `PROBE RESULT FAIL scenario=inspect ... failures=5` |
+| Distinct failing labels | 4 (the duelist check is asserted twice: before and after the turn) |
+
+The five are: `control 'inspect QA Inspect Duelist' is on screen` (twice — once
+before and once after the turn), `the marker is still shown at 1.6 text size`,
+`the panel text stays inside the panel at 1.6`, and `the panel shows the standing
+AC 16 and no marker after that turn (line: )`. Every failure has the same cause:
+the duelist's `Inspect` button was laid out below the 1280x720 client, so the
+sheet never opened.
+
+The passing run emits **53** checks, all passing. The four extra ones are
+`control 'close modal' is on screen` and `control 'close modal' is enabled`, each
+asserted once per sheet opening: they live inside the probe's "a sheet is open"
+block, which the baseline never reached. A label-level diff of the two logs shows
+no other difference, so no check was removed, renamed or weakened — the fix added
+executions, not latitude.
+
+No saved artifact anywhere under `builds/` reports seven failures. The printed
+count is the only reproducible figure, and the "seven" is best explained as a
+double-count of the duplicated duelist label (5 + 2) in a record written from
+console output rather than the log; that explanation is plausible but unproven,
+so the number is corrected rather than explained away. Nothing in `tests/` was
+changed for this reconciliation.
