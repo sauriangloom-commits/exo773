@@ -3359,3 +3359,68 @@ reproduction, 18:04-18:07 for modal_pane, 18:19-18:20 for modal_focus.
   of rewriting, and one fixture per step - is written out in ROADMAP.md under that
   item, marked proposed and not implemented. `content_version` stays a refusal:
   a save names ids that only the campaign author can re-map.
+
+## Provenance resolution and migration foundation (2026-11-20)
+
+**The earlier `modal_focus_2026-11-20` binary with hash prefix `fe7511b3` is
+missing.** Two records describe it: the modal-focus section above
+(110,665,048 bytes, SHA-256
+`fe7511b335be0b56c6dee93a56f9225798f23c4b93ac7214b2eab706a986e368`, source
+`b5dfd9b`) and `builds/qa/runs/2026-11-20_modal/report.md`. No file in this
+workspace hashes to that prefix: every `.exe` under `builds/` was re-hashed (36
+files, including the Godot export templates), and
+`builds/qa/runs/2026-11-20_modal/export/` holds logs and a profile only. The
+candidate directory was **reused**: the 18:18 export wrote `42b003c9` into
+`candidates/modal_focus_2026-11-20/`, overwriting that earlier exe, and the
+stale `export.log` (16:48) is the surviving trace. Candidate-name reuse is
+therefore confirmed rather than suspected, and the earlier artifact is
+unrecoverable from this workspace - its results stay documented but cannot be
+re-verified. Nothing was deleted or renamed in this audit.
+
+**Save migration foundation (no version bump, no production step).**
+
+- `src/core/save_migrations.gd`: an ordered table of pure `Dictionary ->
+  Dictionary` steps keyed by the version they upgrade from, `SUPPORTED_MIN_VERSION
+  = 1`, and a copy-on-entry `upgrade(data, from, target)` that returns `null` when
+  a step is missing, a step returns null, or the file is newer than the target.
+  `steps` is empty in production and `target_override` is 0, so the target is
+  `SaveSystem.SAVE_VERSION` (still **1**).
+- `SaveSystem.read_save` upgrades a payload in memory or keeps the exact refusal
+  message it had before (now with `reason: "unsupported_version"` and a
+  `migrated_from` field on success). It never writes: a migrated save is written
+  only when the player saves again, so a refusal or an interrupted load cannot
+  rewrite player data.
+- Tests use synthetic steps only: 1 -> 2 -> 3 chains, unknown fields preserved,
+  missing step, null step, caller payload never mutated, a version below the floor
+  refused even with a step registered, and a newer version refused.
+
+**Settings versioning and write policy.**
+
+- `settings.cfg` now records `[meta] version = 1`. A file without the section is
+  version 1 (everything written before this change). Volumes clamp to 0-1,
+  `text_scale` to 0.8-1.6 (the slider's own range), and a flag accepts `true`,
+  `yes`, `1`, `on` or a number instead of erroring on `bool("yes")`.
+- `save_settings` merges into the file it loaded, so unknown sections and keys
+  from another build survive, and it derives only the known keys.
+- **Newer-file policy, defined before any write:** if the file's version exceeds
+  `SETTINGS_VERSION`, its values are still read and clamped and changes still
+  apply in memory, but `save_settings` refuses to write (`settings_newer`), so the
+  newer build's file is never damaged. Tests cover the flag, the unread-write and
+  the unchanged bytes.
+- Unknown keybind actions are kept in settings (so a later build can use them) and
+  applied only when `InputMap.has_action` passes. `Game.settings_path` is
+  redirectable so tests never touch a player's file.
+
+**Tests.** `tests/test_save_migrations.gd` (9 cases) and
+`tests/test_settings_migration.gd` (6 cases) join the suite: **623/623, 6,842
+assertions, 50 scripts, exit 0**. Failure paths asserted: unsupported and newer
+versions, below-floor versions, a missing step, a refusing step, the caller's
+payload unchanged, the save file byte-identical with no `.tmp`/`.bak` left, live
+gold/position/area/party untouched after a refused `load_game`, and a synthetic
+upgrade reaching live state without rewriting the file. Settings: defaults on a
+missing file, clamps, unknown section/key survival, newer-file read-only, legacy
+versionless file upgraded on the next write, and unknown binding preservation.
+
+**Checks run in source:** `--validate-campaigns` PASS, `--validate-diagnostics`
+PASS, `--demo-inspect --inspect-probe` PASS, `--save-compat-ui-probe` PASS (all
+eight compat checks, including "refusal leaves the save bytes untouched").

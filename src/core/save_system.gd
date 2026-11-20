@@ -116,12 +116,28 @@ static func read_save(slot: String, campaign_id := "") -> Dictionary:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not parsed is Dictionary:
 		return {"ok": false, "message": "Save %s is corrupt (invalid JSON)." % slot}
-	if int(parsed.get("save_version", -1)) != SAVE_VERSION:
-		return {
-			"ok": false,
-			"message": "Save %s was written by an incompatible version (%s)." % [slot, parsed.get("save_version", "?")],
-		}
-	return {"ok": true, "message": "Loaded %s." % slot, "data": parsed}
+	var from := int(Dictionary(parsed).get("save_version", -1))
+	# Tests raise the target so synthetic steps can exercise this path while the
+	# shipped version stays 1; in production the target is SAVE_VERSION itself.
+	var target := SAVE_VERSION if SaveMigrations.target_override <= 0 else SaveMigrations.target_override
+	var payload: Dictionary = parsed
+	if from != target:
+		# Upgraded in memory only. The file keeps its bytes until the player saves
+		# again, so a refused or interrupted load can never rewrite player data.
+		var upgraded: Variant = SaveMigrations.upgrade(payload, from, target)
+		if not upgraded is Dictionary:
+			return {
+				"ok": false,
+				"message": "Save %s was written by an incompatible version (%s)." % [slot, payload.get("save_version", "?")],
+				"reason": "unsupported_version",
+			}
+		payload = upgraded
+	return {
+		"ok": true,
+		"message": "Loaded %s." % slot,
+		"data": payload,
+		"migrated_from": from if from != target else 0,
+	}
 
 
 static func list_saves(campaign_id := "") -> Array:

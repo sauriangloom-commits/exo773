@@ -124,11 +124,14 @@ are not claimed as proof.
    at 100 % and 160 % text by `--layout-probe`; 1024×600 was never a supported
    size (the window minimum is 1280×720). Remaining: high-DPI and
    mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
-4. **Save migration policy.** **Proposed 2026-11-20, not implemented.** Today
-   `SaveSystem.read_save` refuses any `save_version` but 1 and `load_game` refuses
-   any `content_version` mismatch, before validating anything; the
-   `--save-compat-ui-probe` run proves a refused load leaves the file
-   byte-identical. The smallest design that satisfies this item:
+4. **Save migration policy.** **Foundation landed 2026-11-20; no production step
+   ships and `SAVE_VERSION` stays 1.** `src/core/save_migrations.gd` holds the
+   ordered table (empty in production), `SUPPORTED_MIN_VERSION = 1`, a test-only
+   target override, and `SaveSystem.read_save` now upgrades in memory or refuses
+   with the same message as before; a migrated save is never written on load.
+   Settings carry `[meta] version=1`, clamp on load, keep unknown sections and
+   keys, and refuse to write a file from a newer build. The first real schema
+   change is still open; the design it should follow:
    - **Read-only hook.** After parsing, `read_save` hands the payload to a new
      `SaveMigrations.upgrade(data, from, SAVE_VERSION)`: an ordered table of pure
      `Dictionary -> Dictionary` steps (`1 -> 2`, `2 -> 3`, ...), applied in
@@ -283,7 +286,9 @@ ruleset.
 
 ## Known technical debt
 
-- No save migration beyond version refusal.
+- The save migration table exists but no production step has shipped, so a
+  schema change is still a refusal until the first step lands; settings are
+  versioned, but a file from a newer build is read-only rather than migrated.
 - Full exported-build acceptance is not repeated after every rules batch; the
   latest candidate is launch-smoke-tested outside the source tree.
 - Settings persistence path/versioning is minimal.

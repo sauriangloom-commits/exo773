@@ -21,6 +21,13 @@ const PARTY_DEFAULT_MAX := 4
 ## Saves written before campaign packages existed belong to this campaign.
 const LEGACY_CAMPAIGN_ID := "ravenloft_demo"
 const SETTINGS_PATH := "user://settings.cfg"
+## The settings file format this build writes. A file without a `[meta] version`
+## is version 1 (everything written before versioning), and a file from a newer
+## build is read with the same clamps but never rewritten, so its unknown keys
+## and sections survive a downgrade. Redirected by tests like SaveSystem.save_dir.
+const SETTINGS_VERSION := 1
+const TEXT_SCALE_MIN := 0.8
+const TEXT_SCALE_MAX := 1.6
 const MAX_LOG := 400
 
 var content: ContentDB
@@ -51,6 +58,10 @@ var last_combat_log: Array[String] = []
 var last_combat_result := ""
 var content_ready := false
 var settings: Dictionary = {}
+var settings_path := SETTINGS_PATH
+## True when the file on disk was written by a newer build: known keys are read
+## (and clamped) but `save_settings` holds back so the newer file is not damaged.
+var settings_newer := false
 var last_ui_message := ""
 var _encounter_resolved := false
 ## A playtest runs the ordinary campaign systems but may never write a save.
@@ -1884,33 +1895,69 @@ func reset_to_menu() -> void:
 
 # ---------------------------------------------------------------- settings
 
+## Reads the settings file, clamping everything a hand-edited or older file can
+## get wrong. Missing sections and keys keep the compiled defaults, unknown
+## sections and keys are left on disk, and a newer file is marked read-only.
 func load_settings() -> void:
+	settings_newer = false
 	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
+	if config.load(settings_path) != OK:
 		return
-	for key in ["master", "music", "sfx", "ambience", "text_scale"]:
-		if config.has_section_key("audio" if key != "text_scale" else "display", key):
-			settings[key] = config.get_value("audio" if key != "text_scale" else "display", key)
-	settings["fullscreen"] = bool(config.get_value("display", "fullscreen", false))
-	var binds: Dictionary = config.get_value("input", "keybinds", {})
-	for action in binds.keys():
-		var keycode := int(binds[action])
+	var file_version := int(config.get_value("meta", "version", SETTINGS_VERSION))
+	settings_newer = file_version > SETTINGS_VERSION
+	for key in ["master", "music", "sfx", "ambience"]:
+		settings[key] = clampf(float(config.get_value("audio", key, settings.get(key, 0.8))), 0.0, 1.0)
+	settings["text_scale"] = clampf(
+		float(config.get_value("display", "text_scale", settings.get("text_scale", 1.0))),
+		TEXT_SCALE_MIN,
+		TEXT_SCALE_MAX
+	)
+	settings["fullscreen"] = _flag_from(config.get_value("display", "fullscreen", false))
+	var binds: Variant = config.get_value("input", "keybinds", {})
+	if not binds is Dictionary:
+		return
+	for action in Dictionary(binds).keys():
+		var raw: Variant = Dictionary(binds)[action]
+		if not raw is int and not raw is float:
+			continue
+		var keycode := int(raw)
+		# Kept even when this build no longer knows the action, so a downgrade and
+		# a later upgrade do not lose a binding; only known actions are applied.
 		settings["keybinds"][String(action)] = keycode
+		if not InputMap.has_action(String(action)):
+			continue
 		var event := InputEventKey.new()
 		event.physical_keycode = keycode
-		if InputMap.has_action(String(action)):
-			InputMap.action_erase_events(String(action))
+		InputMap.action_erase_events(String(action))
 		InputMap.action_add_event(String(action), event)
 
 
+## Accepts the shapes a hand-edited file can produce for a flag: a real bool, a
+## number, or one of the usual words. `bool("yes")` is an error in GDScript, which
+## is why this is explicit rather than a cast.
+func _flag_from(value: Variant) -> bool:
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return float(value) != 0.0
+	return String(value).strip_edges().to_lower() in ["true", "yes", "1", "on"]
+
+
+## Writes the known sections and keys back into the existing file, so anything a
+## newer build added (or a future section) survives. A file from a newer build is
+## never written at all: the policy is to refuse the write rather than drop data.
 func save_settings() -> void:
+	if settings_newer:
+		return
 	var config := ConfigFile.new()
+	config.load(settings_path)
+	config.set_value("meta", "version", SETTINGS_VERSION)
 	for key in ["master", "music", "sfx", "ambience"]:
-		config.set_value("audio", key, settings.get(key, 0.8))
-	config.set_value("display", "text_scale", settings.get("text_scale", 1.0))
-	config.set_value("display", "fullscreen", settings.get("fullscreen", false))
+		config.set_value("audio", key, clampf(float(settings.get(key, 0.8)), 0.0, 1.0))
+	config.set_value("display", "text_scale", clampf(float(settings.get("text_scale", 1.0)), TEXT_SCALE_MIN, TEXT_SCALE_MAX))
+	config.set_value("display", "fullscreen", bool(settings.get("fullscreen", false)))
 	config.set_value("input", "keybinds", settings.get("keybinds", {}))
-	config.save(SETTINGS_PATH)
+	config.save(settings_path)
 
 
 func _apply_settings() -> void:
@@ -1937,7 +1984,7 @@ func set_volume(bus_key: String, value: float) -> void:
 
 
 func set_text_scale(value: float) -> void:
-	settings["text_scale"] = clampf(value, 0.8, 1.6)
+	settings["text_scale"] = clampf(value, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
 	save_settings()
 	emit_signal("state_changed")
 

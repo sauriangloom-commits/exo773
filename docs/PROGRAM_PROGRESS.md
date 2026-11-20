@@ -2094,3 +2094,34 @@ and whose `text_scale` is not clamped on load. The smallest design - a read-only
 migration table with a version floor, content version kept as a refusal, a settings
 `meta` section that merges instead of rewriting, and one fixture per step - is
 written out under ROADMAP P0 item 4, marked proposed and not implemented.
+
+## Provenance resolution and migration foundation (2026-11-20)
+
+**Provenance.** The earlier `modal_focus_2026-11-20` build (`fe7511b3...`,
+110,665,048 bytes, source `b5dfd9b`) is **missing**: re-hashing every `.exe` under
+`builds/` finds no match, and `runs/2026-11-20_modal/export/` holds logs only. The
+candidate directory name was **reused** by the 18:18 export (`42b003c9`), which
+overwrote it; the stale `export.log` (16:48) is the surviving trace. Earlier
+results stay documented but cannot be re-verified. Nothing was deleted or
+renamed.
+
+**Save migration foundation, no version bump.** `src/core/save_migrations.gd`
+adds the read-only table (`steps` empty in production, `SUPPORTED_MIN_VERSION = 1`,
+test-only target override) and `SaveSystem.read_save` now upgrades in memory or
+refuses with the unchanged message, never writing on load. `SAVE_VERSION` stays 1
+and no production step ships; tests drive everything with synthetic steps
+(1 -> 2 -> 3 chains, unknown fields, missing/refusing steps, below-floor and newer
+versions, byte- and live-state preservation).
+
+**Settings versioning.** `settings.cfg` records `[meta] version = 1`; loads clamp
+volumes to 0-1 and `text_scale` to 0.8-1.6 and parse flags explicitly; writes merge
+into the loaded file so unknown sections, keys and bindings survive; a file from a
+newer build is read but never rewritten (`settings_newer`), which is the policy for
+newer settings now defined before any write. Unknown keybind actions are kept but
+not applied.
+
+**Verified.** 15 new tests; suite **623/623, 6,842 assertions, 50 scripts, exit
+0**; `--validate-campaigns`, `--validate-diagnostics`, the Inspect probe and
+`--save-compat-ui-probe` all PASS in source. The candidate export from the clean
+tree and its hash-bound acceptance evidence are appended to TEST_REPORT.md after
+the export.
