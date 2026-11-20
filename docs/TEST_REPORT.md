@@ -3424,3 +3424,28 @@ versionless file upgraded on the next write, and unknown binding preservation.
 **Checks run in source:** `--validate-campaigns` PASS, `--validate-diagnostics`
 PASS, `--demo-inspect --inspect-probe` PASS, `--save-compat-ui-probe` PASS (all
 eight compat checks, including "refusal leaves the save bytes untouched").
+
+**Exported candidate from the clean tree.** `migration_2026-11-20` was built at
+2026-11-20T18:43:43-05:00 from commit `93e8199` with `worktree_entries=0`,
+`untracked_files=0`, and both diff hashes `e3b0c442...` (the SHA-256 of empty
+input), so the binary is bound to a committed tree rather than to dirty edits.
+
+| field | value |
+| --- | --- |
+| build_id | `migration_2026-11-20` |
+| built_at | 2026-11-20T18:43:43-05:00 |
+| source_head | `93e8199df4e9a2f027ab208481240471b98e6ad2` |
+| worktree_entries | 0 |
+| untracked_files | 0 |
+| exe_bytes | 110,670,872 |
+| exe_sha256 | `00136308f9a3237504daa89da37db782105b75b3289b2baea08dd0378dbada71` |
+
+Acceptance against that hash: **11/11** - list-campaigns, both validators, the
+Inspect probe, the settings/journal/refusal layouts at 100 % and 160 %, and
+`--save-compat-ui-probe`. This run writes the consolidated log the earlier three
+did not: `builds/qa/runs/2026-11-20_migration/acceptance.log` records the exe hash
+at its start and its end line repeats
+`sha256=00136308f9a3237504daa89da37db782105b75b3289b2baea08dd0378dbada71` with
+`runs=11 failures=0`; per-check logs are in its `export/`, captures in `shots/`.
+Re-hashing the candidate reproduces that value, so the evidence is hash-bound to
+the binary that produced it.

@@ -2122,6 +2122,10 @@ not applied.
 
 **Verified.** 15 new tests; suite **623/623, 6,842 assertions, 50 scripts, exit
 0**; `--validate-campaigns`, `--validate-diagnostics`, the Inspect probe and
-`--save-compat-ui-probe` all PASS in source. The candidate export from the clean
-tree and its hash-bound acceptance evidence are appended to TEST_REPORT.md after
-the export.
+`--save-compat-ui-probe` all PASS in source.
+
+**Export.** `migration_2026-11-20` was built at 18:43:43 from commit `93e8199`
+with `worktree_entries=0` and no untracked files - 110,670,872 bytes, SHA-256
+`00136308f9a3237504daa89da37db782105b75b3289b2baea08dd0378dbada71` - and its
+11/11 acceptance log records that hash at both ends
+(`builds/qa/runs/2026-11-20_migration/acceptance.log`).
