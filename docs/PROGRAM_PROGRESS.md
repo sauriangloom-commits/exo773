@@ -1849,3 +1849,36 @@ creator does not author notes yet. The coverage rule that every settable flag
 must be a fact or internal is enforced by the test over shipped campaigns, not
 by the runtime validator, so a creator package may leave flags unexplained
 without failing to load.
+## Candidate journal_2026-11-20 and an exploration-feedback assessment (2026-11-20)
+
+**Candidate.** `builds/qa/candidates/journal_2026-11-20/RavenloftFoundationEdit.exe`,
+110,662,552 bytes, SHA-256
+`d3070eae4878c85884d374b83561865cf9f3f14fda2fc1d2a2174dfd4816ca79`, exported
+from `3dc28cc` with a clean worktree. Exported acceptance (isolated `APPDATA`,
+real windows): list, both validators, `--inspect-probe` (53 checks), the journal
+layout scenario at 1280x720 on 100 % and 160 % (18 controls, 0 failures each),
+`--save-compat-ui-probe`, and two fixture campaigns for the empty states —
+**7/7 runs, 0 failures**; details in `TEST_REPORT.md` (2026-11-20) and
+`builds/qa/runs/2026-11-20_journal_accept/acceptance.log`.
+
+**Assessment, not implemented: exploration refusal and skill feedback.**
+
+- Refusals that only set `Game.last_ui_message` and never call `_log()`:
+  moving into a wall, a closed door or an NPC (`game_state.gd:813`, `:817`,
+  `:821`), "There is nothing within reach." (`:858`), "No one can pick the lock."
+  (`:892`), "There is nothing left here." (`:936`), "You find nothing you can
+  use." (`:954`), "No conscious adventurer can attempt that." (`:964`).
+- `last_ui_message` has no reader outside `game_state.gd`, so those strings
+  reach no label, log or tooltip. `ExplorationScreen._do()` discards the result
+  dictionary it is handed (`exploration_screen.gd:180`), and the keyboard
+  interact path discards it before that (`:331`).
+- Measured in a headless run: a blocked move returns "Cold stone blocks the way."
+  with `log_lines` unchanged (6 -> 6); interacting with the same wall logs
+  (6 -> 7). So an invisible refusal sits next to a visible one.
+- Skill results are not lost: lock-picking and object checks log their line
+  (`game_state.gd:911`, `:990`) into the exploration log, and dialogue checks
+  render inside the dialogue panel (`dialogue_panel.gd:112`).
+- Smallest fix proposed for a later unit: a `_refuse(text)` helper that sets
+  `last_ui_message`, appends to the log only when the line would not repeat the
+  previous entry, and returns the failure dictionary; the eight silent sites
+  above call it. No rules, content, save or layout change. Not implemented.

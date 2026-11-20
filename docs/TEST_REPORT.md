@@ -2756,3 +2756,38 @@ details and use past-tense second person. At 160 % a fully-earned journal scroll
 (the scroller is bounded and checked). The creator does not author `journal.json`
 yet, so creator-made campaigns show the quest log alone, and the
 every-flag-covered rule is a shipped-content test rather than a runtime error.
+## Journal candidate acceptance — journal_2026-11-20 (2026-11-20)
+
+Build: `builds/qa/candidates/journal_2026-11-20/RavenloftFoundationEdit.exe`,
+110,662,552 bytes, SHA-256
+`d3070eae4878c85884d374b83561865cf9f3f14fda2fc1d2a2174dfd4816ca79`, exported
+from `3dc28ccfcba065e90191253406d1ed54af567206` with a clean worktree
+(`worktree_entries=0`, preset "Windows Desktop"). Provenance is in the
+candidate's `BUILD.txt`; every run used an isolated `APPDATA` and real windows,
+with logs and captures under `builds/qa/runs/2026-11-20_journal_accept/`.
+
+| Check (exported executable) | Result |
+| --- | --- |
+| `--list-campaigns` | ok |
+| `--validate-campaigns` / `--validate-diagnostics` | PASS / PASS |
+| `--demo-inspect --inspect-probe` | PASS, 53 checks, 0 failures |
+| `--layout-probe --layout-scenario=journal`, 1280x720 at 100 % | PASS, 18 controls, 0 failures |
+| `--layout-probe --layout-scenario=journal`, 1280x720 at 160 % | PASS, 18 controls, 0 failures |
+| `--save-compat-ui-probe` | PASS: an existing save loads through the Load modal, a blocked load is refused with the area named, and the save recovers after the content is repaired |
+| empty notes (fixture with `journal.json`, no earned facts) | PASS; the journal says "Nothing recorded yet." |
+| missing notes file (fixture without `journal.json`) | PASS; quest log only, no notes headings |
+
+`acceptance.log` ends with `ACCEPTANCE exe=RavenloftFoundationEdit.exe runs=7
+failures=0`; the two empty-state fixture runs are logged separately in
+`fixture_qa_journal_empty.log` and `fixture_qa_journal_no_file.log` and captured
+in `shots_fixtures/<id>/`.
+
+Limits: the journal was not scrolled by input — nothing in this harness injects
+the wheel, so scrolling is evidenced by the scroller bounds the probe measures
+and the 160 % capture showing the scrollbar, not by a scroll action. The
+empty-state packages are copies of the QA user campaign `qa_list_valid_0` with
+the manifest id and area tracker quest retargeted; they are fixtures, not shipped
+content. `--save-compat-ui-probe` proves the save loads through the player path
+but does not open the Journal afterwards, so "existing save, journal contents"
+rests on the GUT round-trip test. Both journal runs are `ravenloft_demo`; Ashwick
+and Hollow Lantern are covered by validation and unit tests, not rendered here.
