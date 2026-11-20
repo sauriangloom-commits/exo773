@@ -766,6 +766,21 @@ func log(text: String) -> void:
 	_log(text)
 
 
+## A refusal with one player-visible home: the returned dictionary, the last-UI
+## message and the exploration log.
+##
+## Refusals used to set `last_ui_message` and return without logging, and no UI
+## reads that variable, so a blocked step into a wall produced no feedback at
+## all. A consecutive identical line is not logged twice: walking into the same
+## wall should not bury the log under duplicates. The return shape is unchanged
+## for every caller (`{"ok": false, "message": text}`).
+func _refuse(text: String) -> Dictionary:
+	last_ui_message = text
+	if log_lines.is_empty() or String(log_lines[log_lines.size() - 1]) != text:
+		_log(text)
+	return {"ok": false, "message": text}
+
+
 func _set_mode(new_mode: String) -> void:
 	if mode == new_mode:
 		return
@@ -810,16 +825,13 @@ func _step(delta: Vector2i) -> Dictionary:
 		return {"ok": false, "message": "You cannot move right now."}
 	var dest := position + delta
 	if not dungeon.in_bounds(dest) or dungeon.is_wall(dest):
-		last_ui_message = "Cold stone blocks the way."
-		return {"ok": false, "message": last_ui_message}
+		return _refuse("Cold stone blocks the way.")
 	var door := dungeon.door_at(dest)
 	if not door.is_empty() and not dungeon.is_door_open(dest):
-		last_ui_message = "%s is closed. Press F to open it." % String(door.get("name", "The door"))
-		return {"ok": false, "message": last_ui_message}
+		return _refuse("%s is closed. Press F to open it." % String(door.get("name", "The door")))
 	var npc := dungeon.npc_at(dest)
 	if not npc.is_empty():
-		last_ui_message = "%s is in the way." % String(npc.get("name", "Someone"))
-		return {"ok": false, "message": last_ui_message}
+		return _refuse("%s is in the way." % String(npc.get("name", "Someone")))
 	var first_visit := not dungeon.visited.has(dest)
 	position = dest
 	dungeon.visit(position)
@@ -855,7 +867,7 @@ func interact() -> Dictionary:
 			last_ui_message = "A cold stone wall. Nothing here but mortar and damp."
 			_log(last_ui_message)
 		_:
-			last_ui_message = "There is nothing within reach."
+			return _refuse("There is nothing within reach.")
 	return {"ok": false, "message": last_ui_message}
 
 
@@ -889,8 +901,7 @@ func _try_open_door(door: Dictionary, take := 0) -> Dictionary:
 		return {"ok": true, "message": "Door unlocked with key."}
 	var actor := _best_skill_actor("open_lock")
 	if actor == null:
-		last_ui_message = "No one can pick the lock."
-		return {"ok": false, "message": last_ui_message}
+		return _refuse("No one can pick the lock.")
 	var dc := int(door.get("lock_dc", 15))
 	var check := Rules.skill_check(rng, actor, "open_lock", dc, {"take": take})
 	if not bool(check.get("available", true)):
@@ -933,8 +944,7 @@ func _open_door(door: Dictionary, message: String) -> void:
 func _interact_object(obj: Dictionary, take := 0) -> Dictionary:
 	var obj_id := String(obj.get("id", ""))
 	if dungeon.is_removed(obj_id):
-		last_ui_message = "There is nothing left here."
-		return {"ok": false, "message": last_ui_message}
+		return _refuse("There is nothing left here.")
 	_log(String(obj.get("look", "")))
 	for interaction in Array(obj.get("interactions", [])):
 		var i: Dictionary = interaction
@@ -951,8 +961,7 @@ func _interact_object(obj: Dictionary, take := 0) -> Dictionary:
 		if forbidden_flag != "" and bool(flags.get(forbidden_flag, false)):
 			continue
 		return _run_interaction(obj, i, take)
-	last_ui_message = "You find nothing you can use."
-	return {"ok": false, "message": last_ui_message}
+	return _refuse("You find nothing you can use.")
 
 
 func _run_interaction(obj: Dictionary, interaction: Dictionary, take := 0) -> Dictionary:
@@ -961,8 +970,7 @@ func _run_interaction(obj: Dictionary, interaction: Dictionary, take := 0) -> Di
 	if skill != "":
 		var actor := _best_skill_actor(skill)
 		if actor == null:
-			last_ui_message = "No conscious adventurer can attempt that."
-			return {"ok": false, "message": last_ui_message}
+			return _refuse("No conscious adventurer can attempt that.")
 		var dc := int(interaction.get("dc", 10))
 		var check := Rules.skill_check(
 			rng,

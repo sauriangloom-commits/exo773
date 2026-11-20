@@ -1877,6 +1877,8 @@ func _layout_probe(scenario: String) -> void:
 			open_modal("Journal", func() -> Control:
 				return Panels.journal()
 			, 800, 560)
+		"refusal":
+			_blocked_move_probe()
 		"fullscreen":
 			Game.set_fullscreen(true)
 			# Switching to exclusive fullscreen is asynchronous; a fixed frame count
@@ -1924,6 +1926,10 @@ func _layout_probe(scenario: String) -> void:
 		var journal_report: Array = await _layout_journal()
 		failures += int(journal_report[0])
 		checked += int(journal_report[1])
+	if scenario == "refusal":
+		var feedback_report: Array = await _layout_feedback()
+		failures += int(feedback_report[0])
+		checked += int(feedback_report[1])
 	# A screen that never built would otherwise pass with nothing to check. The
 	# journal is one text surface plus the modal's own button, so its floor is 2.
 	var minimum_checked := 2 if scenario == "journal" else 5
@@ -1962,6 +1968,55 @@ func _capture_layout_shot(scenario: String) -> void:
 		print("CAPTURED %s" % shot_path)
 	else:
 		print("CAPTURE FAILED %s" % shot_name)
+
+
+## Faces the party out of the map and walks into the edge. The refusal must reach
+## the exploration log; `_layout_feedback` checks where.
+func _blocked_move_probe() -> void:
+	Game.position = Vector2i(0, 0)
+	Game.facing = Dungeon.WEST
+	Game.move_forward()
+	# The keyboard handler refreshes after acting; do the same so the log widget
+	# reflects the refusal the way a player would see it.
+	if current_screen != null and current_screen.has_method("refresh_screen"):
+		current_screen.refresh_screen()
+
+
+## Separates "the message exists" from "the player can see it": the line must be
+## in `Game.log_lines`, in the log widget's rendered text, and the widget must lie
+## inside the client. The capture taken after this is the visual evidence.
+func _layout_feedback() -> Array:
+	var screen := current_screen as ExplorationScreen
+	if screen == null or screen.log_label == null:
+		print("  LAYOUT FEEDBACK NO LOG WIDGET")
+		return [1, 0]
+	var line := "Cold stone blocks the way."
+	var failures := 0
+	var logged := false
+	for entry in Game.log_lines.slice(maxi(0, Game.log_lines.size() - 3)):
+		if String(entry) == line:
+			logged = true
+	if not logged:
+		failures += 1
+		print("  LAYOUT FEEDBACK MISSING FROM LOG")
+	var rendered := screen.log_label.get_parsed_text()
+	if not rendered.contains(line):
+		failures += 1
+		print("  LAYOUT FEEDBACK MISSING FROM LOG WIDGET")
+	if not rendered.strip_edges().ends_with(line):
+		failures += 1
+		print("  LAYOUT FEEDBACK LINE IS NOT THE NEWEST ENTRY")
+	var rect := screen.log_label.get_global_rect()
+	if not get_viewport().get_visible_rect().encloses(rect):
+		failures += 1
+		print("  LAYOUT FEEDBACK LOG OUTSIDE CLIENT rect=%s" % str(rect))
+	if modal != null:
+		failures += 1
+		print("  LAYOUT FEEDBACK LOG COVERED BY MODAL '%s'" % modal_title)
+	if screen.log_label.get_visible_line_count() <= 0:
+		failures += 1
+		print("  LAYOUT FEEDBACK LOG SHOWS NO LINES")
+	return [failures, 1]
 
 
 ## Shows one earned fact so the journal's layout covers wrapped prose instead of

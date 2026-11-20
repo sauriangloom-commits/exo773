@@ -163,8 +163,9 @@ given client size and text scale, and exits nonzero if one is):
 ```bash
 # exploration at the minimum client and maximum text
 "..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo --layout-probe --layout-scenario=screen --probe-size=1280x720 --text-scale=1.6
-# Settings, the inspect modal, dialogue, the journal and fullscreen are
-# --layout-scenario=settings|inspect|dialogue|journal|fullscreen
+# Settings, the inspect modal, dialogue, the journal, a blocked move and
+# fullscreen are
+# --layout-scenario=settings|inspect|dialogue|journal|refusal|fullscreen
 # add --capture-dir=<abs dir> to write the measured frame as a PNG
 ```
 

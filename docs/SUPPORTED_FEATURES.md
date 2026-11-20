@@ -218,6 +218,10 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Responsive Control-based UI at a 1280×720 reference size.
 - Keyboard, mouse and on-screen buttons; focusable controls with visible states.
 - Combat log with rolls, modifiers, DCs, damage, conditions and resource changes.
+- Refused exploration actions (a wall, a closed door, an NPC in the way, nothing
+  in reach, no one who can pick a lock, a used-up or empty object) write one
+  line to the narration log and return the same failure dictionary as before; a
+  repeated identical refusal is not logged again until another line intervenes.
 - Party sidebar with HP/AC, quest tracker, status line (position/facing/target).
 - Modal character sheet, inventory, journal, save/load, settings, pause.
 - Text labels and symbols accompany color cues (blue/red tokens, gold ring).

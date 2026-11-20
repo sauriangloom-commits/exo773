@@ -1882,3 +1882,19 @@ layout scenario at 1280x720 on 100 % and 160 % (18 controls, 0 failures each),
   `last_ui_message`, appends to the log only when the line would not repeat the
   previous entry, and returns the failure dictionary; the eight silent sites
   above call it. No rules, content, save or layout change. Not implemented.
+## Exploration refusals are visible now (2026-11-20)
+
+The silent-refusal assessment became a small unit: `GameState._refuse(text)`
+sets `last_ui_message`, logs once (suppressing a consecutive identical line) and
+returns the same `{"ok": false, "message": text}` dictionary. The eight sites
+identified earlier route through it; the wall description and skill-check
+results still log as before. No rules, content, layout or save change.
+
+Tests: `tests/test_refusals.gd`, 12 cases (every family, dedupe, the result
+shape, both input paths). Suite **574/574, 6,591 assertions, 47 scripts, exit 0**.
+
+The new `--layout-scenario=refusal` probe makes the difference between *logged*
+and *on screen* checkable: presence in `Game.log_lines`, presence in the log
+widget's text, the widget inside the client, no modal over it, and at least one
+visible line. It also captures the frame, so the 100 % and 160 % runs can be
+looked at rather than inferred.

@@ -2791,3 +2791,32 @@ content. `--save-compat-ui-probe` proves the save loads through the player path
 but does not open the Journal afterwards, so "existing save, journal contents"
 rests on the GUT round-trip test. Both journal runs are `ravenloft_demo`; Ashwick
 and Hollow Lantern are covered by validation and unit tests, not rendered here.
+## Exploration refusals reach the log (2026-11-20)
+
+`GameState._refuse(text)` is now the one home for a refusal: it sets
+`last_ui_message`, appends the line unless the previous log line is already
+identical, and returns `{"ok": false, "message": text}` exactly as each site did
+before. Eight sites route through it — a blocked step (`_step`), a closed door
+(`_step`), an NPC in the way (`_step`), nothing within reach (`interact`), no
+lock-picker (`_try_open_door`), a removed object and an object with nothing
+usable (`_interact_object`), and no conscious adventurer (`_run_interaction`).
+Return values, callers, rules, content and the save format are unchanged; the
+wall description and the skill-check outcomes already logged and still do.
+
+`tests/test_refusals.gd` (12 tests) covers each family, the consecutive
+duplicate rule (repeat suppressed; a different line in between logs again), the
+two-key result shape, and both input paths: the keyboard handler drops the
+result, the action bar hands it to `_do()`, and neither may log a second copy.
+
+`--layout-scenario=refusal` (`src/main.gd`) walks the party into the map edge and
+then separates three things: the line in `Game.log_lines` (state), the line in
+the log widget's parsed text (rendered), and the widget's rectangle inside the
+client with no modal over it (on screen). It exits nonzero if any of the three
+fails; the capture written after the check is the visual evidence.
+
+Ran: full suite **574/574, 6,591 assertions, 47 scripts, exit 0**
+(`builds/qa/suite_refusal.log`); `--validate-campaigns` PASS;
+`--validate-diagnostics` PASS; `--demo-inspect --inspect-probe` PASS. The probe
+needs `--demo-inspect`: with plain `--demo` the encounter screen is never built
+and its "combat screen with an encounter exists" check fails, which is an
+invocation difference, not a regression.
