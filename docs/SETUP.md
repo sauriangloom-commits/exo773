@@ -164,10 +164,25 @@ given client size and text scale, and exits nonzero if one is):
 # exploration at the minimum client and maximum text
 "..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo --layout-probe --layout-scenario=screen --probe-size=1280x720 --text-scale=1.6
 # Settings, the inspect modal, dialogue, the journal, a blocked move and
-# fullscreen are
-# --layout-scenario=settings|inspect|dialogue|journal|refusal|fullscreen
+# fullscreen: --layout-scenario=settings|inspect|dialogue|journal|refusal|fullscreen
 # add --capture-dir=<abs dir> to write the measured frame as a PNG
 ```
+
+Native input check (windowed; drives the exported build with OS-level keys, wheel
+and clicks, and writes a client-area PNG after each step):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/native_input.ps1 `
+  -Exe "C:\path\RavenloftFoundationEdit.exe" `
+  -GameArgs "-- --demo --text-scale=1.0" `
+  -Out "C:\path\captures" `
+  -Script "wait:800;click:8:8;key:w:8;shot:01_walk;key:j:1;shot:02_journal"
+```
+
+Steps: `wait:ms`, `click:x:y`, `key:name:count`, `wheel:x:y:delta`, `shot:name`,
+`fg`. The window is raised to topmost and focused with a real click because
+Windows refuses a foreground change from a background process; action keys are
+sent with scan codes, which Godot needs to map them to physical keys.
 
 Content checks:
 

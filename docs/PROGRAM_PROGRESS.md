@@ -1898,3 +1898,21 @@ and *on screen* checkable: presence in `Game.log_lines`, presence in the log
 widget's text, the widget inside the client, no modal over it, and at least one
 visible line. It also captures the frame, so the 100 % and 160 % runs can be
 looked at rather than inferred.
+## Native interaction verification and two defects (2026-11-20)
+
+The refusal candidate was driven with OS-level input instead of function calls
+(`tools/native_input.ps1`: topmost window, real click for focus, `keybd_event`
+with scan codes, `mouse_event` wheel and clicks, client-area captures). At
+1280x720 on 100 % and 160 %: movement, interaction, the blocked-move line, log
+wheel scrolling, Tab traversal, Enter activation and the Journal's Close button
+(mouse and Enter) all pass; the Journal body's wheel scroll could not be checked
+because the demo notes fit the modal — manual steps are in the test report.
+
+Two pre-existing defects are recorded rather than fixed: an open modal does not
+trap Tab (two Tabs reach "Turn left (Q)" behind it, and Enter turns the party
+while the Journal is open, at both scales), and closing a modal leaves no
+control with visible focus. Neither is caused by the refusal logging.
+
+The `.uid` question is settled: `tests/*` is excluded from the preset and the
+candidate contains no test script names, so the untracked sidecar did not touch
+the build. It is committed now (`b203a1d`).

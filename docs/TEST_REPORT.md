@@ -2840,3 +2840,55 @@ the other seven families are covered by the suite. The export needs export
 templates in its `APPDATA`; unsetting the variable makes Godot look in
 `./Godot` inside the project, so the build used an isolated profile holding a
 copy of the templates.
+## Native interaction verification (2026-11-20)
+
+**The untracked `.uid` did not affect the candidate.** `tests/test_refusals.gd.uid`
+was untracked when `refusals_2026-11-20` was exported, but the preset's
+`exclude_filter` lists `tests/*`, the exported executable contains no occurrence
+of `test_refusals` or `test_journal_entries`, and a `.gd.uid` is only a `uid://`
+alias for a script the game never loads. It was committed afterwards as
+`b203a1d`; the candidate's recorded provenance (`BUILD.txt`) already said its
+only worktree entry was that file.
+
+**Method.** `tools/native_input.ps1` launches the exported candidate, raises it
+to topmost, focuses it with a real click, then sends OS-level input —
+`keybd_event` with scan codes and `mouse_event` wheel/clicks — capturing the
+client area after each step. This is the same path a player's hardware takes;
+the earlier probes called game functions directly.
+
+**Results at 1280x720** (`builds/qa/runs/2026-11-20_native/`):
+
+| Check | 100 % | 160 % |
+| --- | --- | --- |
+| Move with a real W key | PASS: 5,10 -> 1,10 | PASS: 5,10 -> 1,10 |
+| Blocked move explains itself | PASS: one "Cold stone blocks the way." after four blocked steps | PASS: same, one line |
+| Interact with a real F key | PASS: interaction lines append | PASS: same |
+| Mouse wheel over the narration log | PASS: scrolled to older lines, then back | PASS: dedicated run scrolled to older content and back |
+| Mouse wheel over the Journal body | **NOT VERIFIED** | **NOT VERIFIED** |
+| Tab traversal | PASS: focus ring walks the action buttons | PASS: same |
+| Enter activates the focused control | PASS: Interact ran | PASS: Strafe left ran and logged its refusal |
+| Journal Close by mouse | PASS | PASS |
+| Journal Close by Enter (default focus) | PASS | PASS |
+
+**Manual step for the one unverified check.** The demo Journal holds one quest
+and "Nothing recorded yet.", which fits its modal at both scales, so a wheel
+turn has nothing to scroll. To verify: play until the Journal holds more than a
+screen of notes (or add entries to a campaign's `journal.json`), run
+`RavenloftFoundationEdit.exe -- --demo --text-scale=1.0`, press J, hover the
+notes area and turn the wheel; the body should scroll and the scrollbar thumb
+move. Repeat with `--text-scale=1.6`.
+
+### Defects found (pre-existing, not caused by refusal logging)
+
+1. **An open modal does not trap Tab.** Open the Journal (J), press Tab twice:
+   focus lands on "Turn left (Q)" behind the modal (visible at 100 %; hidden
+   under the near-fullscreen modal at 160 %). Enter then turns the party
+   (West -> South) while the Journal is still open. Confirm by closing the
+   modal: the status line reads "Facing South" and the focus ring sits on
+   "Turn left (Q)". Evidence: `t100/focus_modal/02_tab2.png`,
+   `t100/focus_modal/04_enter.png`, `t100/trap/02_after.png`,
+   `t160/trap/02_after.png`. The modal only calls `close.grab_focus()`
+   (`src/main.gd:6641`); no control owns Tab while it is open.
+2. **Closing a modal leaves no visible focus.** After Close (by mouse or
+   Escape) no control shows a focus ring until Tab is pressed again. Minor;
+   evidence `t100/seq/09_close_click.png`, `t160/focus/04_close_click.png`.
