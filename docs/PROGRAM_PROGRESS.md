@@ -2803,3 +2803,23 @@ one implementation candidate worth keeping warm is the shared modal body's
 `follow_focus`, which duplicates the reveal walk and once left a nested row
 off-screen in a synthetic modal; it is smaller but has no confirmed player report.
 No new defect was found during the review.
+
+
+### Level-up and feat selection planned (2026-11-21)
+
+The roadmap review is closed and its planning task is delivered as
+`docs/LEVEL_UP_PLAN.md`; nothing was implemented and no check was run. The plan
+confirms the repository state - XP is awarded and displayed but never compared to a
+threshold, `level` is only read from content and used by the skill cap, feat
+prerequisites, cleric turning and the sheet, feats have no selection surface, and
+there is no class table - then decides the 3-to-4 step: 6,000 XP, fixed-average HP
+(fighter 6, rogue 4, cleric 5, wizard and sorcerer 3, plus Con), printed BAB and
+saves, skill points 2+Int except the rogue's 8+Int, the fighter's bonus feat as the
+only 4th-level feat, a player-chosen ability increase with retroactive
+Constitution, and spell slots added to the authored rows under the engine's
+no-0-level, no-domain, no-spellbook model. It also decides that no schema change is
+needed, that the player makes the choices while content only fixes class and
+starting level/XP, and it defines the six-step modal, the keyboard path, the 160 %
+rect requirements, a GUT plus `--level-up-probe` plan, five separately acceptable
+batches with `level_tables` first, and the exclusions.
+

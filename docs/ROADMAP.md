@@ -477,6 +477,18 @@ classes, XP for crafting, retraining). No code, no content, no schema change lan
 with it. If the plan finds the level-3-to-4 slice still needs more than one
 implementation batch, it should say so and split it there.
 
+**Plan written: [LEVEL_UP_PLAN.md](LEVEL_UP_PLAN.md) (2026-11-21).** It confirms
+what exists (XP and level are written nowhere but content and saves; no class
+table; level feeds only the skill cap, feat prerequisites, cleric turning and the
+sheet), then decides the 3-to-4 step for the five shipped classes with PHB
+citations and labelled adaptations: 6,000 XP threshold, fixed-average HP, printed
+BAB/saves, skill points and the fighter-only feat slot, ability increase, spell
+slots under the engine's reduced model, no schema change, player-made choices.
+It defines the modal flow, keyboard path and 160 % needs, a GUT and
+`--level-up-probe` plan shaped like the creator focus probe, five separately
+acceptable batches (`level_tables` first), and the exclusions (multiclassing,
+prestige classes, retraining and the rest). Nothing was implemented.
+
 ### Candidate 2 - modal reveal debt (`follow_focus` beside the walk)
 
 The one implementation candidate kept warm, not chosen now.
