@@ -152,11 +152,11 @@ func test_an_incompatible_primary_keeps_its_refusal_with_a_working_backup() -> v
 
 
 func test_a_foreign_working_copy_is_skipped_without_switching_campaign() -> void:
-	_run_state({".bak.2": _payload(90, 900, "some_other_campaign")}, false, 0, "", "No save in")
+	_run_state({".bak.2": _payload(90, 900, "some_other_campaign")}, false, 0, "", "belongs to campaign")
 
 
 func test_a_working_copy_for_other_content_is_skipped() -> void:
-	_run_state({".tmp.w": _payload(50, 500, CAMPAIGN, 2)}, false, 0, "", "No save in")
+	_run_state({".tmp.w": _payload(50, 500, CAMPAIGN, 2)}, false, 0, "", "content version")
 
 
 func test_legacy_fallback_is_blocked_by_a_working_copy() -> void:
@@ -197,7 +197,7 @@ func test_a_save_beside_working_copies_takes_free_names_and_keeps_theirs() -> vo
 	assert_false(after.has(_path(".bak.2").get_file()), "the write cleans its own backup")
 
 
-func test_repeated_interruptions_accumulate_and_the_newest_is_used() -> void:
+func test_repeated_interruptions_accumulate_and_the_greatest_saved_unix_is_used() -> void:
 	_write(_path(".bak"), _payload(10, 100))
 	_write(_path(".bak.2"), _payload(20, 200))
 	_write(_path(".bak.3"), _payload(30, 300))

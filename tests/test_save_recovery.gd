@@ -144,7 +144,7 @@ func test_no_valid_candidate_keeps_the_files_and_the_refusal() -> void:
 	var before := _text(_path(".tmp"))
 	var loaded := Game.load_game(SLOT)
 	assert_false(bool(loaded.get("ok", false)))
-	assert_string_contains(String(loaded.get("message", "")), "No save in")
+	assert_string_contains(String(loaded.get("message", "")), "corrupt")
 	assert_eq(_text(_path(".tmp")), before)
 
 

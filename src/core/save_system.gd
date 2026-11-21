@@ -134,54 +134,133 @@ static func _free_working_name(base: String) -> String:
 	return ""
 
 
-## Every file name under the slot's directory that belongs to the slot. Matching
-## on the prefix is what makes a working copy visible: `.bak.2`, `.tmp.2` and the
-## older `.bak.w` / `.tmp.w` are all the same slot's files.
+## The role of one file name in a slot's directory, or `{}` when the name is not
+## one this build writes for that slot. This is the single definition used by
+## discovery, classification and deletion, so a hand-made archive or an editor
+## backup can neither masquerade as recovery nor be deleted with the slot.
+##
+## Accepted:
+##   <slot>.json                          primary
+##   <slot>.json.bak                      backup
+##   <slot>.json.bak.<n>   n = 2..100     backup
+##   <slot>.json.bak.w                    backup (previous release's working name)
+##   <slot>.json.tmp                      temp
+##   <slot>.json.tmp.<n>   n = 2..100     temp
+##   <slot>.json.tmp.w                    temp (previous release's working name)
+##
+## Names are matched case-insensitively because the save filesystem is
+## case-insensitive on Windows and macOS and `path_for` already resolves a
+## differently cased primary there. The caller keeps each directory entry's own
+## spelling, so two names that differ only by case remain two files on a
+## case-sensitive filesystem.
+static func parse_slot_file(name: String, slot: String) -> Dictionary:
+	var lowered := name.to_lower()
+	var base := ("%s.json" % slot).to_lower()
+	if lowered == base:
+		return {"role": "primary", "suffix": ""}
+	for family in ["bak", "tmp"]:
+		var role := "backup" if family == "bak" else "temp"
+		var prefix := "%s.%s" % [base, family]
+		if lowered == prefix:
+			return {"role": role, "suffix": ""}
+		if not lowered.begins_with(prefix + "."):
+			continue
+		var tail := lowered.substr(prefix.length() + 1)
+		if tail == "w":
+			return {"role": role, "suffix": "w"}
+		# Only the exact spellings the writer produces: no leading zeros, no sign,
+		# nothing beyond the numbered range _free_working_name can create.
+		if tail.is_valid_int() and str(int(tail)) == tail:
+			var number := int(tail)
+			if number >= 2 and number <= 100:
+				return {"role": role, "suffix": tail}
+	return {}
+
+
+## Raw directory entries that could belong to the slot. The exact pattern is
+## applied by `_classify_names`; this only avoids parsing every file in the
+## directory.
 static func _slot_file_names(slot: String, campaign_id := "") -> PackedStringArray:
 	var names := PackedStringArray()
 	var directory := DirAccess.open(_target_dir(campaign_id))
 	if directory == null:
 		return names
-	var prefix := slot + ".json"
+	var prefix := (slot + ".json").to_lower()
 	for name in directory.get_files():
-		if String(name).begins_with(prefix):
+		if String(name).to_lower().begins_with(prefix):
 			names.append(name)
+	return names
+
+
+## Classifies raw names into canonical order: the primary spelling first, then
+## backups (`.bak`, then numbered/legacy extras in name order), then temps. Every
+## accepted entry keeps its own spelling; a name that differs only in case from
+## another is a separate entry. Pure, so ordering and case handling are testable
+## without depending on the host filesystem.
+static func _classify_names(names: Array, slot: String) -> Array:
+	var exact := "%s.json" % slot
+	var primary_names: Array = []
+	var backup_names: Array = []
+	var temp_names: Array = []
+	for raw in names:
+		var name := String(raw)
+		var parsed := parse_slot_file(name, slot)
+		if parsed.is_empty():
+			continue
+		match String(parsed["role"]):
+			"primary":
+				primary_names.append(name)
+			"backup":
+				backup_names.append(name)
+			_:
+				temp_names.append(name)
+	var ordered: Array = []
+	for tier in [[primary_names, exact, "primary"], [backup_names, exact + ".bak", "backup"], [temp_names, exact + ".tmp", "temp"]]:
+		for name in _tier_order(Array(tier[0]), String(tier[1])):
+			ordered.append({
+				"name": String(name),
+				"source": String(tier[2]),
+				"suffix": String(parse_slot_file(String(name), slot).get("suffix", "")),
+			})
+	return ordered
+
+
+## Canonical name first, then the rest in name order. This is the order ties in
+## `saved_unix` resolve to, so it is part of the selection contract.
+static func _tier_order(names: Array, canonical: String) -> Array:
+	names.sort()
+	if names.has(canonical):
+		names.erase(canonical)
+		names.insert(0, canonical)
 	return names
 
 
 ## Every file of a slot that exists, with the role a load gives it: the primary
 ## first, then committed backups, then staged temps. Working copies sit in the
-## same tier as their family; within a tier the loader picks the newest readable
-## copy, so this order is only the canonical/tie-break order.
+## same tier as their family. This order is what ties resolve to: the loader
+## takes the greatest `saved_unix` in a tier and keeps the first candidate when
+## two copies share one, so the canonical name wins a tie and otherwise the
+## lexicographically first extra name does.
 static func slot_files(slot: String, campaign_id := "") -> Array:
-	var final_path := path_for(slot, campaign_id)
+	var names: Array = []
+	for name in _slot_file_names(slot, campaign_id):
+		names.append(String(name))
+	var directory := _target_dir(campaign_id)
 	var files: Array = []
-	if FileAccess.file_exists(final_path):
-		files.append({"path": final_path, "source": "primary"})
-	var names := _slot_file_names(slot, campaign_id)
-	for family in ["bak", "tmp"]:
-		var canonical := "%s.%s" % [final_path, family]
-		var role := "backup" if family == "bak" else "temp"
-		if FileAccess.file_exists(canonical):
-			files.append({"path": canonical, "source": role})
-		var extras: Array = []
-		for name in names:
-			if String(name).begins_with("%s.%s." % [slot + ".json", family]):
-				extras.append(String(name))
-		extras.sort()
-		for name in extras:
-			files.append({
-				"path": _target_dir(campaign_id).path_join(name),
-				"source": role,
-			})
+	for entry in _classify_names(names, slot):
+		files.append({
+			"path": directory.path_join(String(entry["name"])),
+			"source": String(entry["source"]),
+		})
 	return files
 
 
 ## True when any file of the slot exists, valid or not. A crashed save leaves a
 ## backup or temp behind, and that is what stops the pre-campaign fallback from
-## standing in for the slot.
+## standing in for the slot. A stray file that is not one of the slot's accepted
+## names does not count.
 static func has_artifacts(slot: String, campaign_id := "") -> bool:
-	return not _slot_file_names(slot, campaign_id).is_empty()
+	return not slot_files(slot, campaign_id).is_empty()
 
 
 ## The first artifact of the slot that parses, in canonical order. Used by list
@@ -244,13 +323,15 @@ static func list_saves(campaign_id := "") -> Array:
 	for slot in SLOTS:
 		if not has_artifacts(slot, campaign_id):
 			continue
+		var files := slot_files(slot, campaign_id)
 		var info := {
 			"slot": slot,
 			"saved_at": "",
 			"saved_unix": 0,
 			"summary": "",
 			"campaign_id": campaign_id,
-			"source": "primary",
+			"source": String(files[0]["source"]),
+			"readable": false,
 		}
 		var found := first_readable(slot, campaign_id)
 		if not found.is_empty():
@@ -260,6 +341,7 @@ static func list_saves(campaign_id := "") -> Array:
 			info["summary"] = String(parsed.get("summary", ""))
 			info["campaign_id"] = String(parsed.get("campaign_id", campaign_id))
 			info["source"] = String(found["source"])
+			info["readable"] = true
 		saves.append(info)
 	saves.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("saved_unix", 0)) > int(b.get("saved_unix", 0))

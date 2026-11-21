@@ -549,7 +549,9 @@ static func saves(mode: String, on_done: Callable) -> Control:
 			var row := HBoxContainer.new()
 			var source := String(save_info.get("source", "primary"))
 			var tag := ""
-			if source == "backup":
+			if not bool(save_info.get("readable", true)):
+				tag = " (unreadable)"
+			elif source == "backup":
 				tag = " (from backup)"
 			elif source == "temp":
 				tag = " (unfinished save)"
@@ -596,6 +598,14 @@ static func _save_info(slot: String) -> String:
 				String(recovered.get("saved_at", "")),
 				String(recovered.get("summary", "")),
 			]
+		if SaveSystem.has_artifacts(slot, Game.campaign_id):
+			# Files remain, so this is not an empty slot. Say which way they are
+			# unusable: an incompatible copy is a different problem from dead bytes.
+			for entry in SaveSystem.slot_files(slot, Game.campaign_id):
+				var read := SaveSystem.read_payload(slot, String(entry["path"]))
+				if String(read.get("reason", "")) == "unsupported_version":
+					return "unreadable — incompatible copy"
+			return "damaged — no readable copy"
 		return "empty"
 	var text := FileAccess.get_file_as_string(path)
 	var parsed = JSON.parse_string(text)

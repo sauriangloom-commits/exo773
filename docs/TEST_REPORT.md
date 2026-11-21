@@ -3584,14 +3584,15 @@ can no longer be truncated by a later attempt.
 ### Repeated interrupted writes
 
 Working names are reserved, not reused, so each interruption adds at most one
-file and every earlier one stays readable. Within a tier the loader takes the
-copy with the greatest `saved_unix` (a tie goes to the canonical name), so the
-least stale copy wins.
+file and every earlier one stays readable. Within a tier the loader prefers the
+copy with the greatest `saved_unix`; a tie keeps the first in canonical order
+(the canonical name, then the lexicographically first extra name). That is a
+deterministic preference, not proof of newest - see the tie rules below.
 
 | files | loader chooses | note |
 | --- | --- | --- |
-| `.bak` + `.bak.2` + `.bak.3` | `.bak.3` | newest committed copy |
-| `.tmp` + `.tmp.w` | `.tmp.w` | newest staged copy (old `.w` names still discovered) |
+| `.bak` + `.bak.2` + `.bak.3` | `.bak.3` | greatest `saved_unix` |
+| `.tmp` + `.tmp.w` | `.tmp.w` | greatest `saved_unix` (old `.w` names still discovered) |
 | `.bak` (damaged) + `.bak.2` (valid) | `.bak.2` | previously "No save in slot" |
 | `.tmp.2` only | `.tmp.2` | previously "No save in slot" |
 | `.bak` + `.tmp` | `.bak` | tier policy: a committed state beats a staged one |
@@ -3668,3 +3669,91 @@ interrupted...` and restores the saved cell.
 its start and its end line repeats
 `sha256=4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` with
 `runs=13 failures=0`; per-check logs are in its `export/`.
+
+## Slot-file pattern, refusal accuracy and timestamp ties (2026-11-20)
+
+The interruption audit left two loose ends: discovery/deletion matched any name
+starting with `<slot>.json`, and a slot holding only unusable copies still
+answered "No save in slot". Both are now defined by one parser.
+
+### Exact accepted pattern
+
+`SaveSystem.parse_slot_file(name, slot)` is the single definition used by
+discovery, classification and deletion. Names match case-insensitively, keep
+their own directory spelling, and only these forms are accepted:
+
+| accepted | role | produced by |
+| --- | --- | --- |
+| `<slot>.json` | primary | every write |
+| `<slot>.json.bak` | backup | a write over an existing primary |
+| `<slot>.json.bak.<n>`, n = 2..100 | backup | a write beside an earlier crash copy |
+| `<slot>.json.bak.w` | backup | the previous release's working name (legacy read only) |
+| `<slot>.json.tmp` | temp | every write |
+| `<slot>.json.tmp.<n>`, n = 2..100 | temp | a write beside an earlier crash copy |
+| `<slot>.json.tmp.w` | temp | the previous release's working name (legacy read only) |
+
+Rejected: `.bakup`, `.bak.1`, `.bak.0`, `.bak.01`, `.bak.+2`, `.bak.-2`,
+`.bak.101`, `.bak.w.2`, `.bak.2.old`, `.tmpX`, `.orig`, `.notes`, `~`,
+`.json.2026-11-20`, `slot2.jsonx`, and any other suffix. Consequences: a
+hand-made archive is never loaded as recovery, never lists the slot, never blocks
+the pre-campaign fallback and is not deleted with the slot; only the files the
+game wrote are `delete_save`'s to remove.
+
+Case handling: parsing is case-insensitive because Windows and macOS are, and
+`path_for` already resolves a differently cased primary there. Entries keep the
+spelling the directory reports, so two names differing only by case stay two
+files on a case-sensitive filesystem; the exact spelling is read first and each
+entry is deleted by its own name. A primary stored as `SLOT2.JSON` is discovered
+and loads.
+
+### Unusable slots are never "empty"
+
+`_choose_save_source` classifies every candidate it rejects and returns the most
+actionable message, in this precedence: incompatible version, other campaign,
+other content version, invalid state, unreadable bytes. "No save in slot" is
+reserved for a slot with no accepted files at all.
+
+| slot holds | message | `reason` |
+| --- | --- | --- |
+| nothing | `No save in slot2.` | `missing` |
+| only unparseable bytes | `Save slot2 is corrupt (invalid JSON).` (existing text) | `corrupt` |
+| only a newer version | `Save slot2 was written by an incompatible version (99.0).` (existing text) | `unsupported_version` |
+| only another campaign | `Save 'slot2' belongs to campaign 'X', which is not loaded.` | `campaign_mismatch` |
+| only another content version | `Save 'slot2' was made for campaign content version 2; the installed campaign is version 1. The save was not modified.` | `content_mismatch` |
+| only an invalid payload | the existing validation text, e.g. `Save contains no valid party members.` | `invalid` |
+| a mix | the highest-precedence reason above | as named |
+
+The primary path is untouched: a readable primary still wins outright and its
+incompatible-version, corrupt and content messages are byte-identical to the
+previous release (pinned by `test_primary_refusals_are_unchanged`). The save
+panel says "unreadable - incompatible copy" for a slot whose only files are
+version-incompatible and "damaged - no readable copy" for unparseable bytes; the
+Load list tags such rows `(unreadable)` and no row is reported as `empty`.
+
+### Timestamp ties
+
+Selection order is unchanged: primary (never compared by time), then the backup
+tier, then the temp tier; within a tier the greatest `saved_unix` wins. A tie
+keeps the first candidate in canonical order, which is: the canonical name
+(`.bak` or `.tmp`), then the remaining names sorted as strings. Therefore
+`.bak` beats `.bak.2` on a tie, `.bak.10` beats `.bak.2` on a tie, and a copy
+without a `saved_unix` (treated as 0) loses to any copy that has one. Two copies
+without a timestamp tie on the canonical name. The order is deterministic but
+not proof of newest: `saved_unix` has one-second resolution, it is written from
+the system clock, and it is a player-editable field.
+
+### Tests and checks
+
+`tests/test_save_files.gd` (16 tests) covers the accepted/rejected name table,
+case variants and distinct files, stray files (discovery, listing, legacy
+fallback, deletion), a case-variant primary, damaged/incompatible/foreign/
+content-mismatch/invalid-only slots and their messages, mixed-precedence
+selection, the three tie rules, missing timestamps, unchanged primary refusals,
+and the `(unreadable)` row tag. Two interruption tests were updated to expect
+the precise refusal instead of "No save in", and one was renamed to state the
+`greatest saved_unix` rule. Suite **674/674, 7,227 assertions, 54 scripts,
+exit 0**. In source: both validators PASS, Inspect PASS, settings/journal/refusal
+layouts PASS at 100 % and 160 %, the settings-notice probe PASS at 100 % and
+160 %, and `--save-compat-ui-probe` PASS including the new incompatible-only
+case (`UI COMPAT incompatible-only status=Save slot2 was written by an
+incompatible version (99.0).`) and the stray-file check.

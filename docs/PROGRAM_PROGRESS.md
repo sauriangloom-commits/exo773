@@ -2172,11 +2172,11 @@ acceptance log records that hash at both ends
 end of [TEST_REPORT.md](TEST_REPORT.md).
 **Save write interruption audit.** Every interruption point of the write sequence
 was listed with the files it leaves behind; the loader now discovers every file
-whose name starts with `<slot>.json` (canonical and numbered working copies, plus
-the older `.bak.w`/`.tmp.w` spelling), so a slot is no longer called empty while a
+the slot's accepted names (canonical, numbered working copies 2-100, plus the
+older `.bak.w`/`.tmp.w` spelling), so a slot is no longer called empty while a
 valid copy parses. Working names are reserved rather than reused, so a repeated
 interrupted write can no longer truncate an earlier crash copy; within the backup
-and temp tiers the newest readable copy wins, the primary stays unconditional,
+and temp tiers the greatest `saved_unix` wins (ties by name), the primary stays unconditional,
 and its incompatible-version refusal, the campaign guards, read-only selection
 and the preservation of surviving recovery files are unchanged. 17 new
 interruption-state tests; suite **658/658, 7,113 assertions, 53 scripts**. The
@@ -2187,3 +2187,17 @@ state table and the remaining durability limits are in
 SHA-256 `4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` - and
 its 13/13 acceptance log records that hash at both ends
 (`builds/qa/runs/2026-11-20_interruption/acceptance.log`).
+**Slot-file pattern and refusal accuracy.** `SaveSystem.parse_slot_file` is now
+the single definition of what belongs to a slot: `<slot>.json`, `.bak`, `.tmp`,
+numbered working copies 2-100, and the previous release's `.w` names, matched
+case-insensitively but kept as distinct directory entries. Discovery, the load
+list, the save panel and deletion all use it, so a stray `slot2.json.2026-11-20`
+archive is not recovery, is not listed, does not block the legacy fallback and is
+not deleted with the slot. Recovery rejections are classified (incompatible
+version, other campaign, other content, invalid state, unparseable bytes) and the
+most actionable one is reported; "No save in slot" now only means no accepted
+files at all, and existing primary refusal strings are unchanged. Within a tier
+the greatest `saved_unix` wins and a tie resolves canonical name first, then
+lexicographic name - deterministic, but not proof of newest. 16 new tests; suite
+**674/674, 7,227 assertions, 54 scripts**. Details and the exact pattern are in
+[TEST_REPORT.md](TEST_REPORT.md).

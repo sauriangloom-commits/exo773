@@ -556,45 +556,64 @@ func load_game(slot: String) -> Dictionary:
 ## Picks the bytes a load will use without changing any file. A readable primary
 ## always wins, and its own refusal (version, campaign, content, structure) stands:
 ## quietly loading older leftovers there would be a downgrade, not a recovery.
-## Only a missing or unreadable primary lets the backup and then the temp file of
-## an interrupted write stand in, and each must pass the same checks first.
+## Only a primary that is missing or unreadable lets the backup and then the temp
+## file of an interrupted write stand in, and each must pass the same checks.
+##
+## Every candidate that cannot be used is classified, so a slot that still holds
+## files is never reported as an empty one: an incompatible, foreign, stale or
+## invalid copy names its own reason, and only a slot with no slot files at all
+## says "No save in". When several failures exist, the most actionable wins:
+## incompatible version, other campaign, other content version, invalid state,
+## damaged bytes.
 func _choose_save_source(slot: String) -> Dictionary:
-	var primary := SaveSystem.read_payload(slot, SaveSystem.path_for(slot, campaign_id))
-	if bool(primary.get("ok", false)):
-		var prepared := _prepare_save(slot, Dictionary(primary["data"]), true)
-		if bool(prepared.get("ok", false)):
-			prepared["source"] = "primary"
+	var failure := {"rank": 0, "reason": "", "message": ""}
+	var files := SaveSystem.slot_files(slot, campaign_id)
+	for entry in files:
+		if String(entry["source"]) != "primary":
+			continue
+		var read := SaveSystem.read_payload(slot, String(entry["path"]))
+		if not bool(read.get("ok", false)):
+			if String(read.get("reason", "")) == "unsupported_version":
+				return read
+			failure = _note_failure(failure, "corrupt", String(read.get("message", "")))
+			continue
+		var prepared := _prepare_save(slot, Dictionary(read["data"]), true)
+		if not bool(prepared.get("ok", false)):
+			return prepared
+		prepared["source"] = "primary"
+		prepared["recovered_path"] = String(entry["path"])
 		return prepared
-	if String(primary.get("reason", "")) == "unsupported_version":
-		return primary
+
 	# Every working copy belongs to a tier: committed backups first, then staged
-	# temps. Repeated interrupted writes can leave more than one copy per tier, so
-	# the newest readable one is taken - the least stale recovery rather than
-	# whichever name happens to sort first.
+	# temps. Within a tier the copy with the greatest `saved_unix` is preferred;
+	# ties keep the first in canonical order (the canonical name, then name order),
+	# which is a deterministic preference, not proof of newest.
 	for tier in ["backup", "temp"]:
 		var chosen: Dictionary = {}
 		var chosen_unix := -1
-		for entry in SaveSystem.slot_files(slot, campaign_id):
+		for entry in files:
 			if String(entry["source"]) != String(tier):
 				continue
 			var read := SaveSystem.read_payload(slot, String(entry["path"]))
 			if not bool(read.get("ok", false)):
+				var reason := String(read.get("reason", ""))
+				if reason == "unsupported_version":
+					failure = _note_failure(failure, "unsupported_version", String(read.get("message", "")))
+				elif reason == "corrupt":
+					failure = _note_failure(failure, "corrupt", String(read.get("message", "")))
 				continue
-			var data: Dictionary = read["data"]
 			# A leftover is only usable when it belongs to the campaign that is
 			# loaded: switching campaigns for a recovery copy would hide which
-			# progress is shown.
-			var saved_campaign := String(data.get("campaign_id", ""))
-			if saved_campaign == "":
-				saved_campaign = LEGACY_CAMPAIGN_ID
-			if saved_campaign != campaign_id:
-				continue
-			if int(data.get("content_version", 1)) != content_version:
-				continue
-			var prepared := _prepare_save(slot, data, false)
+			# progress is shown. _prepare_save returns that refusal with a reason.
+			var prepared := _prepare_save(slot, Dictionary(read["data"]), false)
 			if not bool(prepared.get("ok", false)):
+				failure = _note_failure(
+					failure,
+					String(prepared.get("reason", "invalid")),
+					String(prepared.get("message", "")),
+				)
 				continue
-			var saved_unix := int(data.get("saved_unix", 0))
+			var saved_unix := int(Dictionary(read["data"]).get("saved_unix", 0))
 			if chosen.is_empty() or saved_unix > chosen_unix:
 				chosen = prepared
 				chosen_unix = saved_unix
@@ -602,6 +621,7 @@ func _choose_save_source(slot: String) -> Dictionary:
 				chosen["recovered_path"] = String(entry["path"])
 		if not chosen.is_empty():
 			return chosen
+
 	# Pre-campaign saves live in the legacy directory. They are read as Ravenloft
 	# demo saves and never rewritten in place. They only stand in when the campaign
 	# slot holds no artifact at all: an interrupted save leaves one behind, and that
@@ -612,11 +632,48 @@ func _choose_save_source(slot: String) -> Dictionary:
 			var prepared := _prepare_save(slot, Dictionary(legacy["data"]), true)
 			if bool(prepared.get("ok", false)):
 				prepared["source"] = "legacy"
-				return prepared
 			return prepared
-	if String(primary.get("reason", "")) == "corrupt":
-		return primary
-	return {"ok": false, "message": "No save in %s." % slot}
+		if String(legacy.get("reason", "")) == "corrupt":
+			failure = _note_failure(failure, "corrupt", String(legacy.get("message", "")))
+		elif String(legacy.get("reason", "")) == "unsupported_version":
+			failure = _note_failure(failure, "unsupported_version", String(legacy.get("message", "")))
+	if int(failure["rank"]) > 0:
+		return {
+			"ok": false,
+			"message": String(failure["message"]),
+			"reason": String(failure["reason"]),
+		}
+	if not files.is_empty():
+		# Files exist but none produced a usable copy or a more specific refusal.
+		return {
+			"ok": false,
+			"message": "Save %s is damaged: none of its files can be read." % slot,
+			"reason": "corrupt",
+		}
+	return {"ok": false, "message": "No save in %s." % slot, "reason": "missing"}
+
+
+## Records the most actionable failure seen while scanning. Higher rank wins;
+## equal ranks keep the first (canonical order), so the message is deterministic.
+func _note_failure(current: Dictionary, reason: String, message: String) -> Dictionary:
+	var rank := _failure_rank(reason)
+	if rank <= int(current.get("rank", 0)):
+		return current
+	return {"rank": rank, "reason": reason, "message": message}
+
+
+func _failure_rank(reason: String) -> int:
+	match reason:
+		"unsupported_version":
+			return 5
+		"campaign_mismatch":
+			return 4
+		"content_mismatch":
+			return 3
+		"invalid":
+			return 2
+		_:
+			return 1
 
 
 ## The checks a load runs before touching live state, split out so a recovery
@@ -630,22 +687,28 @@ func _prepare_save(slot: String, data: Dictionary, switch_campaign: bool) -> Dic
 		if not switch_campaign:
 			return {
 				"ok": false,
+				"reason": "campaign_mismatch",
 				"message": "Save '%s' belongs to campaign '%s', which is not loaded." % [slot, saved_campaign],
 			}
 		var switched := load_campaign(saved_campaign)
 		if not bool(switched.get("ok", false)):
 			return {
 				"ok": false,
+				"reason": "campaign_mismatch",
 				"message": "Save '%s' belongs to campaign '%s', which is not installed or invalid: %s" % [slot, saved_campaign, switched.get("message", "")],
 			}
 	if int(data.get("content_version", 1)) != content_version:
 		return {
 			"ok": false,
+			"reason": "content_mismatch",
 			"message": "Save '%s' was made for campaign content version %s; the installed campaign is version %d. The save was not modified." % [slot, data.get("content_version", "?"), content_version],
 		}
 	if not content_ready:
-		return {"ok": false, "message": "Content failed validation; cannot load."}
-	return _validate_payload(data)
+		return {"ok": false, "reason": "invalid", "message": "Content failed validation; cannot load."}
+	var validated := _validate_payload(data)
+	if not bool(validated.get("ok", false)):
+		validated["reason"] = "invalid"
+	return validated
 
 
 ## Validates a complete payload and builds the replacement values. Pure with

@@ -2974,6 +2974,35 @@ func _save_compat_ui_probe() -> void:
 	close_modal()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".bak"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".bak.2"))
+
+	# An incompatible copy with no primary keeps its refusal, and the row says so.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	var incompatible: Dictionary = JSON.parse_string(original_save)
+	incompatible["save_version"] = 99
+	_probe_write_json(save_path + ".bak", incompatible)
+	_open_load_modal()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_probe_check(_probe_label_contains(modal, "(unreadable)"), "an unreadable-only slot is tagged")
+	var incompatible_status := await _compat_press_load("slot2")
+	print("UI COMPAT incompatible-only status=%s" % incompatible_status)
+	_probe_check(incompatible_status.contains("incompatible version"), "an incompatible-only slot keeps its refusal")
+	_probe_check(modal != null, "the incompatible-only refusal keeps the modal open")
+	close_modal()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".bak"))
+
+	# A hand-made archive with a slot-like name is not recovery and is not listed.
+	_write_probe_text(save_path + ".2026-11-20", original_save)
+	var stray_rows := 0
+	for save_row in Game.list_saves():
+		if String(Dictionary(save_row)["slot"]) == "slot2":
+			stray_rows += 1
+	_probe_check(stray_rows == 0, "a stray slot-like name does not list the slot")
+	var stray_load := Game.load_game("slot2")
+	_probe_check(not bool(stray_load.get("ok", false)) and String(stray_load.get("message", "")).contains("No save in"), "a stray slot-like name is not recovery")
+	_probe_check(Panels._save_info("slot2") == "empty", "only a stray file reads as an empty slot")
+	_probe_check(Game.position == Vector2i(2, 3), "the stray load changes nothing")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".2026-11-20"))
 	_write_probe_text(save_path, original_save)
 	Game.load_campaign(id)
 
