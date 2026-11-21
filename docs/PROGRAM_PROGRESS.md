@@ -2740,3 +2740,21 @@ Not covered: the Push 5 ft / Follow decision UI. The smoke calls the wrappers
 directly, so the buttons and their prompt remain engine-test and layout-probe
 evidence only. No manual testing was requested, no layout probe was rerun (no
 control changed), and backups were not touched.
+
+
+### Resolution smoke closed, roadmap reviewed (2026-11-21)
+
+The exported resolution smoke is closed as accepted within its limits: bound
+candidate `resolution_smoke_2026-11-21a` (source `de79c17`, 110,740,824 bytes,
+SHA-256 `c1cff4cc...035d9a75`), exe validators and smoke PASS, source suite
+778/778 with 7,979 assertions. Nothing was rebuilt or re-checked for the closure.
+Its uncovered surface stays stated: the Push 5 ft / Follow decision UI, the
+exported behaviour of other actions, and any rule outside its 32 checks.
+
+The roadmap review that follows recommends the campaign-creator reveal fix as the
+one bounded next task. Two review findings changed the ranking: the reveal walk
+already exists and only needs to run outside a modal, so that fix is smaller than
+earlier recorded; and Improved Bull Rush is reachable by no shipped character,
+because no party member has Power Attack and the game has no feat-selection UI, so
+it would need content or a QA fixture before a player could ever use it. No new
+defect was found during the review.

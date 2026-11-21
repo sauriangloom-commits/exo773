@@ -4982,3 +4982,19 @@ Logs: `builds/qa/runs/2026-11-21_resolution_smoke_export/` (exe) and
   diff touches no screen, so the accepted layout evidence for
   `bull_rush_2026-11-21b` is not affected.
 - No manual testing was performed or requested, and backups were not touched.
+
+
+### Closure of the resolution smoke (2026-11-21)
+
+Closed as accepted within the limits recorded with it. Candidate
+`resolution_smoke_2026-11-21a` (source `de79c17`, 110,740,824 bytes, SHA-256
+`c1cff4cc4ad18aa3a9b40dfcb7d7c376726bf0909522ca463658c957035d9a75`) is bound by its
+before/after hash. From the exe it ran both validators and
+`--resolution-smoke` (PASS, 32 checks, seed 7302) and reproduced the
+missing-profile refusal; the source tree holds the same 32 checks, the suite at
+778/778 tests and 7,979 assertions, and both validators. Nothing was rebuilt and
+no check was repeated for this closure.
+
+What it does not cover, unchanged: the Push 5 ft / Follow decision UI (the smoke
+calls the wrappers directly), the exported behaviour of any other combat action,
+and any rules not asserted by its 32 checks.

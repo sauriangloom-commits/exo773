@@ -289,6 +289,127 @@ those two behaviours only — not as a replacement for the rules suite.
   the Tumble stance values are fixture-only; no human playtest was run or
   requested.
 
+## Next bounded task - roadmap review after the resolution smoke (2026-11-21)
+
+Review only. Nothing was implemented, rebuilt or re-checked for this section, and
+no manual testing was requested. The smoke it follows is closed within its limits
+in [TEST_REPORT.md](TEST_REPORT.md): `resolution_smoke_2026-11-21a`, source
+`de79c17`, SHA-256 `c1cff4cc...035d9a75`, 32 checks from the exe, hash bound before
+and after.
+
+**Recommendation: make focus reveal work on the campaign creator too.** It is the
+one confirmed player-facing defect left, and the review found it cheaper than the
+roadmap assumed: the nested-pane walk it needs already exists for modals, so the
+work is routing focus changes outside a modal through the same walk rather than
+building new scrolling machinery.
+
+### Candidate 1 - creator reveal inconsistency (recommended)
+
+- **Defect, confirmed by reading the code.** `_reveal_modal_focus()` returns early
+  when `modal == null` (`src/main.gd:7674`), and it is the only focus-changed hook
+  (`get_viewport().gui_focus_changed` -> `_on_modal_focus_changed`, `src/main.gd:220`).
+  Outside a modal, Tab and Shift+Tab fall through to Godot's automatic traversal
+  (`_input` handles Tab only inside its `if modal != null:` branch). The creator's
+  own scrolling runs only from the `focus_*_section()` QA aids and from
+  `_focus_control()`, which the diagnostics jump uses - nothing on focus change.
+  A field below the fold therefore takes the ring while staying invisible.
+- **Player impact.** Authors editing a shipped screen: the creator is longer than
+  one 720-high view - its own `focus_*_section()` aids exist precisely because
+  later sections sit below the fold - so tabbing to a field lower in the form
+  silently moves the ring off-screen. It affects authoring rather than play, but
+  every player-created campaign goes through it.
+- **Reachability.** High and immediate: the creator is reachable from the main
+  menu, the defect needs no unusual content, and at 160 % text the form is longer
+  still, so it is routine rather than marginal.
+- **Dependencies.** None outside `src/main.gd` and `src/ui/campaign_creator.gd`:
+  a reveal entry point that accepts the active screen's root and walks its
+  `ScrollContainer` ancestors - the same `_reveal_in_pane` step that already
+  handles a row inside the list's scroller inside the sidebar's. No content, no
+  rules, no save schema, no new control.
+- **Automated verification.** A headless probe in the shape of
+  `--creator-interaction-probe`: open a long draft, send Tab enough times to leave
+  the first viewport, and assert the focused control's global rect is enclosed by
+  the viewport at 1280x720 at 100 % and 160 % text; the same run can assert
+  Shift+Tab brings the earlier field back and that no modal behaviour changed.
+  The existing creator probes and both validators guard the rest of that screen;
+  the suite already guards the modal walk.
+- **Bounded scope.** One reveal path plus the creator hook, one probe, docs rows.
+  Done means the probe passes at both scales from source and one bound exported
+  candidate, and the modal walk's existing tests stay green. It should not
+  generalise every screen at once: exploration, inventory and settings already go
+  through the modal or the body's `follow_focus`, and widening beyond the creator
+  is where the risk enters.
+
+### Candidate 2 - Improved Bull Rush
+
+- **Player impact.** A fighter with the feat gets +4 on the rush check and the
+  defender loses its reaction. Meaningful, but only for a character built around
+  it, and it changes an outcome the new smoke already covers as it stands today.
+- **Reachability: none for a player today.** No party character in
+  `content/shared/characters.json` has Power Attack (kaelen has Iron Will and
+  Weapon Focus, ysolde Dodge and Weapon Finesse), and there is no level-up or
+  feat-selection screen: feats enter the game from content JSON, and QA probes
+  append Power Attack in code (`src/main.gd:4092`, `:4131`, `:6515`). The feat
+  would be reachable only after a content edit or through a QA fixture, so the
+  batch would ship a rule most players could never select.
+- **Dependencies.** A `Feats.CATALOG` entry with the Power Attack prerequisite and
+  the +4 modifier (`src/core/feats.gd`, shaped like `improved_trip` at line 420),
+  a caller in `bull_rush_active` for the check bonus and a skip of
+  `_provoke_single_opportunity` where the deferred note sits
+  (`src/core/encounter.gd:1481`), plus content if it is to be playable. Docs rows
+  in `FEATS_SKILLS_COVERAGE.md`, `SUPPORTED_FEATURES.md` and `TRACEABILITY.md`.
+- **Automated verification.** Unit tests for the catalog entry, prerequisites and
+  the +4 on the opposed check; encounter tests for the missing reaction and for a
+  rush where the reaction would have dropped the rusher; the existing bull rush
+  suite as the regression net; and an exported run only if the smoke's fighter is
+  given the feat, which would mean changing the smoke's fixture.
+- **Why not first.** It is a rules addition with no player route, it edits the
+  resolution path the smoke just bound, and the cleanup defect above is both
+  player-facing and smaller. It stays unblocked and available after that fix.
+
+### Candidate 3 - what the review newly found
+
+No new confirmed defect. Two findings do change the shape of the roadmap:
+
+- The reveal gap is a routing gap, not a missing feature: `_reveal_in_pane`
+  already walks every ancestor scroller, so the creator fix reuses proven code
+  and the 160 % nested-scroller lesson applies to it directly.
+- Improved Bull Rush's blocker is content and UI, not rules plumbing. That makes
+  it a content batch in disguise, and it should not be scheduled as a rules-only
+  task.
+
+The review also re-checked the smoke's own uncovered surface and found nothing to
+add: it drives the wrappers, not the buttons, and that stays the stated limit.
+
+**State after the review, kept separate.**
+
+- *Confirmed defects:* the reveal-outside-modals inconsistency in the campaign
+  creator (creator-only, now precisely located and recommended next). Nothing else
+  is open; the stance leak and the bull-rush layout probe artifact are fixed and
+  closed, and the resolution smoke found no new failure.
+- *Deferred features:* the charge form, Improved Bull Rush (unblocked, deferred,
+  and gated on content/feat selection), the 25 % redirect, mounted and AI bull
+  rushes, multi-square creatures, terrain effects; concealment, hard/low-wall and
+  reach-melee cover; grapple, disarm, sunder, overrun; two-weapon fighting and
+  iterative attacks; AoE templates; any save-migration production step; the
+  turning extensions; a level-up and feat-selection screen.
+- *Maintenance debt:* empty migration table, acceptance not repeated per batch,
+  `follow_focus` redundancy beside the reveal walk, one pane following focus per
+  key press, minimal settings versioning, simple AI, no content hot reload,
+  placeholder raycaster, shallow UI coverage, source-only GUT, and
+  `resolve_bull_rush_decision` trusting its recorded cells instead of re-checking
+  them (unreachable today, defence in depth when a second pending decision type
+  can coexist).
+- *Evidence gaps:* the Push 5 ft / Follow decision UI is not exercised by the
+  exported smoke; other actions' exported behaviour is probe-covered only; the
+  archived pre-`9b0f046` combat layout PASS at 160 % was under-covered for nested
+  scrollers and was never corrected retroactively; physical held-key acceptance is
+  pending; Enter activation is native-only; no OS-level crash injection;
+  case-sensitive filesystem behaviour is synthetic; the creature-cover candidates
+  are unbound; the `modal_focus` binary is missing; Tumble stance values are
+  fixture-only; the resolution smoke's winning seed is fixture-selected (7302);
+  no human playtest was run or requested.
+
 ## P0 — Verify and harden the current slice
 
 1. **Finish the manual UI interaction pass.** **Done:** Restore Default Controls
