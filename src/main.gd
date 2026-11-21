@@ -80,6 +80,7 @@ const APP_FLAGS: Array[String] = [
 	"--demo-defeat-qa",
 	"--demo-dialogue",
 	"--demo-inspect",
+	"--demo-silence",
 	"--demo-integration",
 	"--demo-nonlethal",
 	"--demo-party",
@@ -255,6 +256,8 @@ func _ready() -> void:
 		_start_demo("explore")
 	elif "--demo-dialogue" in args:
 		_start_demo("dialogue")
+	elif "--demo-silence" in args:
+		_start_demo("silence")
 	elif "--demo-combat" in args:
 		_start_demo("combat")
 	elif "--demo-power-attack" in args:
@@ -3669,6 +3672,15 @@ func _start_demo(kind: String, party_ids: Array = ["kaelen", "sera", "aldric", "
 			_qa_cleave_demo(cleave_scenario)
 		"inspect":
 			_qa_inspect_demo()
+		"silence":
+			# QA only: seed the broken-token, silent-bell state so the gated
+			# epilogue row can be reached with ordinary input.
+			Game.flags["maela_decision"] = true
+			Game.flags["maela_mercy"] = true
+			Game.flags["drowned_cleared"] = true
+			Game.flags["bell_resolved"] = true
+			Game.flags["bell_silenced"] = true
+			Game.start_dialogue("maela_vey")
 		"ranged":
 			_qa_ranged_demo()
 		"concentration":
@@ -7299,6 +7311,18 @@ func _input(event: InputEvent) -> void:
 			if event.is_action_pressed("ui_accept"):
 				var focus_owner := get_viewport().gui_get_focus_owner()
 				if focus_owner == null or not modal.is_ancestor_of(focus_owner):
+					get_viewport().set_input_as_handled()
+					return
+		# A conversation owns Tab while it is open: the ring moves through its
+		# choices in content order (unavailable rows are skipped) and the panel
+		# scrolls the new owner into view, instead of the ring wandering into the
+		# HUD behind the dim layer.
+		if Game.mode == "dialogue" and current_screen is ExplorationScreen:
+			var talk_panel := (current_screen as ExplorationScreen).dialogue_panel
+			if talk_panel != null and is_instance_valid(talk_panel):
+				if event.is_action_pressed("ui_focus_next") or event.is_action_pressed("ui_focus_prev"):
+					var talk_backward := (event as InputEventWithModifiers).shift_pressed
+					talk_panel.cycle_focus(-1 if talk_backward else 1)
 					get_viewport().set_input_as_handled()
 					return
 		if event.is_action_pressed("pause_menu"):

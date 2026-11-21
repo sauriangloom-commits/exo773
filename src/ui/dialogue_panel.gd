@@ -10,6 +10,10 @@ var main: Control
 ## raised text scale or a resize can never push it past a window edge; the body
 ## scrolls instead.
 var panel: PanelContainer
+## The body scroller, kept so keyboard traversal can reveal the focused choice.
+var scroll: ScrollContainer
+## Choice buttons in content order, including unavailable ones (skipped by focus).
+var choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -44,6 +48,8 @@ func refresh() -> void:
 func _rebuild() -> void:
 	for child in get_children():
 		child.queue_free()
+	scroll = null
+	choice_buttons.clear()
 	if Game.dialogue == null:
 		return
 	var dim := ColorRect.new()
@@ -63,9 +69,12 @@ func _rebuild() -> void:
 	margin.add_theme_constant_override("margin_top", 16)
 	margin.add_theme_constant_override("margin_bottom", 16)
 	panel.add_child(margin)
-	var scroll := ScrollContainer.new()
+	scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Tab and Shift+Tab move through the choices below; the scroller must bring the
+	# new focus owner into view instead of leaving it below the fold.
+	scroll.follow_focus = true
 	margin.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -135,6 +144,7 @@ func _rebuild() -> void:
 		var continue_button := Button.new()
 		continue_button.text = "Continue"
 		continue_button.pressed.connect(_leave)
+		choice_buttons.append(continue_button)
 		box.add_child(continue_button)
 	else:
 		var choice_box := VBoxContainer.new()
@@ -161,6 +171,7 @@ func _rebuild() -> void:
 			var index := int(choice["index"])
 			button.pressed.connect(func() -> void: _choose(index))
 			choice_box.add_child(button)
+			choice_buttons.append(button)
 	var hint := ThemeBuilder.body(
 		"Example dialogue written for this project. Choices with skill checks name the adventurer who will roll.",
 		true,
@@ -189,6 +200,29 @@ func _choose(index: int) -> void:
 		# Combat or exploration took over; the main screen router handles it.
 		return
 	_rebuild()
+
+
+## Move the ring through this page's choices in content order, skipping rows the
+## content rules left unavailable. Wraps at both ends and keeps the owner visible.
+func cycle_focus(direction: int) -> void:
+	var targets: Array[Button] = []
+	for button in choice_buttons:
+		if is_instance_valid(button) and not button.disabled:
+			targets.append(button)
+	if targets.is_empty():
+		return
+	var current := -1
+	var owner_control := get_viewport().gui_get_focus_owner()
+	for i in targets.size():
+		if targets[i] == owner_control:
+			current = i
+			break
+	var next := 0 if direction > 0 else targets.size() - 1
+	if current != -1:
+		next = posmod(current + direction, targets.size())
+	targets[next].grab_focus()
+	if scroll != null and is_instance_valid(scroll):
+		scroll.ensure_control_visible(targets[next])
 
 
 func _leave() -> void:
