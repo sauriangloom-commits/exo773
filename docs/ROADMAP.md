@@ -9,7 +9,8 @@
 > both validators and a matching before/after exe hash, and carries the
 > source-tested combat-scope cleanup. `-b` is preserved and superseded. Both that
 > batch and its cleanup are closed as accepted within the recorded limits.
-> Player-initiated bull rush is done and accepted (778/778, both validators); the
+> Player-initiated bull rush is done and closed as accepted within its recorded
+> limits (778/778, both validators, bound candidate `bull_rush_2026-11-21b`); the
 > right-side panel gained a `Bull rush` control. Earlier candidates
 > `creature_cover_inspector_2026-11-21` (`e64a6c9`) and `creature_cover_2026-11-21`
 > (`4e56d1e`) remain preserved and are still unbound. (The 2026-11-14
@@ -200,6 +201,81 @@ docs and a traceability row, and no rebuild unless the sidebar changes.
   filesystem behaviour is asserted through `_classify_names` only; the two
   creature-cover candidates remain unbound; the earlier `modal_focus` binary is
   missing; the Tumble +3/+6 stance values are reachable only through a fixture.
+
+## Next bounded task — roadmap review after the bull rush closure (2026-11-21)
+
+Review only. Nothing was implemented, rebuilt or re-checked for this section, and
+no manual testing was requested.
+
+**Recommendation: an exported resolution and action smoke** — one headless
+application flag that, in the exported binary, plays the QA victory encounter
+through the real `Game` wrappers, exercises the combat-scope cleanup and a bull
+rush, resolves the fight, and then reads `auto.json` and reloads it.
+
+- **Player impact.** It adds no play, but it protects the two most recent
+  player-facing systems (stances that used to leak into the save, and the new
+  bull rush) in the artefact players actually run. The alternative player-facing
+  rules work is blocked on content rather than code: every shipped monster uses
+  natural weapons, so disarm and sunder have no legal target; overrun needs
+  movement through an occupied square and a defender's avoid choice; grapple is a
+  subsystem; concealment needs terrain tags; iterative attacks need a full-attack
+  action model. A rules batch now would add little reachable play.
+- **Reachability.** The QA victory encounter, the `Game` combat wrappers, the
+  autosave and `Game.load_game` all exist and are already used by
+  `test_combat_scope_cleanup.gd`. The smoke only has to drive them behind a flag.
+- **Dependencies.** One CLI flag in `main.gd` shaped like the existing `--demo-*`
+  probes, an isolated `APPDATA`, the `qa_victory` fixture and no content, UI or
+  save-schema change. The bull rush decision can be pre-decided through
+  `bull_rush_active(target, {"follow": true})`, so no clicking is needed.
+- **Automated verification.** The smoke is itself the check: it asserts the
+  exported binary removes the stance effects before the save, that base AC is
+  restored, that the bull rush moved the defender and the rusher by the printed
+  distance, and that a reload shows the same state. It complements the suite
+  instead of replacing it: the suite stays the rules authority, and the smoke
+  proves the same paths survive packaging.
+
+**Against a newly found regression.** There is none. The bull rush batch introduced
+no confirmed defect: its 160 % layout failure was a probe artifact, fixed in
+`9b0f046`, and the pre-fix export was withdrawn rather than accepted. The only
+open confirmed defect remains the older one — reveal runs only while a modal is
+open, because the campaign creator keeps its own keyboard path. That is a narrow
+creator-scope inconsistency, not a regression from this batch, and it is smaller
+and cheaper than the smoke, but it affects one screen a player may never open
+while the smoke protects the main loop. If a rule change lands first, the reveal
+defect stays the next fix.
+
+**Bounded scope if the smoke is chosen (not started).** One exported flag, one
+scenario, assertions on the saved effects list, AC, both cells after the rush and
+the reloaded state; isolated profile only; no new content, no UI, no changes to
+the suite. Done means the flag passes from a bound candidate, its log records the
+executable hash before and after, and the docs label it as packaging evidence for
+those two behaviours only — not as a replacement for the rules suite.
+
+**State after the closure, kept separate.**
+
+- *Confirmed defects:* the reveal-outside-modals inconsistency in the campaign
+  creator (older, unfixed, creator-only). The stance leak is fixed and closed;
+  bull rush introduced none.
+- *Deferred features:* the charge form, Improved Bull Rush (unblocked but still
+  deferred), the 25 % redirect, mounted and AI bull rushes, multi-square
+  creatures, terrain effects; concealment, hard/low-wall and reach-melee cover;
+  grapple, disarm, sunder, overrun; two-weapon fighting and iterative attacks; AoE
+  templates; any save-migration production step; the turning extensions.
+- *Maintenance debt:* empty migration table, acceptance not repeated per batch,
+  `follow_focus` redundancy, single-pane focus walk, minimal settings versioning,
+  simple AI, no content hot reload, placeholder raycaster, shallow UI coverage,
+  source-only GUT; plus `resolve_bull_rush_decision` trusts the recorded cells
+  instead of re-checking them, which is unreachable today but is defence in depth
+  worth adding when a second pending-decision type can coexist.
+- *Evidence gaps:* no exported run exercises the cleanup or bull rush (the
+  recommended smoke); exported binaries are probe-covered only; the earlier
+  combat layout PASS at 160 % was under-covered for nested scrollers before
+  `9b0f046`, and that correction was never applied to the archived candidates;
+  physical held-key acceptance is pending; Enter activation is native-only; no
+  OS-level crash injection; case-sensitive filesystem behaviour is synthetic;
+  the creature-cover candidates are unbound; the `modal_focus` binary is missing;
+  the Tumble stance values are fixture-only; no human playtest was run or
+  requested.
 
 ## P0 — Verify and harden the current slice
 

@@ -4855,3 +4855,49 @@ rather than quietly repaired:
 accepted: its only combat layout evidence was the meaningless 100 % run and the
 failing 160 % one. It is preserved and marked superseded. No manual testing was
 performed or requested, and backups were not touched.
+
+
+### Closure of the bull rush batch (2026-11-21)
+
+Closed as accepted within the recorded limits. Candidate `bull_rush_2026-11-21b`
+(source `9b0f046`, 110,732,632 bytes, SHA-256 `33071751...92a60e4c`) is bound by
+its own before/after hash and carries both exported validators and the combat
+layout probe at 100 % and 160 % (29 controls, 0 failures each). The rules results
+are the source suite at 778/778 tests, 7,976 assertions, 60 scripts, and
+`tests/test_bull_rush.gd` at 24 tests / 90 assertions. The pre-fix export
+`bull_rush_2026-11-21` stays preserved and unaccepted. Nothing was rebuilt and no
+check was repeated for this closure. No confirmed defect was introduced by the
+batch.
+
+### Layout probe scroll coverage — what the fix does and does not change (2026-11-21)
+
+`9b0f046` replaced the single-scroller lookup with a walk over every ancestor
+`ScrollContainer`. The reachability rule itself is unchanged: an interactive
+control must be inside the client, or inside a scroller that can bring it there.
+
+What it changes: a control nested in two scrollers (a combatant-list row inside
+the list's scroller inside the sidebar's) now gets both scrollers moved. Before
+the fix only the innermost moved, so such a row was reported unreachable even
+though the sidebar could reveal it.
+
+What it cannot change: a PASS. The fix only adds scroll attempts for controls
+that were already outside the client; the set of checked controls and the
+non-wrapping-label clipping check are untouched. A control that passed before
+still passes. In the other direction, an earlier FAIL of this shape may have been
+a probe artifact rather than a layout fault.
+
+Consequences for earlier conclusions:
+
+- The 32/32 layout matrix and the per-candidate 100 %/160 % results keep their
+  PASS status. Their combat entries, however, were weaker evidence than recorded:
+  at 160 % the combatant list sits below the fold and its rows were only
+  reachability-checked through the inner scroller, so the matrix did not actually
+  prove that those rows could be brought into view. That is an evidence gap in
+  those rows, not a defect: the current build passes the corrected probe at both
+  scales (29 controls, 0 failures).
+- No earlier documented layout failure is currently attributed to this cause. The
+  one earlier probe false failure on record (a `fit_content` journal label taller
+  than its viewport, `2026-11-20`) had a different cause and was fixed at the time.
+- The fix cannot retroactively certify old binaries: none of the archived
+  candidates was re-run, and the corrected coverage applies to the current build
+  and to future ones.

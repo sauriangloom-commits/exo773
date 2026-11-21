@@ -2679,3 +2679,38 @@ the corrected 160 % run exposed that the layout probe scrolled only the innermos
 container, so rows nested in two scrollers were reported unreachable. The probe now
 walks every ancestor scroller (`9b0f046`); the pre-fix export
 `bull_rush_2026-11-21` is preserved and marked not accepted.
+
+
+### Bull rush closed, roadmap reviewed (2026-11-21)
+
+Bull rush is closed as accepted within the limits recorded with it: bound candidate
+`bull_rush_2026-11-21b`, source suite 778/778 with 7,976 assertions across 60
+scripts, both validators, and the combat layout probe at 100 %/160 % on the
+exported binary. The pre-fix export stays preserved and unaccepted. Nothing was
+rebuilt and no check was repeated for the closure.
+
+The layout probe's scroller fix was reviewed for its effect on earlier results. It
+can only move a control into view, never out of it, so earlier PASSes stand; it
+does mean the earlier combat layout PASS at 160 % was weaker evidence than
+recorded, because rows nested in the list and the sidebar were only reachability
+checked through the inner scroller. That is an evidence gap, now covered on the
+current build and not retroactively on archived candidates.
+
+Recommendation for the next bounded batch: an exported resolution and action smoke
+that plays the QA encounter in the binary, exercises the stance cleanup and a bull
+rush, resolves the fight and reloads the autosave. It adds no play but protects the
+two most recent player-facing systems in the artefact players run, and the
+remaining rules work is blocked on content (no armed enemies for disarm or sunder,
+no terrain tags, no full-attack model).
+
+Kept separate: one open confirmed defect (reveal only while a modal is open; the
+campaign creator keeps its own keyboard path - older and creator-only); deferred features (charge, Improved Bull Rush, the
+redirect, mounted/AI, multi-square creatures, terrain, grapple/disarm/sunder/
+overrun, two-weapon and iterative attacks, AoE, migration production step,
+turning extensions); maintenance debt (including the bull-rush decision trusting
+recorded cells, unreachable today); evidence gaps (no exported run of the cleanup
+or bull rush, under-covered nested scrollers in archived layout runs, pending
+held-key acceptance, native-only Enter, synthetic case-sensitive checks, unbound
+creature-cover candidates, missing `modal_focus` binary, fixture-only Tumble
+values, no playtest). No manual testing was requested and backups were not
+touched.
