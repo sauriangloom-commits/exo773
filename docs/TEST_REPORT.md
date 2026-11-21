@@ -4017,8 +4017,14 @@ limits, unchanged.
 
 Correction (2026-11-21): the key-repeat half of item 5 is implemented and
 automated-verified; physical held-key acceptance is pending (see the modal
-held-key entry at the end of this file). Gamepad page keys and reveal after a
-silent relayout remain open; the rest of this list is unchanged.
+held-key entry at the end of this file). Gamepad page keys remain open.
+Reveal after a silent relayout is
+unreproduced: `open_modal` fixes the panel's minimum size once (base size
+times text scale, capped to the client at open time), so a window resize
+re-centres the panel without reflowing its body, and a refresh rebuilds and
+refocuses through `gui_focus_changed`. It stays a guard for a future
+responsive modal, not a reproduced defect. The rest of this list is
+unchanged.
 
 ### Verification gaps (distinct from defects)
 
