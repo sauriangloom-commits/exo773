@@ -59,6 +59,7 @@ const APP_FLAGS: Array[String] = [
 	"--campaign-list-probe",
 	"--cleave-probe",
 	"--concentration-probe",
+	"--cover-probe",
 	"--creator-acceptance-probe",
 	"--creator-combat-probe",
 	"--creator-combat-reload-probe",
@@ -72,6 +73,7 @@ const APP_FLAGS: Array[String] = [
 	"--demo-cleave",
 	"--demo-combat",
 	"--demo-combat-expertise",
+	"--demo-cover",
 	"--demo-concentration",
 	"--demo-creator",
 	"--demo-creator-diagnostics",
@@ -264,6 +266,8 @@ func _ready() -> void:
 		_start_demo("power_attack")
 	elif "--demo-combat-expertise" in args:
 		_start_demo("combat_expertise")
+	elif "--demo-cover" in args:
+		_start_demo("cover")
 	elif "--demo-town-square" in args:
 		_start_demo("town_square")
 	elif "--demo-town-square-mira" in args:
@@ -329,6 +333,8 @@ func _ready() -> void:
 		_cleave_probe(cleave_scenario)
 	if "--inspect-probe" in args:
 		_inspect_probe()
+	if "--cover-probe" in args:
+		_cover_probe()
 	if "--ranged-probe" in args:
 		_ranged_probe()
 	if "--concentration-probe" in args:
@@ -1938,6 +1944,19 @@ func _layout_probe(scenario: String) -> void:
 			else:
 				failures += 1
 				print("  LAYOUT WRONG SCREEN no combat screen for the inspect modal")
+		"cover":
+			# Leave the shooter active and inspect the screened enemy, which is the
+			# only way the attacker-dependent cover clause appears.
+			var cover_target := -1
+			if current_screen is CombatScreen and Game.encounter != null:
+				for entry in Game.encounter.combatants:
+					if String((entry["char"] as Character).id) == "qa_cover_target":
+						cover_target = int(entry["index"])
+			if cover_target >= 0:
+				(current_screen as CombatScreen)._inspect_index(cover_target)
+			else:
+				failures += 1
+				print("  LAYOUT WRONG SCREEN no cover fixture target for the cover modal")
 		"dialogue":
 			if Game.dialogue == null:
 				failures += 1
@@ -1989,7 +2008,12 @@ func _layout_probe(scenario: String) -> void:
 		var modal_report: Array = await _layout_report(modal, "modal")
 		failures += int(modal_report[0])
 		checked += int(modal_report[1])
-	elif scenario == "settings" or scenario == "inspect" or scenario == "journal":
+	elif (
+		scenario == "settings"
+		or scenario == "inspect"
+		or scenario == "cover"
+		or scenario == "journal"
+	):
 		failures += 1
 		print("  LAYOUT MISSING modal for scenario '%s'" % scenario)
 	if scenario == "journal":
@@ -3672,6 +3696,8 @@ func _start_demo(kind: String, party_ids: Array = ["kaelen", "sera", "aldric", "
 			_qa_cleave_demo(cleave_scenario)
 		"inspect":
 			_qa_inspect_demo()
+		"cover":
+			_qa_cover_demo()
 		"silence":
 			# QA only: seed the broken-token, silent-bell state so the gated
 			# epilogue row can be reached with ordinary input.
@@ -4087,6 +4113,56 @@ func _qa_inspect_demo() -> void:
 			Rules.armor_class(zombie) if zombie != null else -1,
 		]
 	)
+
+
+## QA-only fixture (--demo-cover): a deterministic creature-cover scene for the
+## enemy inspect panel. The party shoots along one row of the 9x5 `qa_victory`
+## board - shooter (1,2), ally (3,2), target (5,2) - so the target has soft cover
+## (+4 AC, PHB p.151) and the panel has a cover clause to render at any text
+## scale. Only ids, names and cells are QA values; initiative is the real path.
+func _qa_cover_demo() -> void:
+	var shooter := Character.from_content(Game.content.get_character("kaelen"), Game.content.items)
+	shooter.id = "qa_cover_shooter"
+	shooter.display_name = "QA Cover Shooter"
+	shooter.equipment["weapon"] = Game.content.items["light_crossbow"].duplicate(true)
+	var ally := Character.from_content(Game.content.get_character("sera"), Game.content.items)
+	ally.id = "qa_cover_ally"
+	ally.display_name = "QA Cover Ally"
+	Game.party.clear()
+	Game.party.append(shooter)
+	Game.party.append(ally)
+	Game.start_encounter("qa_victory")
+	var e := Game.encounter
+	if e == null:
+		print("QA COVER FAILED: encounter did not start")
+		return
+	var target: Character = null
+	for entry in e.combatants:
+		if int(entry["team"]) == Encounter.TEAM_ENEMY:
+			target = entry["char"]
+			entry["cell"] = Vector2i(5, 2)
+			target.id = "qa_cover_target"
+			target.display_name = "QA Cover Target"
+			target.max_hp = 60
+			target.hp = 60
+	e.entry_for(shooter)["cell"] = Vector2i(1, 2)
+	e.entry_for(ally)["cell"] = Vector2i(3, 2)
+	# Re-run the real initiative path until the shooter is first, so the party
+	# member whose shot the panel describes is the active combatant. No roll is
+	# hand-set and the track stays reproducible.
+	var shooter_first := false
+	for attempt in 80:
+		e.begin()
+		if e.active_character() == shooter and not e.finished:
+			shooter_first = true
+			break
+	e.loaded_weapons[String(shooter.id)] = "light_crossbow"
+	var cover := -1
+	if target != null:
+		cover = e.creature_cover(
+			int(e.entry_for(shooter)["index"]), int(e.entry_for(target)["index"])
+		)
+	print("QA COVER READY: shooter_first=%s cover=%d" % [str(shooter_first), cover])
 
 
 ## QA-only (--inspect-probe). Drives the real combat window: opens the enemy
@@ -4944,6 +5020,115 @@ func _qa_ranged_caster() -> Character:
 					id, "qa_ranged_caster", "QA Ranged Caster"
 				)
 	return null
+
+
+## QA-only (--cover-probe, fixture --demo-cover). Drives the real combat window:
+## opens the screened enemy's panel through its row button, checks the rendered
+## cover clause against the resolver's normal and touch ACs, checks that the
+## clause label wraps and fits inside the panel and the client, then attacks once
+## to prove the roll reads the same covered AC. Run at each text scale with
+## `--text-scale=`; captures go under `--trip-shots=<dir>`.
+func _cover_probe() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--trip-shots="):
+			probe_shots = arg.substr("--trip-shots=".length())
+	DirAccess.make_dir_recursive_absolute(probe_shots)
+	probe_scenario = "cover"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog()
+	get_window().size = probe_size
+	for i in 8:
+		await get_tree().process_frame
+	var combat := current_screen
+	if combat == null or Game.encounter == null:
+		_probe_check(false, "combat screen with an encounter exists")
+		_probe_finish("cover")
+		return
+	var e := Game.encounter
+	var shooter: Character = null
+	var target: Character = null
+	for entry in e.combatants:
+		var ch: Character = entry["char"]
+		if ch.id == "qa_cover_shooter":
+			shooter = ch
+		elif ch.id == "qa_cover_target":
+			target = ch
+	_probe_check(shooter != null and target != null, "the shooter and the screened target exist")
+	if shooter == null or target == null:
+		_probe_finish("cover")
+		return
+	_probe_check(e.active_character() == shooter, "the party shooter is the active combatant")
+	var shooter_index := int(e.entry_for(shooter)["index"])
+	var target_index := int(e.entry_for(target)["index"])
+	var cover := e.creature_cover(shooter_index, target_index)
+	_probe_check(cover == 4, "the ally standing on the line grants soft cover (+4 AC)")
+	var flat := e.is_flat_footed(target_index)
+	var normal := CombatScreen.effective_ac(target, flat, cover)
+	var touch := CombatScreen.effective_ac(target, flat, cover, true)
+	_probe_check(
+		normal == Rules.armor_class(target, {"flat_footed": flat}) + 4,
+		"the panel's normal AC is the roll's normal AC plus cover",
+	)
+	_probe_check(
+		touch == Rules.touch_ac(target, {"flat_footed": flat}) + 4,
+		"the panel's touch AC is the roll's touch AC plus cover",
+	)
+	_probe_check(
+		normal > touch, "the fixture has natural armor, so both attack types differ"
+	)
+	await _probe_open_inspect(combat, target)
+	var expected := CombatScreen.cover_summary(target, flat, cover, shooter.display_name)
+	var text := _probe_modal_text()
+	_probe_check(text.contains(expected), "the panel renders the cover clause")
+	_probe_check(
+		text.contains("AC %d • touch %d (+4 cover, PHB p.151)" % [normal, touch]),
+		"both numbers in the clause are the resolver's covered ACs",
+	)
+	var clause: Label = null
+	for node in modal.find_children("*", "Label", true, false):
+		var label := node as Label
+		if label != null and label.text == expected:
+			clause = label
+	_probe_check(clause != null, "the clause is rendered as its own label")
+	var panel: Control = null
+	for node in modal.find_children("*", "PanelContainer", true, false):
+		panel = node as Control
+		break
+	_probe_check(panel != null, "the panel container exists")
+	if clause != null:
+		_probe_check(
+			clause.autowrap_mode != TextServer.AUTOWRAP_OFF,
+			"the clause wraps instead of being clipped",
+		)
+		_probe_check(
+			clause.size.x + 1.0 >= clause.get_minimum_size().x,
+			"the clause is allocated the width its text needs",
+		)
+		_probe_check(
+			clause.size.y + 1.0 >= clause.get_minimum_size().y,
+			"the clause is allocated the height its wrapped text needs",
+		)
+		if panel != null:
+			_probe_check(
+				panel.get_global_rect().encloses(clause.get_global_rect()),
+				"the clause lies inside the panel",
+			)
+	if panel != null:
+		_probe_check(
+			get_viewport().get_visible_rect().encloses(panel.get_global_rect()),
+			"the panel lies inside the client area",
+		)
+	await _probe_shot("cover", "01_panel_cover")
+	await _probe_close_modal()
+	var attack := e.attack_active(target_index)
+	_probe_check(bool(attack.get("ok", false)), String(attack.get("message", "")))
+	if bool(attack.get("ok", false)):
+		_probe_check(
+			int(attack["result"]["target_ac"]) == normal,
+			"the attack roll uses the panel's covered AC",
+		)
+		_probe_check(int(attack["result"]["cover"]) == 4, "the roll records the +4 cover term")
+	_probe_finish("cover")
 
 
 ## QA-only (--ranged-probe, fixture --demo-ranged). Asserts the ranged rules in
