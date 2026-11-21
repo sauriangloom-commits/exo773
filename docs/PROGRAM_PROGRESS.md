@@ -2782,3 +2782,24 @@ Limits: the probe checks control rects, not rendered pixels; its exhaustive pass
 uses programmatic focus and its order pin uses the map-cell stretch because the
 description editor keeps Tab for indentation. No manual testing was requested and
 no backups were touched.
+
+
+### Creator focus fix closed, roadmap reviewed (2026-11-21)
+
+The creator keyboard reveal fix is closed as accepted within its limits: bound
+candidate `creator_focus_2026-11-21a` (source `8f625f4`, 110,747,912 bytes,
+SHA-256 `53ae457e...c0017b`), probe PASS with 0 of 182 controls outside the
+viewport at both scales from source and from the exe, suite 778/778, both
+validators. Nothing was rebuilt or re-checked for the closure. The confirmed
+defect list is empty for the first time since the reveal gap was recorded.
+
+Review finding: the remaining player-facing gap is progression. Encounter and
+effect XP accumulate and the character sheet shows the number, but there is no
+threshold, no level-up and no feat choice, so earned XP cannot change a character;
+the same missing screen is what keeps Improved Bull Rush and every other
+level- or feat-gated rule out of reach. That is too large for one bounded batch,
+so the recommendation is a planning-only task for level-up and feat selection. The
+one implementation candidate worth keeping warm is the shared modal body's
+`follow_focus`, which duplicates the reveal walk and once left a nested row
+off-screen in a synthetic modal; it is smaller but has no confirmed player report.
+No new defect was found during the review.

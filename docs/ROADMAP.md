@@ -349,7 +349,8 @@ focused controls outside the viewport at 100 % and 160 %); after the fix it is 0
 outside at both scales, with Tab/Shift+Tab order, the dropdown popup, Settings over
 the creator and focus restore pinned. Suite 778/778, both validators, and a bound
 exe (clean `8f625f4`, `53ae457e...c0017b`) that passes the probe. The probe checks
-rects, not rendered pixels. See TEST_REPORT.
+rects, not rendered pixels. Closed as accepted within those limits (2026-11-21);
+see TEST_REPORT.
 
 ### Candidate 2 - Improved Bull Rush
 
@@ -420,6 +421,159 @@ add: it drives the wrappers, not the buttons, and that stays the stated limit.
   are unbound; the `modal_focus` binary is missing; Tumble stance values are
   fixture-only; the resolution smoke's winning seed is fixture-selected (7302);
   no human playtest was run or requested.
+
+## Next bounded task - roadmap review after the creator-focus closure (2026-11-21)
+
+Review only. Nothing was implemented, rebuilt or re-checked for this section, and
+no manual testing was requested. The creator focus fix is closed within its limits
+in [TEST_REPORT.md](TEST_REPORT.md) (`creator_focus_2026-11-21a`, source
+`8f625f4`, SHA-256 `53ae457e...c0017b`, 0 of 182 controls outside the viewport at
+both scales from source and exe).
+
+The confirmed-defect list is empty, so this review ranks by player value rather
+than by defect.
+
+**Recommendation: a planning-only task - design level-up and feat selection (no
+code).** It is the largest remaining player-facing gap, it blocks Improved Bull
+Rush and every other level- or feat-gated rule, and its implementation spans
+content schema, rules, save compatibility and a new screen - too much for one
+bounded batch, so it needs a plan before it needs a commit.
+
+### Why planning, now
+
+- **The dead end is already visible to a player.** Encounters award XP
+  (`src/game_state.gd:1734`) and effects can add it (`:1391`), the character sheet
+  prints it (`src/ui/panels.gd:63`), and the demo party is authored at level 3
+  with 3,000 XP - but nothing compares XP to a threshold, changes `level`, or
+  grants anything. `level` is only read from content (`src/core/character.gd:681`).
+- **The rules engine already assumes levels it cannot gain.** Feat prerequisites
+  can require a character level (`src/core/feats.gd:598`), skill rank caps are
+  `level + 3` (`src/core/skills.gd:187`), and cleric turning uses `level`
+  (`character.gd:127`). Feats are displayed on the sheet
+  (`src/ui/panels.gd:146`) but never chosen.
+- **What a level-up screen blocks:** Improved Bull Rush (needs Power Attack),
+  Weapon Specialization (fighter level 4), iterative attacks (BAB progression),
+  skill points and their caps, spell learning and slots, and any class feature
+  beyond the cleric turning level - plus the feat-selection screen that would make
+  `Feats.CATALOG` reachable to a player at last.
+- **Nothing exists to build on at the data layer.** There are no class
+  progression tables in `content/`: no classes file, no per-level HP, BAB, saves,
+  skills, spells or bonus-feat slots. `base_attack` is authored per character
+  (`character.gd:683`), not derived. The characters file holds five party members - all
+  level 3 with 3,000 XP - and the monsters.
+- **The scale is the point.** A plan has to decide the class-table content shape,
+  XP thresholds, HP policy (fixed average or roll), skill points, feat and ability
+  increase slots, spell progression, how existing level-3 saves are read, and what
+  the screen looks like at 1280x720 and 160 % - before any of it is coded.
+
+**Bounded deliverable for the planning task.** One design document (plus rows in
+the coverage/roadmap docs as needed) covering: the class progression data shape
+and its validation; the XP table for levels 3-4 only (the demo's reachable range);
+HP, BAB, save, skill, feat/slot and spell-progression decisions for the five demo
+classes (fighter, rogue, cleric, wizard, sorcerer); save compatibility for characters already at level 3; the screen's flow
+and keyboard requirements; a test and probe plan shaped like the creator focus
+probe; and a risk list that says what stays deferred (multiclassing, prestige
+classes, XP for crafting, retraining). No code, no content, no schema change lands
+with it. If the plan finds the level-3-to-4 slice still needs more than one
+implementation batch, it should say so and split it there.
+
+### Candidate 2 - modal reveal debt (`follow_focus` beside the walk)
+
+The one implementation candidate kept warm, not chosen now.
+
+- **What it is.** `open_modal` sets `content_scroll.follow_focus = true`
+  (`src/main.gd:7523`) while `_reveal_focused_control` also scrolls the body and
+  every wrapper pane. Two mechanisms move the same pane.
+- **Player impact: possible, unconfirmed.** In a synthetic modal with a nested
+  scroller the coexistence left the focused row above the viewport once at 100 %
+  (rect y = -55 after focusing a deep row); the real Settings panel passed at both
+  scales, and no player report exists. It is the only debt item with a plausible
+  visible symptom.
+- **Reachability.** Any modal whose content nests its own `ScrollContainer` - the
+  Settings list, the party sheet and inventory per the reveal comment - at a
+  window short enough to scroll.
+- **Dependencies.** One line in `open_modal` plus removing the assumption in the
+  reveal comment; no content, rules or save change.
+- **Automated verification.** `--creator-focus-probe` already covers a real nested
+  Settings modal over the creator at both scales; `tests/test_modal_focus.gd` and
+  the settings probes cover the rest, and the suite must stay green.
+- **Why not now.** It fixes an unconfirmed symptom in a path that currently passes
+  every check, while progression is a gap every player meets. It remains the best
+  small code batch if a rules/UI batch is not wanted yet.
+
+### Candidate 3 - Improved Bull Rush
+
+- **Player impact.** +4 on the rush check and the defender loses its reaction, for
+  a fighter built around it.
+- **Reachability: still none.** No party member has Power Attack, and with no
+  feat selection there is no route to it. It is blocked behind Candidate 1, not
+  behind rules work.
+- **Dependencies.** A `Feats.CATALOG` entry with the Power Attack prerequisite, a
+  bonus in `bull_rush_active`, a skip of `_provoke_single_opportunity`, and a
+  content or feat-selection route to acquire it.
+- **Automated verification.** Catalog and prerequisite tests, encounter tests for
+  the missing reaction, the bull-rush suite, and the exported resolution smoke if
+  its fixture gains the feat.
+- **Why not now.** It would ship a rule no player can select; its cost falls
+  sharply once feat selection exists.
+
+### Candidate 4 - evidence gaps a batch cannot close
+
+Held-key behaviour, Enter activation and OS-level input acceptance need a person
+at a keyboard; no automated batch can produce that evidence, and no manual testing
+is requested here. Save-migration evidence waits for a schema change. These are
+listed, not scheduled.
+
+### Does any debt or gap now have player impact?
+
+- *Maintenance debt with plausible player impact:* the shared modal body's
+  `follow_focus` beside the reveal walk (double scroll; the only one with a
+  reproduced off-screen row, synthetic); shallow UI coverage, which is why keyboard
+  paths are probe-checked rather than suite-checked; the empty migration table,
+  which is latent until the first schema change; simple AI, which a player feels as
+  enemies that never bull rush, trip or use items.
+- *Maintenance debt without player impact today:* source-only GUT, minimal
+  settings versioning, no content hot reload, the placeholder raycaster (visible
+  but deliberate), the probe-heavy `main.gd`, `resolve_bull_rush_decision`
+  trusting recorded cells (unreachable), and acceptance not repeated per batch.
+- *Evidence gaps with player impact:* physical held-key acceptance pending and
+  Enter activation proven natively only - keyboard players depend on both, and no
+  automated substitute exists; the suite's shallow UI interaction coverage, partly
+  offset by the creator, layout and settings probes.
+- *Evidence gaps without player impact:* no OS-level crash injection, synthetic
+  case-sensitive filesystem behaviour, the unbound creature-cover candidates, the
+  missing `modal_focus` binary, fixture-only Tumble values, the resolution smoke's
+  fixture-selected seed, and the archived pre-`9b0f046` 160 % layout
+  under-coverage.
+
+**State after the review, kept separate.**
+
+- *Confirmed defects:* none. The creator reveal gap was fixed in `8f625f4` and
+  closed as `creator_focus_2026-11-21a`; the stance leak and the bull-rush layout
+  probe artifact remain fixed and closed, and the last two probes found no new
+  failure.
+- *Deferred features:* level-up and feat selection (the recommended plan); the
+  charge form; Improved Bull Rush (blocked behind feat selection); the 25 %
+  redirect; mounted and AI bull rushes; multi-square creatures; terrain effects;
+  concealment, hard/low-wall and reach-melee cover; grapple, disarm, sunder,
+  overrun; two-weapon fighting and iterative attacks; AoE templates; any
+  save-migration production step; the turning extensions; Weapon Specialization
+  and the rest of the level-gated feats.
+- *Maintenance debt:* empty migration table, acceptance not repeated per batch,
+  `follow_focus` redundancy beside the reveal walk, one pane following focus per
+  key press, minimal settings versioning, simple AI, no content hot reload,
+  placeholder raycaster, shallow UI coverage, source-only GUT, probe-heavy
+  `main.gd`, and `resolve_bull_rush_decision` trusting its recorded cells instead
+  of re-checking them.
+- *Evidence gaps:* the Push 5 ft / Follow decision UI is not exercised by the
+  exported smoke; exported rules behaviour beyond that smoke is probe-covered
+  only; physical held-key acceptance is pending; Enter activation is native-only;
+  no OS-level crash injection; case-sensitive filesystem behaviour is synthetic;
+  the creature-cover candidates are unbound; the `modal_focus` binary is missing;
+  Tumble stance values are fixture-only; the resolution smoke's winning seed is
+  fixture-selected; the creator focus probe checks rects, not rendered pixels, and
+  pins Tab order only over the map-cell stretch; no human playtest was run or
+  requested.
 
 ## P0 — Verify and harden the current slice
 

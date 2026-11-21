@@ -5078,3 +5078,19 @@ Logs: `builds/qa/runs/2026-11-21_creator_focus_export/`.
 - No layout probe was rerun: the change moves scroll offsets only, and the
   creator's layout is unchanged.
 - No manual testing was performed or requested, and backups were not touched.
+
+
+### Closure of the creator focus fix (2026-11-21)
+
+Closed as accepted within the limits recorded with it. Candidate
+`creator_focus_2026-11-21a` (source `8f625f4`, 110,747,912 bytes, SHA-256
+`53ae457ecfc54cfa5e4a57f226908574994d5c9fbbb7b264e79e42d1b0c0017b`) is bound by its
+before/after hash. Its source probe passed with 0 of 182 focused controls outside
+the viewport at 100 % and 160 %, the suite stood at 778/778 tests and 7,981
+assertions, both validators passed, and the same probe passed from the exe.
+Nothing was rebuilt and no check was repeated for this closure.
+
+What it does not cover, unchanged: the probe checks control rects, not rendered
+pixels; its exhaustive pass uses programmatic focus; the Tab order is pinned over
+the map-cell stretch because the description editor keeps Tab for indentation; no
+pointer path is exercised.
