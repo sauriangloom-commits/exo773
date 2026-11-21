@@ -130,6 +130,7 @@ const APP_FLAGS: Array[String] = [
 ## Application options written as `--name=value`; the value is required.
 const APP_VALUE_OPTIONS: Array[String] = [
 	"--campaign",
+	"--resolution-smoke",
 	"--campaign-probe",
 	"--capture",
 	"--capture-dir",
@@ -384,6 +385,8 @@ func _ready() -> void:
 	if "--quest-log-probe" in args:
 		_quest_log_probe()
 	for arg in args:
+		if arg.begins_with("--resolution-smoke="):
+			_resolution_smoke_probe(arg.substr("--resolution-smoke=".length()))
 		if arg.begins_with("--campaign-probe="):
 			_campaign_probe(arg.substr("--campaign-probe=".length()))
 	if "--creator-probe" in args:
@@ -616,6 +619,293 @@ func _list_campaigns_and_quit() -> void:
 
 ## Developer pipeline: validate every installed campaign and fail the process if
 ## any package is invalid. No game window or GUT run is required.
+## Exported-path resolution and action smoke.
+##
+## Usage: `--resolution-smoke=<isolated profile directory>` under `--headless`.
+## The directory must exist and must contain Godot's `user://` data directory.
+## When either test fails, the smoke exits before reading or writing a save, so a
+## mistyped profile can never touch a player's real save directory.
+##
+## It plays the QA victory encounter through the real `Game` wrappers: a bull
+## rush with a pre-decided follow, total defense committed for a whole round, an
+## ally's spell to resolve the fight, then the victory autosave read and reloaded.
+## It does not drive the Push 5 ft / Follow buttons; the decision UI is covered by
+## the source suite's engine-level tests, and no click is made here.
+func _resolution_smoke_probe(profile_arg: String) -> void:
+	const CAMPAIGN := "ravenloft_demo"
+	const SLOT := "auto"
+	var state := {"failures": 0, "checks": 0}
+	var profile := profile_arg.replace("\\", "/").trim_suffix("/")
+	var user_dir := ProjectSettings.globalize_path("user://").replace("\\", "/").trim_suffix("/")
+	if profile == "" or not DirAccess.dir_exists_absolute(profile):
+		print("RESOLUTION SMOKE FAIL isolation: profile directory missing (%s)" % profile_arg)
+		get_tree().quit(1)
+		return
+	if not (
+		user_dir.to_lower() == profile.to_lower()
+		or user_dir.to_lower().begins_with(profile.to_lower() + "/")
+	):
+		print("RESOLUTION SMOKE FAIL isolation: user data dir %s is outside %s" % [user_dir, profile])
+		get_tree().quit(1)
+		return
+	if _smoke_user_dir_is_real_appdata(user_dir):
+		print("RESOLUTION SMOKE FAIL isolation: %s is the platform app-data folder" % user_dir)
+		get_tree().quit(1)
+		return
+	print("RESOLUTION SMOKE profile=%s user_dir=%s" % [profile, user_dir])
+	SaveSystem.delete_save_everywhere(SLOT)
+	# The follow only exists when the opposed check is won, so the seed is chosen
+	# by trying the fixture; the outcome is then deterministic for this run.
+	var parts := {}
+	var rush := {}
+	var chosen_seed := 0
+	for candidate in range(7301, 7341):
+		parts = _smoke_start(CAMPAIGN, candidate)
+		if parts.is_empty():
+			break
+		rush = _smoke_rush_turn(parts)
+		if int(rush.get("pushed_ft", 0)) >= 5:
+			chosen_seed = candidate
+			break
+	_smoke_assert(state, not parts.is_empty(), "the QA fixture starts")
+	_smoke_assert(state, chosen_seed > 0, "a seed wins the bull rush check")
+	_smoke_assert(state, bool(rush.get("ok", false)), "the bull rush resolves")
+	if parts.is_empty() or chosen_seed == 0:
+		_smoke_report(state)
+		return
+	print("RESOLUTION SMOKE seed=%d" % chosen_seed)
+	var e: Encounter = parts["encounter"]
+	var user: Character = parts["user"]
+	var ally: Character = parts["ally"]
+	var zombie: Character = parts["zombie"]
+	var zombie_entry: Dictionary = parts["zombie_entry"]
+	var user_entry: Dictionary = parts["user_entry"]
+	var base_ac := int(parts["base_ac"])
+	var defender_from: Vector2i = parts["defender_from"]
+	var rusher_from: Vector2i = parts["rusher_from"]
+	var pushed := int(rush.get("pushed_ft", 0))
+	var excess := int(rush.get("excess", 0))
+	var steps := pushed / 5
+	var defender_to := Vector2i(zombie_entry["cell"])
+	var rusher_to := Vector2i(user_entry["cell"])
+	var direction := Vector2i(
+		signi(defender_to.x - defender_from.x), signi(defender_to.y - defender_from.y)
+	)
+	_smoke_assert(state, pushed >= 5 and pushed % 5 == 0, "the push is whole 5-ft steps (%d)" % pushed)
+	_smoke_assert(
+		state,
+		pushed == 5 + 5 * (excess / 5),
+		"the push is 5 ft plus 5 ft per full 5 points of excess (%d vs excess %d)" % [pushed, excess]
+	)
+	_smoke_assert(
+		state,
+		defender_to == defender_from + direction * steps and e.map.distance_ft(defender_from, defender_to) == pushed,
+		"the defender moved the printed distance"
+	)
+	_smoke_assert(
+		state,
+		rusher_to == defender_from + direction * (steps - 1),
+		"the rusher ended in the vacated square"
+	)
+	_smoke_assert(
+		state,
+		Vector2i(user_entry["cell"]) != rusher_from,
+		"the rusher moved out of the starting square"
+	)
+
+	# Total defense, committed for the rest of the round, so the fight ends while
+	# a combat-scope effect is live. The rush already spent this turn's standard
+	# action, so the turn has to pass before the defense can be taken.
+	Game.combat_end_turn()
+	var reached := _smoke_advance_to(String(user.id))
+	_smoke_assert(state, reached, "the fighter's next turn arrives")
+	var defense := Game.combat_total_defense()
+	_smoke_assert(state, bool(defense.get("ok", false)), "total defense is taken")
+	_smoke_assert(state, user.has_effect("total_defense"), "total defense is active")
+	_smoke_assert(
+		state,
+		Rules.armor_class(user) == base_ac + 4,
+		"total defense grants +4 AC before resolution (%d vs %d)" % [Rules.armor_class(user), base_ac]
+	)
+
+	# Resolve the fight: the ally's automatic-hit spell drops the zombie.
+	reached = _smoke_advance_to(String(ally.id))
+	_smoke_assert(state, reached, "the ally's turn arrives")
+	zombie.hp = 1
+	var cast := Game.combat_cast("magic_missile", int(zombie_entry["index"]))
+	_smoke_assert(state, bool(cast.get("ok", false)), "the ally's spell resolves")
+	_smoke_assert(state, String(e.outcome) == "victory", "the fight is won")
+	_smoke_assert(state, Game.mode == "explore", "resolution returned to exploration")
+
+	# Behaviour after the fight and in the save.
+	_smoke_assert(state, not user.has_effect("total_defense"), "the in-memory state has no total defense")
+	_smoke_assert(state, not user.has_effect("fighting_defensively"), "the in-memory state has no fighting defensively")
+	_smoke_assert(state, not user.has_effect("combat_expertise"), "the in-memory state has no Combat Expertise")
+	_smoke_assert(state, Rules.armor_class(user) == base_ac, "base AC is restored after the fight")
+	_smoke_assert(state, user.has_effect("bless"), "the unrelated bless effect survives")
+	_smoke_assert(
+		state,
+		Vector2i(zombie_entry["cell"]) == defender_to and Vector2i(user_entry["cell"]) == rusher_to,
+		"both bull rush cells are preserved through resolution"
+	)
+	var slot_path := SaveSystem.path_for(SLOT, CAMPAIGN)
+	_smoke_assert(state, FileAccess.file_exists(slot_path), "the victory autosave exists")
+	var saved_effects := _smoke_saved_effects(slot_path, String(user.id))
+	var saved_stance := false
+	var saved_bless := false
+	for effect in saved_effects:
+		var effect_id := String(Dictionary(effect).get("id", ""))
+		if effect_id in ["total_defense", "fighting_defensively", "combat_expertise"]:
+			saved_stance = true
+		if effect_id == "bless":
+			saved_bless = true
+	_smoke_assert(state, not saved_effects.is_empty(), "the save holds the fighter's effects")
+	_smoke_assert(state, not saved_stance, "the save holds no combat-scope effect")
+	_smoke_assert(state, saved_bless, "the save keeps bless")
+	var loaded := Game.load_game(SLOT)
+	_smoke_assert(state, bool(loaded.get("ok", false)), "the autosave reloads")
+	var reloaded: Character = null
+	for ch in Game.party:
+		if String(ch.id) == String(user.id):
+			reloaded = ch
+	_smoke_assert(state, reloaded != null, "the reloaded party holds the fighter")
+	if reloaded != null:
+		_smoke_assert(state, not reloaded.has_effect("total_defense"), "the reloaded state has no total defense")
+		_smoke_assert(
+			state,
+			not reloaded.has_effect("fighting_defensively") and not reloaded.has_effect("combat_expertise"),
+			"the reloaded state has no other stance"
+		)
+		_smoke_assert(state, Rules.armor_class(reloaded) == base_ac, "the reloaded fighter has base AC")
+		_smoke_assert(state, reloaded.has_effect("bless"), "the reloaded state keeps bless")
+	_smoke_report(state)
+
+
+## True when `user_dir` sits in the standard Windows roaming app-data folder,
+## where a player's saves live. Godot derives its user directory from the APPDATA
+## environment variable, so a redirected APPDATA hides the real path from the
+## process; the user profile itself is not redirected, so it still names the
+## default location. A profile that is (or contains) that location is refused
+## before any save is read or written.
+func _smoke_user_dir_is_real_appdata(user_dir: String) -> bool:
+	if OS.get_name() != "Windows":
+		return false
+	var backslash := String.chr(92)
+	var home := OS.get_environment("USERPROFILE").replace(backslash, "/")
+	if home.strip_edges() == "":
+		print("RESOLUTION SMOKE isolation warning: the user profile is unknown")
+		return false
+	var roaming := home.path_join("AppData").path_join("Roaming").trim_suffix("/").to_lower()
+	var lowered := user_dir.replace(backslash, "/").to_lower()
+	return lowered == roaming or lowered.begins_with(roaming + "/")
+
+
+## One fresh attempt at the fixture, so a lost check can be retried with another
+## seed without leaving half-spent turn state behind.
+func _smoke_start(campaign: String, seed_value: int) -> Dictionary:
+	Game.reset_to_menu()
+	Game.load_campaign(campaign)
+	if not bool(Game.new_game(["kaelen", "ysolde"], seed_value).get("ok", false)):
+		return {}
+	if not bool(Game.start_encounter("qa_victory").get("ok", false)):
+		return {}
+	var e := Game.encounter
+	if e == null or Game.party.size() < 2:
+		return {}
+	var user: Character = Game.party[0]
+	var ally: Character = Game.party[1]
+	var zombie_entry := {}
+	for entry in e.combatants:
+		if int(entry["team"]) == Encounter.TEAM_ENEMY:
+			zombie_entry = entry
+			break
+	if zombie_entry.is_empty():
+		return {}
+	# The duel fixture the source tests use: the zombie is stationary and
+	# adjacent, the ally is out of reach, and the corridor behind the zombie is
+	# clear so the push distance is not shortened by a wall.
+	var user_entry := e.entry_for(user)
+	user_entry["cell"] = Vector2i(2, 2)
+	e.entry_for(ally)["cell"] = Vector2i(6, 3)
+	zombie_entry["cell"] = Vector2i(3, 2)
+	var zombie: Character = zombie_entry["char"]
+	zombie.max_hp = 40
+	zombie.hp = 40
+	zombie.speed_ft = 0
+	user.add_effect("bless", "Bless", 3)
+	return {
+		"encounter": e,
+		"user": user,
+		"ally": ally,
+		"zombie": zombie,
+		"zombie_entry": zombie_entry,
+		"user_entry": user_entry,
+		"base_ac": Rules.armor_class(user),
+	}
+
+
+## Takes the fighter's turn and calls the bull rush wrappers exactly as the
+## combat screen does, resolving the pending follow immediately.
+func _smoke_rush_turn(parts: Dictionary) -> Dictionary:
+	if parts.is_empty():
+		return {}
+	if not _smoke_advance_to(String((parts["user"] as Character).id)):
+		return {}
+	var zombie_entry: Dictionary = parts["zombie_entry"]
+	var user_entry: Dictionary = parts["user_entry"]
+	parts["defender_from"] = Vector2i(zombie_entry["cell"])
+	parts["rusher_from"] = Vector2i(user_entry["cell"])
+	var rush := Game.combat_bull_rush(int(zombie_entry["index"]))
+	if String(rush.get("pending", "")) == "follow":
+		rush = Game.combat_resolve_bull_rush(true)
+	return rush
+
+
+func _smoke_assert(state: Dictionary, ok: bool, label: String) -> void:
+	state["checks"] = int(state["checks"]) + 1
+	if ok:
+		print("  RESOLUTION SMOKE CHECK PASS %s" % label)
+		return
+	state["failures"] = int(state["failures"]) + 1
+	print("  RESOLUTION SMOKE CHECK FAIL %s" % label)
+
+
+func _smoke_report(state: Dictionary) -> void:
+	var failures := int(state["failures"])
+	print(
+		"RESOLUTION SMOKE %s checks=%d failures=%d"
+		% ["PASS" if failures == 0 else "FAIL", int(state["checks"]), failures]
+	)
+	get_tree().quit(0 if failures == 0 else 1)
+
+
+func _smoke_advance_to(name: String) -> bool:
+	var e := Game.encounter
+	for _i in 40:
+		if e == null or e.finished or Game.mode != "combat":
+			return false
+		var active := e.active_character()
+		if active != null and String(active.id) == name:
+			return true
+		Game.combat_end_turn()
+	return false
+
+
+## Party entries' `effects` arrays from the autosave, so the smoke asserts on the
+## serialized bytes rather than on the in-memory character.
+func _smoke_saved_effects(path: String, character_id: String) -> Array:
+	var text := FileAccess.get_file_as_string(path)
+	if text == "":
+		return []
+	var parsed = JSON.parse_string(text)
+	if not parsed is Dictionary:
+		return []
+	for entry in Array(Dictionary(parsed).get("party", [])):
+		if String(Dictionary(entry).get("id", "")) == character_id:
+			return Array(Dictionary(entry).get("effects", []))
+	return []
+
+
 func _validate_campaigns_and_quit() -> void:
 	var failures := 0
 	for id in Game.campaigns.order:
