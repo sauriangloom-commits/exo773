@@ -18,6 +18,7 @@ Page citations use printed pages, with PDF pages in parentheses. See
 | 2 | Armor Class | `Rules.armor_class`, `Character` | PHB Ch. 8, pp. 133–137 (PDF 134–138) | Supported | Armor + shield + Dex (capped by armor) + size + natural armor; touch excludes natural armor; helpless uses Dex 0. Combat-start flat-footedness is applied; see row 2a. |
 | 2a | Combat-start flat-footed | `Encounter.begin`, `Encounter.flat_footed`, `Encounter.is_flat_footed`, `Encounter._begin_turn`, `Rules.armor_class`, `Rules.touch_ac`, `Rules._feat_ac_bonus`, `Rules.attack`, `CombatScreen.effective_ac` | PHB p. 133 (PDF 134), p. 134 (PDF 135), p. 136 (PDF 137) | Supported | Every combatant starts flat-footed and remains so until the start of that combatant's first turn. The state denies a **positive** Dexterity bonus on normal and touch AC, and denies dodge bonuses with it; a Dexterity penalty still applies and a zero modifier changes nothing (p. 136: "If you don't have a Dexterity bonus, nothing happens"). It also denies attacks of opportunity and lets a rogue sneak attack the target; undead and constructs stay immune to that sneak attack. Party attacks, opportunity attacks, monster attacks, ranged touch spells and the trip touch attack all pass the state to the shared attack resolver; the enemy inspect panel reads the same `Rules.armor_class` through `CombatScreen.effective_ac` and marks the state. Awareness only determines whether a surprise round occurs. p. 134 says the state lasts "until he or she takes an action"; ending it at the start of the turn is this project's stated reading. No supported creature has uncanny dodge or Combat Reflexes, so no printed exception is currently required (see SUPPORTED_FEATURES). |
 | 3 | Hit points and hit dice | `Character`, `content/characters.json` | PHB Ch. 3 class tables; Ch. 8 | Supported | Level-3 pregens with authored HP; no level-up |
+| 3a | Class progression tables (levels 1-4) | `src/core/class_progression.gd`, `--validate-diagnostics` | PHB Table 3-1 and 3-2 p. 22; Table 3-6 p. 31; Table 3-9 p. 39; Table 3-15 p. 49; Table 3-16 p. 52; Table 3-17 p. 54; Table 3-18 p. 55 | Supported (data only) | Five shipped classes, levels 1-4: hit die, skill points, base attack and base saves, feat slots, printed spell slots and sorcerer spells known. Nothing reads the table for play yet, so no character, save, XP, level, UI or rules value changes. `validate()` rejects a missing class or row, a value that disagrees with the printed progression, a backwards row and illegal spell data; `authored_inconsistencies()` reports the accepted level-3 differences without editing content. |
 | 4 | Initiative | `Encounter.begin`, `Feats.initiative_bonus` | PHB Ch. 8, p. 135 (PDF 136); Improved Initiative p. 95 | Supported | d20 + Dex + Improved Initiative (+4); ties broken deterministically for reproducibility (Interpreted) |
 | 5 | Attack rolls | `Rules.attack_bonus`, `Encounter` | PHB Ch. 8, pp. 135–140 (PDF 136–141) | Supported | BAB + ability + size + misc; natural 1/20; -4 weapon non-proficiency and non-proficient armor/shield ACP included |
 | 6 | Critical threats and confirmation | `Rules`, `Encounter` | PHB Ch. 8, p. 140 | Supported | Threat range/multiplier; confirmation; undead and constructs are immune |
@@ -213,3 +214,18 @@ movement and the grid-diagonal direction are recorded in `ADAPTATION_LOG.md`
 19i-19j, not presented as printed rules. Excluded: the charge form, Improved Bull
 Rush, the 25 % redirect for third-party reactions, mounted bull rush, AI use,
 multi-square creatures and terrain effects.
+
+### Class progression (batch 1, 2026-11-21)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| Levels 1-4 rows for the five shipped classes: hit die, skill points, base attack, base saves | PHB Table 3-1 and 3-2 p. 22; class tables pp. 31, 39, 49, 52, 55 | `ClassProgression.CLASSES`, `ClassProgression.validate` | `tests/test_class_progression.gd`; `--validate-diagnostics` |
+| Feat slots at levels 1-4 | PHB Table 3-2 p. 22; fighter Table 3-9 p. 39 | `ClassProgression.feat_slots` | `test_feat_slots_match_the_printed_progression` |
+| Hit points per level (maximum at 1st, fixed average after) | PHB p. 9; class tables | `ClassProgression.expected_hp` | `test_expected_hp_matches_every_authored_character` |
+| Printed spell slots and sorcerer spells known | Table 3-6 p. 31; Table 3-16 p. 52; Table 3-17 p. 54; Table 3-18 p. 55 | `ClassProgression.spell_slots`, `ClassProgression.spells_known` | `test_spell_slots_match_the_printed_tables` |
+| Validator rejects missing, backwards and inconsistent rows | Batch 1 contract in `LEVEL_UP_PLAN.md` | `ClassProgression.validate` | `test_validate_rejects_*` |
+| Authored level-3 differences reported, not repaired | `content/shared/characters.json` | `ClassProgression.authored_inconsistencies` | `test_authored_level_three_characters_report_their_accepted_inconsistencies` |
+
+Adaptations: the code-not-content storage choice and the thirteen accepted authored
+inconsistencies are recorded in `ADAPTATION_LOG.md` 49. The table is data only; no
+XP, level, save, UI or rules behaviour reads it yet.

@@ -5094,3 +5094,21 @@ What it does not cover, unchanged: the probe checks control rects, not rendered
 pixels; its exhaustive pass uses programmatic focus; the Tab order is pinned over
 the map-cell stretch because the description editor keeps Tab for indentation; no
 pointer path is exercised.
+
+### Class progression tables (2026-11-21)
+
+Batch 1 of the level-up plan adds `src/core/class_progression.gd` and
+`tests/test_class_progression.gd`. Seventeen new tests cover the printed levels 3
+and 4 rows for the five shipped classes, hit dice and skill points, feat slots,
+spell slots and sorcerer spells known, the validator's rejection of a missing class
+or level row, a backwards row, a wrong base attack or save, a bad hit die or skill
+points and illegal spell data, the expected hit points of all five authored
+characters, and the exact set of accepted authored inconsistencies (13). Tests were
+written first and failed to compile before the class existed; the suite now stands
+at 795/795 tests, 8,126 assertions and 61 scripts (baseline 778/778, 7,981, 60).
+`--validate-campaigns` passes and `--validate-diagnostics` passes with `CLASS
+PROGRESSION PASS | 13 accepted authored inconsistencies`; its JSON line is
+unchanged. Nothing player-visible changed, so no candidate was exported, no manual
+testing was performed or requested, and no backups were touched. A one-time
+`--import` refresh was run so the new `class_name` entered the global class cache;
+it changed no source.

@@ -2823,3 +2823,21 @@ starting level/XP, and it defines the six-step modal, the keyboard path, the 160
 rect requirements, a GUT plus `--level-up-probe` plan, five separately acceptable
 batches with `level_tables` first, and the exclusions.
 
+
+### Level tables landed (2026-11-21)
+
+Batch 1 of `docs/LEVEL_UP_PLAN.md` is implemented as data and validation only.
+`src/core/class_progression.gd` holds the five shipped classes for levels 1-4 (hit
+die, skill points, base attack and base saves, feat slots, printed spell slots and
+sorcerer spells known) after checking every value and page against the SRD and the
+PHB contents: Table 3-1 and 3-2 p. 22, cleric Table 3-6 p. 31, fighter Table 3-9
+p. 39, rogue Table 3-15 p. 49, sorcerer Table 3-16 p. 52 and Table 3-17 p. 54,
+wizard Table 3-18 p. 55. The plan's fighter, sorcerer and wizard page numbers were
+wrong and are corrected in it. `validate()` rejects a missing class or row, a
+backwards row and any value that disagrees with the printed progression, and is
+wired into `--validate-diagnostics` without changing its JSON.
+`authored_inconsistencies()` reports thirteen accepted level-3 differences without
+editing a character: four feat counts, three cross-class ranks above the cap with
+their point totals, Ysolde's bonus slots, Mira's slots and known list, and the
+missing 0-level row. XP, level, saves, UI and rules are untouched, no derived
+number changed, so no candidate was exported.

@@ -131,7 +131,7 @@ all authored or derived from authored values.
   raises the cap.
 - **Feat slots** (PHB Table 3-2 and the class tables): general feats at 1st, 3rd
   and 6th; fighter bonus feats at 1st, 2nd, 4th. **At 4th level only the fighter
-  gains a feat** (PHB p. 37, fighter table). No class gains a general feat at 4.
+  gains a feat** (PHB Table 3-9, p. 39). No class gains a general feat at 4.
 - **Adaptation: eligible fighter bonus feats are the implemented catalog only**
   (`Feats.CATALOG`), filtered by prerequisites. The printed fighter list includes
   many feats this slice does not implement, and offering them would create
@@ -165,16 +165,20 @@ it has no 0-level spells, no domain slots and no spellbook, and authored rows
 include what the printed tables call bonus or domain slots. Level 4 therefore
 adds slots to the authored row rather than re-deriving the row from the book.
 
-- **Cleric** (PHB cleric table, p. 31): printed 4th level is 5 / 3+1 / 2+1. In the
+- **Cleric** (PHB Table 3-6, p. 31): printed 4th level is 5 / 3+1 / 2+1. In the
   engine's model (no 0-level, domain slots included, no Wis bonus): **1st 4, 2nd
   3** - one more 1st and one more 2nd than level 3's 3 / 2.
-- **Wizard** (PHB wizard table, p. 57): printed 4th level is 4 / 3 / 2. With
+- **Wizard** (PHB Table 3-18, p. 55): printed 4th level is 4 / 3 / 2. With
   Ysolde's Int 17 bonus slot included, as authored at level 3: **1st 4, 2nd 3** -
   one more 1st and one more 2nd than 3 / 2.
-- **Sorcerer** (PHB sorcerer tables, pp. 53-54): printed 4th level is 6 / 6 / 3
+- **Sorcerer** (PHB Table 3-16, p. 52; Table 3-17, p. 54): printed 4th level is 6 / 6 / 3
   per day and 6 / 3 / 1 known. Under the engine's no-0-level model: 1st stays 6,
   **2nd 3**, and the character learns **one new 2nd-level spell** - `scorching_ray`
   is the only implemented arcane 2nd-level spell.
+- **Level-3 sorcerer row, confirmed:** printed 6 slots at 1st and 5 spells known
+  (5 0-level and 3 1st-level). Mira is authored with six 1st-level slots and two
+  known spells: the printed 4th-level slot count and one fewer 1st-level known
+  spell. Recorded as an accepted authored inconsistency (section 10), not fixed.
 - **Prepared casters gain slots, not known spells** (Adaptation): the wizard has
   no spellbook model and clerics pray from the full list; the level-up does not
   add spells to `daily_prepared`/`prepared`, the player prepares from the existing
@@ -307,11 +311,12 @@ at both scales from the exe. Rects are not pixels; no manual pass is requested.
 Each batch is separately acceptable: it leaves the suite and both validators green
 and changes no more than its own surface.
 
-1. **`level_tables` - class progression tables and validation.** Add the classes
-   content (hit die, skill points, BAB and save rows 1-4, feat slots, spell slots
-   for levels 1-4), validate it against `ContentSpec` and the diagnostics
-   validator, and add the table tests. No gameplay change yet; the existing
-   authored characters must validate against it. **This is the first batch.**
+1. **`level_tables` - class progression tables and validation.** Add
+   `src/core/class_progression.gd` with hit die, skill points, BAB and save rows
+   1-4, feat slots and printed spell slots/spells known for the five shipped
+   classes, plus `validate()` and `authored_inconsistencies()`, wire the
+   validator into `--validate-diagnostics`, and add the table tests. No gameplay
+   change. **This is the first batch; landed 2026-11-21 (section 10).**
 2. **`level_up_core` - XP thresholds and application.** `Rules.xp_threshold`,
    eligibility, the atomic `Character.apply_level` for the 3 to 4 step (HP, BAB,
    saves, skill points, ability increase incl. Con retroactivity, spell slots,
@@ -348,15 +353,20 @@ Not designed here, not to be slipped into the batches above:
 
 ## 7. Risks and open points
 
-- **Page confirmation.** Table values are from the SRD mirror; the printed pages
-  (Table 3-1 and 3-2 on p. 22; cleric p. 31; fighter p. 37; rogue p. 49; sorcerer
-  pp. 53-54; wizard p. 57) must be checked against the book before batch 1 lands.
+- **Page confirmation.** Confirmed 2026-11-21 against the SRD tables and the PHB
+  contents listing: Table 3-1 and 3-2 p. 22; cleric Table 3-6 p. 31; fighter
+  Table 3-9 p. 39; rogue Table 3-15 p. 49; sorcerer Table 3-16 p. 52 and Table
+  3-17 p. 54; wizard Table 3-18 p. 55. Every value recorded in sections 2.3 and
+  2.5 matches; the earlier fighter, sorcerer and wizard page numbers were wrong
+  and are corrected above.
 - **Thin catalog.** The eligible feat list is small, so a fighter's 4th-level
   bonus feat may look sparse; that is a content gap, not a rules gap, and adding
   feats is a separate rules batch.
-- **Authored inconsistencies.** Feat counts and the missing 0-level row do not
-  match the printed sheets. This plan accepts them and does not repair them; a
-  later audit batch would.
+- **Authored inconsistencies.** Accepted, not repaired; section 10 lists all
+  thirteen: four feat counts below the printed slots, three cross-class ranks
+  above the level-3 cap (with the point totals that follow), Ysolde's and Mira's
+  slot rows above the printed ones, Mira's known list, and the missing 0-level
+  row. A later content-audit batch would, not this plan.
 - **No undo.** A confirmed level-up is permanent in a save; the plan relies on
   atomic apply plus save/load, not on undo.
 - **Scene-wide risk.** The modal work touches the shared modal path; the existing
@@ -396,3 +406,64 @@ increase, skill ranks, fighter feat and sorcerer spell, and finds the result aft
 save and reload. The exported candidate passes the same probe, its hash is bound
 before and after, and no content, schema or rules change lands outside the batches
 listed here.
+
+## 10. Batch 1 record: `level_tables` (2026-11-21)
+
+Landed as data plus validation. Nothing reads the table for play: XP, level, saves,
+the sheet, the UI and every rules path are unchanged, and no character's derived
+numbers moved.
+
+- **Storage decision (change from section 5's wording).** The table is
+  `src/core/class_progression.gd` (`ClassProgression.CLASSES`), beside
+  `Feats.CATALOG` and `Skills.CLASS_SKILLS`, not content JSON. Reason: the same
+  values feed rules, the validator and the tests, so one typed constant keeps them
+  in lockstep; `ContentSpec` and every content schema are untouched. An editable
+  content file can replace it later if a data-driven class list is needed.
+- **Sources confirmed before coding.** Table 3-1 and Table 3-2, p. 22; Table 3-6,
+  p. 31; Table 3-9, p. 39; Table 3-15, p. 49; Table 3-16, p. 52; Table 3-17, p. 54;
+  Table 3-18, p. 55. Values recorded for levels 1-4: fighter 10 hp, 2 points, good
+  BAB, Fort only; rogue 6 hp, 8 points, average BAB, Ref only; cleric 8 hp, 2
+  points, average BAB, Fort and Will, 4 / 3+1 / 2+1 at 3rd and 5 / 3+1 / 2+1 at
+  4th; wizard 4 hp, 2 points, poor BAB, Will only, 4 / 2 / 1 at 3rd and 4 / 3 / 2
+  at 4th; sorcerer 4 hp, 2 points, poor BAB, Will only, 6 / 5 at 3rd with 5 known
+  and 6 / 6 / 3 at 4th with 6 / 3 / 1 known. No value in the plan changed.
+- **Contract.** `validate(table = CLASSES)` returns an empty array for the shipped
+  table and one error string per problem: a missing shipped class, a missing level
+  row, a field that disagrees with the printed progression (base attack rate,
+  good/poor save formula, feat levels, hit die, skill points), a row that moves
+  backwards, a spell level above what the level can cast, or spell data on a class
+  that cannot cast. `--validate-diagnostics` prints the errors and fails the exit
+  code; its JSON line is untouched. `authored_inconsistencies(characters)` compares
+  the table with the authored characters and returns `{id, field, expected,
+  actual, note}` records; it never edits a character.
+- **Accepted authored inconsistencies (13).** Reported, not repaired:
+
+  | Character | Field | Table | Authored | Reading |
+  | --- | --- | ---: | ---: | --- |
+  | kaelen | feats | 4 | 2 | two unspent slots |
+  | aldric | feats | 2 | 1 | one unspent slot |
+  | ysolde | feats | 2 | 1 | one unspent slot |
+  | mira | feats | 2 | 1 | one unspent slot |
+  | aldric | skill ranks, sense motive | 3 | 4 | cross-class rank above the cap |
+  | aldric | skill points spent | 12 | 26 | over the level-3 budget |
+  | ysolde | skill ranks, search | 3 | 4 | cross-class rank above the cap |
+  | mira | skill ranks, diplomacy | 3 | 4 | cross-class rank above the cap |
+  | mira | skill points spent | 12 | 20 | over the level-3 budget |
+  | ysolde | 1st-level slots | 2 | 3 | Int 17 bonus slot |
+  | ysolde | 2nd-level slots | 1 | 2 | Int 17 bonus slot |
+  | mira | 1st-level slots | 5 | 6 | printed 4th-level count |
+  | mira | spells known | 8 | 2 | 0-level known absent, one 1st-level known missing |
+
+  Everything else matches: all five base attack bonuses, base saves and hit
+  points, and the cleric's 3 / 2 slot row. Sera has no mismatch. The 0-level row is
+  absent from the engine's authored spells by design (section 2.5) and is counted
+  only through the known-spells total.
+- **Evidence.** Suite 795/795 tests, 8,126 assertions, 61 scripts (baseline
+  778/778, 7,981, 60); `--validate-campaigns` PASS; `--validate-diagnostics` PASS
+  with `CLASS PROGRESSION PASS | 13 accepted authored inconsistencies`. Red first:
+  the new test file failed to compile before the class existed, and the validator
+  rejects every injected missing, backwards and inconsistent row.
+- **Limit.** Nothing player-visible changed, so no candidate was exported. No
+  manual testing was requested and no backups were touched. A one-time `--import`
+  refresh was needed so the new `class_name` entered the global class cache; it
+  changed no source or content.

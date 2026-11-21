@@ -944,6 +944,24 @@ func _validate_diagnostics_and_quit() -> void:
 			failures += 1
 		print("CAMPAIGN DIAGNOSTICS %s | %s" % [id, ContentDiagnostics.summary(diagnostics)])
 	print("CAMPAIGN_DIAGNOSTICS_JSON " + JSON.stringify(all))
+	# Class tables are data only; validating them here keeps the content gate in
+	# one place without touching play. Authored differences are reported as
+	# accepted facts, never repaired.
+	var class_errors := ClassProgression.validate()
+	for class_error in class_errors:
+		print("CLASS PROGRESSION INVALID: %s" % class_error)
+	if not class_errors.is_empty():
+		failures += 1
+	var authored := ClassProgression.authored_inconsistencies(Game.content.characters)
+	for entry in authored:
+		print(
+			"CLASS PROGRESSION AUTHORED ACCEPTED %s %s expected=%s actual=%s | %s"
+			% [entry["id"], entry["field"], entry["expected"], entry["actual"], entry["note"]]
+		)
+	print(
+		"CLASS PROGRESSION %s | %d accepted authored inconsistencies"
+		% ["PASS" if class_errors.is_empty() else "FAIL", authored.size()]
+	)
 	print("CAMPAIGN DIAGNOSTICS %s" % ("PASS" if failures == 0 else "FAIL"))
 	get_tree().quit(0 if failures == 0 else 1)
 

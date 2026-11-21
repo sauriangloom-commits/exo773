@@ -621,3 +621,27 @@ presentation choices are omitted; nothing here changes a rule silently.
     wholly paralysed party keeps the encounter running with its turns skipped and
     resumes when the paralysis expires. No surrender, capture or morale subsystem
     is added, and the nonlethal victory path of entry 47 is unchanged.
+
+49. **Class progression lives in code, and the authored level-3 differences stay
+    accepted.** The five classes' levels 1-4 (hit die, skill points, base attack,
+    base saves, feat slots, printed spell slots and sorcerer spells known) live in
+    `ClassProgression.CLASSES` beside the other rules catalogs rather than in content
+    JSON. Reason: rules, the diagnostics validator and the tests must agree on the
+    same numbers, and one typed constant cannot drift between three readers; content
+    schemas are unchanged, so an editable class list can still replace it if a
+    data-driven campaign needs one. The table was checked against the printed pages
+    before it was written (Table 3-1 and 3-2 p. 22; Table 3-6 p. 31; Table 3-9
+    p. 39; Table 3-15 p. 49; Table 3-16 p. 52; Table 3-17 p. 54; Table 3-18
+    p. 55); the fighter, sorcerer and wizard page numbers in the plan were wrong
+    and were corrected there. Nothing reads the table for play yet, so no character,
+    save, XP, level, UI or rules value moved. Thirteen differences between the
+    tables and the authored level-3 party are accepted rather than repaired,
+    because this batch may not change derived numbers: four feat lists below their
+    printed slots; three cross-class ranks above the level-3 cap (sense motive,
+    search, diplomacy) with the resulting point totals over the class budget;
+    Ysolde's +1 1st and +1 2nd slots from Intelligence 17; Mira's 1st-level slots at
+    the printed 4th-level count with a known list missing the 0-level spells and one
+    1st-level spell; and the engine's absent 0-level row for every caster.
+    `authored_inconsistencies()` and `--validate-diagnostics` print them on every
+    run so they stay visible instead of being silently blessed; a later
+    content-audit batch may fix them.
