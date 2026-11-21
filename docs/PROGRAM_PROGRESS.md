@@ -2666,3 +2666,16 @@ Not implemented and not claimed: the charge form, Improved Bull Rush (unblocked
 but still deferred), the 25 % redirect, mounted and AI bull rushes, creatures
 larger than one square, terrain, and any change to trip, grapple, disarm or
 sunder. No manual testing was performed or requested; backups were not touched.
+
+
+Exported acceptance: `bull_rush_2026-11-21b` was exported from clean source
+`9b0f046` (110,732,632 bytes, SHA-256 `33071751...92a60e4c`). Both exported
+validators pass, and `--demo-combat --layout-probe --layout-scenario=combat` passes
+at 100 % and 160 % with 29 controls and no failures; the executable's hash matched
+before and after the runs. This is layout evidence only - the probe does not invoke
+the action, so the rules remain source-tree evidence. Two corrections are recorded
+with it: the first layout attempt omitted `--demo-combat` and measured the menu, and
+the corrected 160 % run exposed that the layout probe scrolled only the innermost
+container, so rows nested in two scrollers were reported unreachable. The probe now
+walks every ancestor scroller (`9b0f046`); the pre-fix export
+`bull_rush_2026-11-21` is preserved and marked not accepted.

@@ -4122,7 +4122,9 @@ the acceptance log records the exe hash at its start and end.
 | `creature_cover_2026-11-21` | `4e56d1e` | `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39` | 110,693,592 | Both validators from the exe, Inspect probe, inspect and dialogue layouts at 100 %/160 %; the panel clause was not rendered yet | no |
 | `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
 | `defensive_actions_2026-11-21c` | `58cb1a7` | `f705ceda267440d8d1ecc73d06eaf745f0722ff9edcaced32664040e4faafd0f` | 110,708,200 | Both validators from the exe, defensive probe at 100 %/160 % in the exe (45 checks each, 0 failures), exe hash `f705ceda...4faafd0f` matched before/after; contains the source-tested combat-scope cleanup, which this probe does not exercise | yes |
-| `defensive_actions_2026-11-21b` | `e72a18a` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Superseded by `-c`. Accepted for the defensive-actions scope, but ships the stance-leak defect: a stance active when the fight ended survived into exploration and the victory autosave | no |
+| `bull_rush_2026-11-21b` | `9b0f046` | `33071751d7ba76773730416f2ab3ad711e09080392123ef6d44a8f9692a60e4c` | 110,732,632 | Both validators from the exe, `--demo-combat --layout-probe --layout-scenario=combat` at 100 %/160 % (29 controls each, 0 failures), exe hash matched before/after, source suite 778/778. Rules behaviour is source-tested only; the probe shows layout, not bull rush outcomes | yes |
+| `bull_rush_2026-11-21` | `12ecb76` | `0946289c0240c902b4f1b98875a666862d59ef203035072db4e99c0b382c8c40` | 110,733,240 | **Not accepted.** Its 100 % layout run was measured without `--demo-combat`, and the corrected 160 % run failed six reachability checks because the layout probe only scrolled the innermost `ScrollContainer`. Superseded by `-b`, which carries the probe fix | no |
+| `defensive_actions_2026-11-21c` | `58cb1a7` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Superseded by `-c`. Accepted for the defensive-actions scope, but ships the stance-leak defect: a stance active when the fight ended survived into exploration and the victory autosave | no |
 | `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Superseded by `-b`; same scope, before the stance-specific attack refusal | no |
 
 `defensive_actions_2026-11-21c` supersedes `-b`: it is exported from clean source
@@ -4800,7 +4802,7 @@ moving with the defender, and a loss sends the rusher back with a prone fall whe
 that square is occupied. The user-visible entry points are the `Bull rush` action
 button, its enemy-target mode and a Push 5 ft / Follow decision.
 
-Tests were written and run failing first: 21 failures on the absent
+Tests were written and run failing first: all 24 failing on the absent
 `bull_rush_active` entry point (`builds/qa/runs/2026-11-21_bull_rush/red_failing_first.log`).
 The finished `tests/test_bull_rush.gd` holds 24 tests and 90 assertions, including
 geometry tests for the push chain (corridor, wall, occupied square, map edge),
@@ -4816,3 +4818,40 @@ only, no charge form, no Improved Bull Rush, no 25 % redirect, no mounted or AI 
 no multi-square creatures, no terrain. The rules evidence here is source-tree only;
 the exported candidate is checked for layout and validators, not for rules
 outcomes, and no manual testing was performed or requested.
+
+
+### Exported acceptance of `bull_rush_2026-11-21b` (2026-11-21)
+
+Exported from clean source `9b0f046` (worktree entries 0, untracked 0), preset
+`Windows Desktop`, 110,732,632 bytes, SHA-256
+`33071751d7ba76773730416f2ab3ad711e09080392123ef6d44a8f9692a60e4c`. The same hash
+and byte count were read before the first check and after the last one, so this
+candidate is bound.
+
+| Check | 100 % | 160 % |
+| --- | --- | --- |
+| `--validate-campaigns` / `--validate-diagnostics` from the exe | PASS | PASS |
+| `--demo-combat --layout-probe --layout-scenario=combat` | PASS, 29 controls, 0 failures | PASS, 29 controls, 0 failures |
+
+Logs: `builds/qa/runs/2026-11-21_bull_rush_export_b/`. This is **layout evidence
+only**: the probe walks the combat screen's control tree for reachability and
+clipping, and does not invoke a bull rush, a push, a check or a decision. Every
+rules result above comes from the source suite.
+
+Two corrections were made while producing this acceptance, and both are recorded
+rather than quietly repaired:
+
+- The first layout run of the day omitted `--demo-combat`, so the probe measured
+  the menu (6 controls) and its PASS was meaningless for combat. That run is kept
+  in `builds/qa/runs/2026-11-21_bull_rush_export/` and is not used as evidence.
+- The corrected 160 % run failed six reachability checks in the combatant list.
+  The cause was the probe, not the screen: a list row sits inside the list's
+  `ScrollContainer` and the sidebar's `ScrollContainer`, and the probe scrolled
+  only the innermost one, so it never brought the row into the client. It now
+  walks every ancestor scroller (`9b0f046`). The screen itself needed a scroll and
+  no layout change; the 100 % run was unaffected.
+
+`bull_rush_2026-11-21` (`12ecb76`, `0946289c...`), the pre-fix export, is not
+accepted: its only combat layout evidence was the meaningless 100 % run and the
+failing 160 % one. It is preserved and marked superseded. No manual testing was
+performed or requested, and backups were not touched.
