@@ -170,8 +170,11 @@ must be proved in the binary.
 action only (charge does not exist), Medium and smaller defenders, 5 ft per 5 of
 excess, stop at wall/occupied/edge, defender's attack of opportunity on
 initiation, no Improved Bull Rush, no AI use, no mounted interaction. Rules
-citation to confirm when the batch opens: PHB p. 154 (bull rush) and p. 95
-(Improved Bull Rush). Done means focused tests, the full suite, both validators,
+citation to confirm when the batch opens: PHB p. 154 (bull rush) and the PHB
+Improved Bull Rush entry. The plan is in
+[BULL_RUSH_PLAN.md](BULL_RUSH_PLAN.md), including the verified printed text, the
+pending-decision flow, the shared movement helpers, log wording, exclusions and
+the deterministic test list. Done means focused tests, the full suite, both validators,
 docs and a traceability row, and no rebuild unless the sidebar changes.
 
 **State after the closure, kept separate.**
