@@ -226,8 +226,12 @@ func test_total_defense_replaces_a_selection() -> void:
 	assert_eq(Rules.touch_ac(kaelen), base_touch + 4, "touch AC keeps it")
 	assert_true(bool(e.turn_state["standard_used"]), "it costs the standard action")
 	assert_false(bool(e.turn_state["move_used"]), "and not the move action")
-	var refused := e.attack_active(1)
+	var refused := e.attack_active(_index_of(e, parts[3]))
 	assert_false(bool(refused["ok"]), "no attacks while using total defense")
+	assert_true(
+		String(refused["message"]).contains("total defense"),
+		"the refusal names the stance rather than only the spent action",
+	)
 	assert_true(_logged(e.log_lines, "total defense"), "the log names the action")
 
 

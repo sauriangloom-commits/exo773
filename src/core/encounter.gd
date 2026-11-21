@@ -643,6 +643,10 @@ func attack_active(target_index: int, attack_mode := "", unarmed_damage := "") -
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot attack." % ch.display_name)
+	# PHB p.143: total defense allows no attacks at all. The standard action is
+	# also spent, so name the stance instead of only the action economy.
+	if ch.has_effect("total_defense"):
+		return _fail("%s is using total defense and cannot attack (PHB p.143)." % ch.display_name)
 	if bool(turn_state["standard_used"]):
 		return _fail("Your standard action is already spent this turn.")
 	var staggered_attack := _staggered_blocks_standard(ch)
