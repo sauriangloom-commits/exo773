@@ -274,9 +274,10 @@ ruleset.
    gameplay events driving animation only.
 4. **Accessibility.** Scalable UI/text, high-contrast themes, colorblind-safe
    tokens (already letter/HP coded), keyboard-only flows (**partly landed:**
-   Sheet/Inventory/Journal open during dialogue via C/I/J; a Save shortcut and
-   full keyboard-only coverage remain open), screen-reader-friendly labels where
-   feasible.
+   Sheet/Inventory/Journal open during dialogue via C/I/J; modal bodies scroll
+   with PageUp/PageDown and the arrows, and keep scrolling while a key is held;
+   a Save shortcut and full keyboard-only coverage remain open),
+   screen-reader-friendly labels where feasible.
 5. **Localization.** Externalize strings only after the content schema stabilizes;
    keep ids stable.
 6. **Controller support** and a gamepad-friendly combat cursor.

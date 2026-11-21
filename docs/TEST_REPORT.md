@@ -4342,3 +4342,46 @@ panel, with only Inventory visibly moving focus; no human playtest. Focus return
 is pixel equality plus unit-tested ownership, because the native harness cannot
 read the focus owner. Save has no shortcut, and gamepad/controller behavior is
 unchanged.
+
+## Modal held-key repeat — candidate `modal_held_repeat_2026-11-21` (2026-11-21)
+
+Modal body scroll keys now repeat while held. Eight new synthetic `echo` tests in
+`tests/test_modal_focus.gd` (42 tests total) cover PageUp/PageDown and both
+arrows repeating, clamping at top and bottom, and never moving the ring; a
+focused TextEdit keeping its own page keys; echoes left alone without a modal,
+during rebind capture, and when focus is outside the modal; and non-scroll echoes
+neither claimed by the body nor turning into repeated activation or dismissal.
+
+| Check | Result |
+| --- | --- |
+| `tests/test_modal_focus.gd` | 42 tests, 8 new |
+| Full suite | **713/713 tests, 7,654 assertions, 56 scripts, exit 0** |
+| `--validate-campaigns` | PASS |
+| `--validate-diagnostics` | PASS (`[]`) |
+| Dialogue layout probes, 1280x720 | PASS at 100 % (30/22 controls) and 160 % (30/22 controls) |
+
+Candidate `builds/qa/candidates/modal_held_repeat_2026-11-21/`: source
+`fa349e4`, clean tree, 0 worktree entries, 0 untracked files, 110,689,608 bytes,
+SHA-256 `dfc62dc84a2750330bb28af81fe12ca9123f8802bfa17f7eaacd1e5ec92f5878`,
+unchanged before and after the native runs.
+
+Native: `builds/qa/runs/2026-11-21_modal_held_key_repeat/acceptance.log` — 32
+checks, 0 failures, hash-bound at both ends, Settings (`ravenloft_demo`,
+`--demo`) and Journal (`ashwick_ferry`, `--demo-silence`) at 1280x720, 100 % and
+160 %, OS-level input. PageDown scrolls; PageUp returns to the exact top frame; a
+held Down equals two discrete Downs; nothing moves after a hold or a discrete
+press is released (800 ms); PageDown clamps at the end. Frames are compared by
+pixel, because two captures of an identical framebuffer can differ in PNG bytes.
+
+**Verification gap.** Windows does not auto-repeat injected `keybd_event` input: a
+1.5 s hold produced the frame of exactly one press, and nothing moved afterwards.
+Native evidence therefore covers hold, release and single press only; repeated
+movement rests on the synthetic echo tests. Focus is visually unchanged (the ring
+stays on "Close (Esc)"), but the harness cannot read the focus owner, so ownership
+is the tests' claim.
+
+Limits: 1280x720 on Windows only, no other window size or OS display scaling; the
+demo journal does not overflow, so the Journal check uses the Ashwick silence
+seed; `tests/test_modal_focus.gd` alone is 40/42 with two isolation failures that
+also fail at `014f3b8` and pass in suite order; no human playtest; held Tab's
+repeated traversal is Godot's existing behavior and was left alone.

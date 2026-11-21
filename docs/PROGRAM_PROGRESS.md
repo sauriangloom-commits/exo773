@@ -2416,3 +2416,38 @@ playthrough; evidence is 1280x720 on Windows at 100 %/160 % only; one Tab per
 panel was sent, and only Inventory visibly changed focus inside its panel; no
 human playtest; the native harness cannot read the focus owner, so return is
 pixel equality plus unit-tested ownership. Save still has no shortcut.
+
+## Modal held-key repeat (2026-11-21)
+
+A held PageUp/PageDown or arrow moved a modal body once and then stopped:
+`Main._input` dropped every repeat at its first gate, and `_scroll_modal_body()`
+asked for the non-echo form of `is_action_pressed()`. Repeats now take one route:
+after rebind capture, an echo is offered to `_scroll_modal_body()` and nothing
+else. The body still needs an open modal, `modal_scroll`, and keyboard ownership
+(a popup that takes focus keeps the keys); the focused control's exemption is
+unchanged (TextEdit keeps pages and arrows; LineEdit, VSlider, SpinBox, ItemList
+and Tree keep arrows; HSlider and TabBar keep scrolling on Up/Down); step size,
+target pane, clamping and focus ownership are untouched. Every non-scroll echo is
+left for the GUI as before, so Tab, Enter, Escape and Pause gain no repeated
+activation, dismissal or traversal, and dialogue paging still takes a press at a
+time.
+
+Tests: `tests/test_modal_focus.gd` is **42 tests** (8 new echo tests: held page
+keys, held arrows, focus ownership, non-scroll echoes, no modal, rebind capture,
+focus outside the modal, and a focused TextEdit). Suite **713/713 tests, 7,654
+assertions, 56 scripts, exit 0**; both validators PASS; `--demo-silence` and
+`--demo-dialogue` dialogue probes PASS at 1280x720 at 100 % and 160 %.
+
+Candidate `modal_held_repeat_2026-11-21` (source `fa349e4`, clean tree,
+110,689,608 bytes, SHA-256 `dfc62dc8…2f5878`) passes 32 hash-bound native checks
+in Settings and the Ashwick Journal at both scales, compared by pixel. **The
+native repeat itself could not be exercised:** injected Windows input does not
+auto-repeat, and a 1.5 s hold produced the frame of a single press. That is a
+recorded gap, not a substituted pass.
+
+Limits: 1280x720 on Windows at 100 %/160 % only; the demo journal does not
+overflow, so the Journal check uses `ashwick_ferry --demo-silence`;
+`tests/test_modal_focus.gd` alone is 40/42, two tests that fail in isolation at
+`014f3b8` too and pass in suite order; focus ownership during scrolling rests on
+the tests, because the frames only show the ring in place; held Tab still
+traverses Godot's chain as before.
