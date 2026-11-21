@@ -17,6 +17,19 @@ var choice_buttons: Array[Button] = []
 ## Full-viewport backdrop. It only dims: clicks pass through to the HUD panels
 ## that stay readable during a conversation.
 var dim: ColorRect
+## The framed panel starts below the HUD header (63 px at 160 %), so seed and
+## gold readouts of any length stay visible instead of sitting under the panel.
+## The header can grow when long readouts squeeze the location title, so the
+## clearance is measured rather than assumed.
+const PANEL_TOP := 72.0
+const HEADER_GAP := 8.0
+## The HUD header this panel measures; its resize moves the panel when long
+## readouts add a line.
+var watched_header: HBoxContainer
+var leave_button: Button
+## Last control inside this panel to take focus. A HUD click moves the ring to
+## the HUD button, so this is what a closing HUD panel returns to.
+var last_focus: Control
 
 
 func _ready() -> void:
@@ -29,16 +42,30 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_clamp_panel)
 	resized.connect(_clamp_panel)
 	_rebuild()
+	_watch_header()
 
 
-## Largest panel that still leaves a 16 px edge inside the current client area.
-## The control is anchored full-rect, so its own size is the client area once
-## layout has run; before the first layout it falls back to the viewport size.
+## Panel origin: below the real header bottom, never above the base clearance.
+func _panel_top() -> float:
+	var top := PANEL_TOP
+	if main != null and is_instance_valid(main):
+		var screen: Node = main.get("current_screen")
+		if screen is ExplorationScreen:
+			var hud := (screen as ExplorationScreen).header
+			if hud != null and is_instance_valid(hud) and hud.is_inside_tree():
+				top = maxf(top, hud.get_global_rect().end.y + HEADER_GAP)
+	return top
+
+
+## Largest panel that still leaves a 16 px edge inside the current client area
+## and starts below the header. The control is anchored full-rect, so its own
+## size is the client area once layout has run; before the first layout it falls
+## back to the viewport size.
 func _panel_minimum() -> Vector2:
 	var area := size
 	if area.x <= 0.0 or area.y <= 0.0:
 		area = get_viewport_rect().size
-	var space := area - Vector2(32, 32)
+	var space := Vector2(area.x - 32.0, area.y - _panel_top() - 16.0)
 	return Vector2(minf(860.0, maxf(space.x, 320.0)), minf(600.0, maxf(space.y, 240.0)))
 
 
@@ -46,12 +73,33 @@ func _panel_minimum() -> Vector2:
 ## keeps its proportion instead of remembering the size it was built at.
 func _clamp_panel() -> void:
 	if panel != null and is_instance_valid(panel):
-		panel.custom_minimum_size = _panel_minimum()
-		panel.position = Vector2(16, 16)
+		# A lower minimum does not shrink an existing Control, so set both.
+		var fitted := _panel_minimum()
+		panel.custom_minimum_size = fitted
+		panel.size = fitted
+		panel.position = Vector2(16, _panel_top())
 
 
 func refresh() -> void:
 	_rebuild()
+
+
+## Header height is not constant: long gold/seed readouts can squeeze the
+## location title onto more lines, so follow its resizes too.
+func _watch_header() -> void:
+	if main == null or not is_instance_valid(main):
+		return
+	var screen: Node = main.get("current_screen")
+	if not screen is ExplorationScreen:
+		return
+	var hud := (screen as ExplorationScreen).header
+	if hud == null or hud == watched_header:
+		return
+	if watched_header != null and is_instance_valid(watched_header):
+		if watched_header.resized.is_connected(_clamp_panel):
+			watched_header.resized.disconnect(_clamp_panel)
+	hud.resized.connect(_clamp_panel)
+	watched_header = hud
 
 
 func _rebuild() -> void:
@@ -59,6 +107,8 @@ func _rebuild() -> void:
 		child.queue_free()
 	scroll = null
 	dim = null
+	leave_button = null
+	last_focus = null
 	choice_buttons.clear()
 	if Game.dialogue == null:
 		return
@@ -74,7 +124,7 @@ func _rebuild() -> void:
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = _panel_minimum()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.position = Vector2(16, 16)
+	panel.position = Vector2(16, _panel_top())
 	layer.add_child(panel)
 	_clamp_panel.call_deferred()
 	var margin := MarginContainer.new()
@@ -122,7 +172,9 @@ func _rebuild() -> void:
 	var leave := Button.new()
 	leave.text = "Leave conversation"
 	leave.pressed.connect(_leave)
+	leave.focus_entered.connect(_remember_focus.bind(leave))
 	header.add_child(leave)
+	leave_button = leave
 
 	var text := RichTextLabel.new()
 	text.bbcode_enabled = true
@@ -158,6 +210,7 @@ func _rebuild() -> void:
 		var continue_button := Button.new()
 		continue_button.text = "Continue"
 		continue_button.pressed.connect(_leave)
+		continue_button.focus_entered.connect(_remember_focus.bind(continue_button))
 		choice_buttons.append(continue_button)
 		box.add_child(continue_button)
 	else:
@@ -184,6 +237,7 @@ func _rebuild() -> void:
 				button.tooltip_text = String(choice.get("reason", "Not available yet."))
 			var index := int(choice["index"])
 			button.pressed.connect(func() -> void: _choose(index))
+			button.focus_entered.connect(_remember_focus.bind(button))
 			choice_box.add_child(button)
 			choice_buttons.append(button)
 	var hint := ThemeBuilder.body(
@@ -248,6 +302,35 @@ func scroll_page(direction: int) -> void:
 	var step := maxi(1, int(round(bar.page * 0.9)))
 	var travel := maxi(0, int(bar.max_value - bar.page))
 	scroll.scroll_vertical = clampi(scroll.scroll_vertical + step * direction, 0, travel)
+
+
+func _remember_focus(control: Control) -> void:
+	last_focus = control
+
+
+## Control a closing HUD panel returns to: the last dialogue control that held
+## the ring, then the first available choice, then Leave. Null only when the
+## panel has no usable control at all.
+func return_target() -> Control:
+	# last_focus can already be freed by a rebuild; test it before the typed call.
+	if is_instance_valid(last_focus) and _can_focus(last_focus):
+		return last_focus
+	for button in choice_buttons:
+		if _can_focus(button) and not button.disabled:
+			return button
+	if _can_focus(leave_button):
+		return leave_button
+	return null
+
+
+func _can_focus(control: Control) -> bool:
+	return (
+		control != null
+		and is_instance_valid(control)
+		and control.is_inside_tree()
+		and control.is_visible_in_tree()
+		and control.focus_mode != Control.FOCUS_NONE
+	)
 
 
 func _leave() -> void:

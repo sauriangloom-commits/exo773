@@ -30,8 +30,8 @@ func after_each() -> void:
 	main = null
 
 
-func _open_silence() -> DialoguePanel:
-	Game.new_game(PARTY, 4242)
+func _open_silence(seed := 4242) -> DialoguePanel:
+	Game.new_game(PARTY, seed)
 	Game.flags["maela_decision"] = true
 	Game.flags["maela_mercy"] = true
 	Game.flags["drowned_cleared"] = true
@@ -352,3 +352,154 @@ func _find_button(node: Node, label: String) -> Button:
 		if found != null:
 			return found
 	return null
+
+
+func _find_label(root: Node, prefix: String) -> Label:
+	if root is Label and String((root as Label).text).begins_with(prefix):
+		return root as Label
+	for child in root.get_children():
+		var found := _find_label(child, prefix)
+		if found != null:
+			return found
+	return null
+
+
+func _restart_at_scale(scale: float) -> void:
+	if main != null:
+		main.queue_free()
+		main = null
+		await wait_frames(2)
+	Game.settings["text_scale"] = scale
+	Game.load_campaign(ASHWICK)
+	main = load("res://scenes/Main.tscn").instantiate()
+	add_child_autofree(main)
+	await wait_frames(4)
+
+
+func test_panel_clears_the_header_at_both_scales_with_long_readouts() -> void:
+	for scale in [1.0, 1.6]:
+		await _restart_at_scale(scale)
+		var panel: DialoguePanel = await _open_silence()
+		var screen: ExplorationScreen = main.get("current_screen")
+		var rect := panel.panel.get_global_rect()
+		# Standard readouts keep the exact panel size shipped today.
+		assert_almost_eq(rect.size.x, 860.0, 0.5, "the panel keeps its width at scale %.1f" % scale)
+		assert_almost_eq(rect.size.y, 600.0, 0.5, "the panel keeps its height at scale %.1f" % scale)
+		assert_almost_eq(
+			panel.scroll.size.y, 556.0, 1.0,
+			"the body keeps its height, so no choice row is lost at scale %.1f" % scale,
+		)
+		# Stress the header: these readouts are wider than any real total, and at
+		# 160 % they push the title onto more lines, growing the header itself.
+		screen.gold_label.text = "Gold: 1234567890 gp"
+		var seed_label := _find_label(main, "Seed:")
+		assert_not_null(seed_label, "the seed readout exists")
+		seed_label.text = "Seed: 9876543210"
+		await wait_frames(4)
+		var pause := _find_button(main, "Pause (Esc)")
+		var gold := _find_label(main, "Gold:")
+		assert_not_null(pause, "the header Pause button exists")
+		assert_not_null(gold, "the gold readout exists")
+		rect = panel.panel.get_global_rect()
+		assert_gte(
+			rect.position.y, pause.get_global_rect().end.y + 7.0,
+			"the panel starts below the grown header at scale %.1f" % scale,
+		)
+		assert_false(
+			rect.intersects(gold.get_global_rect()),
+			"the gold readout is never covered at scale %.1f" % scale,
+		)
+		assert_false(
+			rect.intersects(seed_label.get_global_rect()),
+			"the seed readout is never covered at scale %.1f" % scale,
+		)
+		assert_false(
+			rect.intersects(pause.get_global_rect()),
+			"Pause is never covered at scale %.1f" % scale,
+		)
+		assert_lte(
+			rect.end.y, panel.get_viewport_rect().size.y - 16.0,
+			"the panel bottom stays inside the client at scale %.1f" % scale,
+		)
+		assert_lte(rect.size.y, 600.0, "the panel never grows past its shipped height")
+		assert_gt(panel.scroll.size.y, 240.0, "a usable body remains at scale %.1f" % scale)
+		assert_eq(panel.choice_buttons.size(), 13, "all choices remain built at scale %.1f" % scale)
+		var epilogue := _epilogue_button(panel)
+		assert_true(await _tab_until(panel, epilogue), "the epilogue stays reachable at scale %.1f" % scale)
+
+
+func test_hud_panel_close_returns_focus_to_the_last_dialogue_control() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var expected := panel.get_viewport().gui_get_focus_owner() as Button
+	assert_true(expected != null and panel.choice_buttons.has(expected), "a choice holds the ring")
+	var party := _find_button(main, "Party (Tab)")
+	assert_not_null(party, "the HUD panel button exists")
+	party.grab_focus()
+	party.pressed.emit()
+	await wait_frames(3)
+	assert_not_null(main.get("modal"), "the HUD panel opened over the conversation")
+	main.call("close_modal")
+	await wait_frames(3)
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(), expected,
+		"focus returns to the dialogue choice, not the HUD button",
+	)
+	await _press_enter()
+	await wait_frames(4)
+	assert_null(main.get("modal"), "Enter advances the dialogue instead of reopening the panel")
+
+
+func test_hud_panel_close_after_dialogue_rebuild_falls_back_to_a_choice() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var party := _find_button(main, "Party (Tab)")
+	party.grab_focus()
+	party.pressed.emit()
+	await wait_frames(3)
+	assert_not_null(main.get("modal"), "the HUD panel opened")
+	panel.refresh()
+	await wait_frames(4)
+	main.call("close_modal")
+	await wait_frames(3)
+	var owner_control := panel.get_viewport().gui_get_focus_owner() as Button
+	assert_not_null(owner_control, "the rebuilt conversation takes the ring")
+	assert_true(panel.choice_buttons.has(owner_control), "the fallback is a rebuilt dialogue choice")
+	assert_false(owner_control.disabled, "the fallback is an available choice")
+
+
+func test_exploration_panel_close_returns_to_its_opener() -> void:
+	await _restart_at_scale(1.0)
+	Game.new_game(PARTY, 4242)
+	await wait_frames(4)
+	var party := _find_button(main, "Party (Tab)")
+	assert_not_null(party, "exploration exposes the Party button")
+	party.grab_focus()
+	party.pressed.emit()
+	await wait_frames(3)
+	assert_not_null(main.get("modal"), "the exploration panel opened")
+	main.call("close_modal")
+	await wait_frames(3)
+	assert_eq(
+		main.get_viewport().gui_get_focus_owner(), party,
+		"exploration keeps returning focus to the opener",
+	)
+
+
+func test_shortcuts_do_not_open_hud_panels_during_dialogue() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	for code in [KEY_C, KEY_I, KEY_J]:
+		_send_key(code)
+		await wait_frames(2)
+		assert_null(main.get("modal"), "%s opens no panel during dialogue" % OS.get_keycode_string(code))
+		assert_eq(Game.mode, "dialogue", "the conversation stays open for %s" % OS.get_keycode_string(code))
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var owner_control := panel.get_viewport().gui_get_focus_owner()
+	assert_true(
+		owner_control != null and panel.choice_buttons.has(owner_control),
+		"Tab stays on the dialogue choices",
+	)
+	assert_ne(owner_control, _find_button(main, "Party (Tab)"), "Tab never focuses the Party button")

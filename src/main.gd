@@ -6807,6 +6807,14 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 	var opener := modal_return_focus
 	if modal == null:
 		opener = get_viewport().gui_get_focus_owner()
+		# A HUD click focuses the HUD button before its handler runs, so during a
+		# conversation the ring must return to the dialogue control that had it.
+		if Game.mode == "dialogue" and current_screen is ExplorationScreen:
+			var talk := (current_screen as ExplorationScreen).dialogue_panel
+			if talk != null and is_instance_valid(talk):
+				var remembered := talk.return_target()
+				if remembered != null:
+					opener = remembered
 	close_modal(false)
 	if preserve_rebind:
 		awaiting_rebind = pending_rebind
@@ -6912,9 +6920,19 @@ func close_modal(restore_focus := true) -> void:
 func _restore_modal_focus() -> void:
 	var target := modal_return_focus
 	modal_return_focus = null
-	if _can_take_focus(target):
+	# A modal opened before a dialogue/screen rebuild can hold a freed opener.
+	if is_instance_valid(target) and _can_take_focus(target):
 		target.grab_focus()
 		return
+	# A conversation still open owns the ring: fall back inside it before the
+	# generic screen fallback (which could be a HUD button).
+	if Game.mode == "dialogue" and current_screen is ExplorationScreen:
+		var talk := (current_screen as ExplorationScreen).dialogue_panel
+		if talk != null and is_instance_valid(talk):
+			var remembered := talk.return_target()
+			if is_instance_valid(remembered) and _can_take_focus(remembered):
+				remembered.grab_focus()
+				return
 	var fallback := _first_focusable(current_screen)
 	if fallback != null:
 		fallback.grab_focus()

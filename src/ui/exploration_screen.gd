@@ -10,6 +10,9 @@ var log_label: RichTextLabel
 var party_box: VBoxContainer
 var quest_label: Label
 var location_label: Label
+## The HUD header row. The dialogue panel starts below it, and its height can
+## grow when long gold/seed readouts squeeze the location title onto more lines.
+var header: HBoxContainer
 var status_label: Label
 var gold_label: Label
 var dialogue_panel: DialoguePanel = null
@@ -38,7 +41,7 @@ func _build() -> void:
 	margin.add_child(root)
 
 	# Header.
-	var header := HBoxContainer.new()
+	header = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	root.add_child(header)
 	location_label = ThemeBuilder.heading("", 20)
