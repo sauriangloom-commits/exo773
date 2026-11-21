@@ -1922,8 +1922,10 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 	# A reaction is never a fresh ranged attack (it is a melee opportunity
 	# attack), and only a ranged attack can be shot into a melee.
 	var into_melee := {"penalty": 0, "reason": ""}
+	var cover := 0
 	if Rules.is_ranged_attack(weapon, attack_mode) and not bool(opts.get("reaction", false)):
 		into_melee = _into_melee_penalty(ch, target, entry, target_entry)
+		cover = creature_cover(attacker_index, target_index)
 	var extra := ""
 	# A rogue can sneak attack a flat-footed opponent as well as a flanked or
 	# helpless one (PHB p.133). Undead and constructs remain immune.
@@ -1944,6 +1946,7 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		"combat_expertise": combat_expertise,
 		"attack_mode": attack_mode,
 		"into_melee_penalty": int(into_melee["penalty"]),
+		"cover": cover,
 	}
 	if opts.has("force_attack_base"):
 		attack_opts["force_attack_base"] = int(opts["force_attack_base"])
@@ -1956,6 +1959,11 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		_log(
 			"  shooting into melee %+d: %s (PHB p.140)."
 			% [int(into_melee["penalty"]), String(into_melee["reason"])]
+		)
+	if cover > 0:
+		_log(
+			"  a creature is in the line: %s has cover, +%d AC (PHB p.151)."
+			% [target.display_name, cover]
 		)
 	if target_flat_footed:
 		_log("  %s is flat-footed: no Dexterity bonus to AC (PHB pp.133, 136)." % target.display_name)
@@ -2114,6 +2122,23 @@ func _is_flanked(target_index: int) -> bool:
 ## friendly character, and Precise Shot (p. 98; ranged spells p. 73 of Complete
 ## Arcane) removes it. Helpless targets are treated as not engaged: this slice
 ## does not track whether the ally attacked them this round.
+## Soft cover from creatures (PHB p.151). Ranged attacks only: the target has
+## cover unless one of the attacker's four corners has all four lines to the
+## target's corners clear, and a creature is cover only when a line crosses its
+## square's interior (see `BattleMap.cells_crossed`).
+func creature_cover(attacker_index: int, target_index: int) -> int:
+	if attacker_index == target_index or attacker_index < 0 or target_index < 0:
+		return 0
+	if attacker_index >= combatants.size() or target_index >= combatants.size():
+		return 0
+	var occupied := {}
+	for other in combatants:
+		occupied[other["cell"]] = int(other["index"])
+	return BattleMap.creature_cover(
+		combatants[attacker_index]["cell"], combatants[target_index]["cell"], occupied
+	)
+
+
 func _into_melee_penalty(
 	attacker: Character, target: Character, entry: Dictionary, target_entry: Dictionary
 ) -> Dictionary:
@@ -2519,6 +2544,10 @@ func _cast_scorching_ray(attacker_index: int, target_index: int, spell: Dictiona
 		combatants[attacker_index],
 		combatants[target_index]
 	)
+	# The ray is a ranged attack, so a creature in the line grants soft cover
+	# (+4 AC) on the touch AC it resolves against; the ray has its own resolver
+	# rather than `_resolve_attack`, so the term is added here as well.
+	var cover := creature_cover(attacker_index, target_index)
 	var result := Rules.attack(
 		rng,
 		combatants[attacker_index]["char"],
@@ -2530,6 +2559,7 @@ func _cast_scorching_ray(attacker_index: int, target_index: int, spell: Dictiona
 			"touch": true,
 			"flat_footed": is_flat_footed(target_index),
 			"into_melee_penalty": int(into_melee["penalty"]),
+			"cover": cover,
 		}
 	)
 	_log("  " + Rules.format_attack(result))
@@ -2537,6 +2567,11 @@ func _cast_scorching_ray(attacker_index: int, target_index: int, spell: Dictiona
 		_log(
 			"  shooting into melee %+d: %s (PHB p.140; ranged spells, Complete Arcane p.73)."
 			% [int(into_melee["penalty"]), String(into_melee["reason"])]
+		)
+	if cover > 0:
+		_log(
+			"  a creature is in the line: %s has cover, +%d AC (PHB p.151)."
+			% [combatants[target_index]["char"].display_name, cover]
 		)
 	if bool(result["hit"]):
 		var damage := int(result["damage"])

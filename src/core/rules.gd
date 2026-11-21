@@ -682,6 +682,12 @@ static func attack(
 		if bool(opts.get("touch", false))
 		else armor_class(target, {"flat_footed": flat_footed, "attack_mode": attack_mode})
 	)
+	# Soft cover from creatures (PHB p.151) is +4 AC, and to touch AC as well
+	# because a touch attack keeps every modifier except armor, shield and natural
+	# armor. The encounter reads it from the grid and passes it in, so the term is
+	# part of the auditable roll like the into-melee penalty.
+	var cover_bonus := maxi(0, int(opts.get("cover", 0)))
+	target_ac += cover_bonus
 	var roll := Dice.d20(rng)
 	var total := roll + attack_bonus_value
 	var natural_20 := roll == 20
@@ -712,6 +718,7 @@ static func attack(
 		"ranged": not melee,
 		"distance_ft": distance_ft,
 		"into_melee_penalty": int(opts.get("into_melee_penalty", 0)),
+		"cover": cover_bonus,
 		"details": "",
 	}
 	if not hit:

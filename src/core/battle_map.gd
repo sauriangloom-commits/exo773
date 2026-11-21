@@ -94,6 +94,112 @@ func has_line_of_sight(from: Vector2i, to: Vector2i) -> bool:
 	return true
 
 
+## Cells whose interior a segment passes through, in corner coordinates (cell
+## (x, y) spans [x, x+1] x [y, y+1]).
+##
+## The printed cover rule (PHB p. 151) asks whether a line passes through a
+## square, so a segment that only runs along a grid line touches no square's
+## interior and returns nothing, and a diagonal that passes exactly through a
+## corner enters only the diagonal square. That is a documented grid adaptation:
+## without it two allies sharing a row would block every line by border-riding
+## and a diagonal neighbour would always grant cover (docs/ADAPTATION_LOG.md).
+static func cells_crossed(from_corner: Vector2, to_corner: Vector2) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var low := Vector2(minf(from_corner.x, to_corner.x), minf(from_corner.y, to_corner.y))
+	var high := Vector2(maxf(from_corner.x, to_corner.x), maxf(from_corner.y, to_corner.y))
+	for y in range(int(floor(low.y)) - 1, int(ceil(high.y)) + 2):
+		for x in range(int(floor(low.x)) - 1, int(ceil(high.x)) + 2):
+			if segment_enters_interior(from_corner, to_corner, Vector2i(x, y)):
+				cells.append(Vector2i(x, y))
+	return cells
+
+
+## True when some part of the segment lies strictly inside the cell. The shrink
+## by `eps` is what makes a border-riding segment miss every square, and a
+## corner-crossing diagonal miss the two squares it only grazes.
+static func segment_enters_interior(
+	from_corner: Vector2, to_corner: Vector2, cell: Vector2i, eps := 0.0001
+) -> bool:
+	var span := to_corner - from_corner
+	var t0 := 0.0
+	var t1 := 1.0
+	for axis in 2:
+		var origin := from_corner.x if axis == 0 else from_corner.y
+		var delta := span.x if axis == 0 else span.y
+		var cell_origin := float(cell.x) if axis == 0 else float(cell.y)
+		var inside_low := cell_origin + eps
+		var inside_high := cell_origin + 1.0 - eps
+		if absf(delta) <= eps:
+			if origin <= inside_low or origin >= inside_high:
+				return false
+			continue
+		var enter := (inside_low - origin) / delta
+		var leave := (inside_high - origin) / delta
+		if enter > leave:
+			var swap := enter
+			enter = leave
+			leave = swap
+		t0 = maxf(t0, enter)
+		t1 = minf(t1, leave)
+		if t1 <= t0 + eps:
+			return false
+	return true
+
+
+## The four corners of a square in the same coordinate space as `cells_crossed`.
+static func square_corners(cell: Vector2i) -> Array[Vector2]:
+	var x := float(cell.x)
+	var y := float(cell.y)
+	return [
+		Vector2(x, y),
+		Vector2(x + 1.0, y),
+		Vector2(x, y + 1.0),
+		Vector2(x + 1.0, y + 1.0),
+	]
+
+
+## Soft cover from creatures (PHB p. 151): "choose a corner of your square. If
+## any line from this corner to any corner of the target's square passes through
+## ... a square occupied by a creature, the target has cover (+4 to AC)." The
+## attacker picks the corner, so the target has cover only if every one of the
+## attacker's corners still has a blocked line; one clear corner means no cover.
+##
+## `occupied` maps a cell to any truthy value for every creature in the fight.
+## The attacker's and target's own squares are never cover, and a body that only
+## shares an edge or a corner with a line does not count (see `cells_crossed`).
+static func creature_cover(
+	attacker_cell: Vector2i, target_cell: Vector2i, occupied: Dictionary
+) -> int:
+	if attacker_cell == target_cell or occupied.is_empty():
+		return 0
+	var attacker_corners := square_corners(attacker_cell)
+	var target_corners := square_corners(target_cell)
+	for from_corner in attacker_corners:
+		var clear := true
+		for to_corner in target_corners:
+			if _line_crosses_creature(from_corner, to_corner, attacker_cell, target_cell, occupied):
+				clear = false
+				break
+		if clear:
+			return 0
+	return 4
+
+
+static func _line_crosses_creature(
+	from_corner: Vector2,
+	to_corner: Vector2,
+	attacker_cell: Vector2i,
+	target_cell: Vector2i,
+	occupied: Dictionary
+) -> bool:
+	for cell in cells_crossed(from_corner, to_corner):
+		if cell == attacker_cell or cell == target_cell:
+			continue
+		if occupied.has(cell):
+			return true
+	return false
+
+
 func occupied_lookup(positions: Array) -> Dictionary:
 	var lookup := {}
 	for pos in positions:

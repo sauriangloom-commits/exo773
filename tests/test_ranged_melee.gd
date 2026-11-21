@@ -222,26 +222,40 @@ func test_melee_attacks_are_not_affected_by_a_third_creature() -> void:
 	assert_true(bool(swing.get("ok", false)), String(swing.get("message", "")))
 	assert_eq(int(swing["result"]["into_melee_penalty"]), 0, "a melee attack has no into-melee penalty")
 	assert_false(_logged(e.log_lines, "shooting into melee"), "no ranged penalty line appears")
+	assert_eq(int(swing["result"]["cover"]), 0, "melee attacks are not subject to soft cover")
+	assert_false(_logged(e.log_lines, "PHB p.151"), "no cover line appears either")
 
 
 # ---------------------------------------------------------------------------
-# Precise Shot (PHB p. 98) removes the penalty and nothing else.
+# Precise Shot (PHB p. 98) removes the into-melee penalty and nothing else.
+# Soft cover from a creature is a different rule and survives the feat.
 
 
-func test_precise_shot_removes_the_penalty() -> void:
+func test_precise_shot_removes_the_penalty_but_not_cover() -> void:
 	var sera := _char("sera")
 	_equip_crossbow(sera)
 	sera.feats = ["Point Blank Shot", "Precise Shot"]
 	assert_true(Feats.has_active(sera, "precise_shot"), "the fixture meets the prerequisite")
 	var kaelen := _char("kaelen")
 	var ghoul := _monster("ghoul")
+	# Kaelen stands beside the ghoul, so the fixture has both conditions at once:
+	# the target is engaged (the -4) and a creature screens a corner (cover).
 	var e := _encounter_at(
 		[sera, kaelen], [Vector2i(1, 4), Vector2i(3, 1)], [ghoul], [Vector2i(4, 1)]
 	)
 	_force_turn(e, sera)
 	var shot := e.attack_active(2)
 	assert_eq(int(shot["result"]["into_melee_penalty"]), 0, "Precise Shot removes the -4")
-	assert_false(_logged(e.log_lines, "shooting into melee"), "nothing is logged because nothing applies")
+	assert_false(_logged(e.log_lines, "shooting into melee"), "the penalty rule emits nothing")
+	# Correction: the feat is not a cover exemption. Improved Precise Shot ignores
+	# cover, but it needs BAB +11 (PHB p. 96) and is not in this slice.
+	assert_eq(int(shot["result"]["cover"]), 4, "Precise Shot does not remove cover")
+	assert_eq(
+		int(shot["result"]["target_ac"]),
+		CombatScreen.effective_ac(ghoul, e.is_flat_footed(_index_of(e, ghoul)), 4),
+		"the shot resolves against the covered AC even with the feat",
+	)
+	assert_true(_logged(e.log_lines, "PHB p.151"), "the cover rule is cited separately")
 
 
 func test_precise_shot_without_point_blank_shot_does_nothing() -> void:
@@ -381,3 +395,106 @@ func test_magic_missile_has_no_attack_roll_so_no_penalty() -> void:
 	var cast := e.cast_active_spell("magic_missile", 2)
 	assert_true(bool(cast.get("ok", false)), String(cast.get("message", "")))
 	assert_false(_logged(e.log_lines, "shooting into melee"), "a spell with no attack roll cannot be shot into a melee")
+
+
+# ---------------------------------------------------------------------------
+# Soft cover from creatures (PHB p. 151): +4 AC on ranged attacks when a
+# creature's square lies on the line. The geometry itself is covered by
+# tests/test_cover_geometry.gd; these tests check that the encounter reads it,
+# that it reaches the roll, and that it stacks with nothing.
+
+
+func test_a_creature_in_the_line_raises_the_targets_ac_by_4() -> void:
+	var sera := _char("sera")
+	_equip_crossbow(sera)
+	var kaelen := _char("kaelen")
+	var ghoul := _monster("ghoul")
+	var covered := _encounter_at(
+		[sera, kaelen], [Vector2i(1, 4), Vector2i(3, 1)], [ghoul], [Vector2i(4, 1)]
+	)
+	_force_turn(covered, sera)
+	var shot := covered.attack_active(2)
+	assert_true(bool(shot.get("ok", false)), String(shot.get("message", "")))
+	assert_eq(int(shot["result"]["cover"]), 4, "a creature in the line is soft cover")
+	assert_eq(
+		int(shot["result"]["target_ac"]),
+		CombatScreen.effective_ac(ghoul, covered.is_flat_footed(_index_of(covered, ghoul)), 4),
+		"the resolver's AC is the inspector's covered AC",
+	)
+	assert_true(_logged(covered.log_lines, "has cover, +4 AC"), "the log states the cover term")
+	# Control: same seed, same shot, the ally stands out of every line.
+	var open := _encounter_at(
+		[sera, kaelen], [Vector2i(1, 4), Vector2i(6, 4)], [ghoul], [Vector2i(4, 1)]
+	)
+	_force_turn(open, sera)
+	var clear_shot := open.attack_active(2)
+	assert_eq(int(clear_shot["result"]["cover"]), 0, "an ally out of the line is not cover")
+	assert_false(_logged(open.log_lines, "has cover"), "no cover line is emitted")
+	assert_eq(
+		int(shot["result"]["target_ac"]),
+		int(clear_shot["result"]["target_ac"]) + 4,
+		"cover is exactly +4 AC and applies once",
+	)
+
+
+func test_thrown_weapons_get_soft_cover_too() -> void:
+	var sera := _char("sera")
+	sera.equipment["weapon"] = content.items["dagger"].duplicate(true)
+	var kaelen := _char("kaelen")
+	var ghoul := _monster("ghoul")
+	var e := _encounter_at(
+		[sera, kaelen], [Vector2i(1, 4), Vector2i(3, 1)], [ghoul], [Vector2i(4, 1)]
+	)
+	_force_turn(e, sera)
+	var throw := e.attack_active(2, "thrown")
+	assert_true(bool(throw.get("ok", false)), String(throw.get("message", "")))
+	assert_eq(int(throw["result"]["cover"]), 4, "a thrown weapon is a ranged attack")
+	assert_eq(int(throw["result"]["into_melee_penalty"]), -4, "the two ranged rules stay independent")
+
+
+func test_a_ranged_touch_spell_keeps_cover() -> void:
+	var caster := _caster()
+	assert_not_null(caster, "a prepared caster with scorching ray exists")
+	var kaelen := _char("kaelen")
+	var ghoul := _monster("ghoul")
+	var e := _encounter_at(
+		[caster, kaelen], [Vector2i(1, 4), Vector2i(3, 1)], [ghoul], [Vector2i(4, 1)]
+	)
+	_force_turn(e, caster)
+	var cast := e.cast_active_spell("scorching_ray", 2)
+	assert_true(bool(cast.get("ok", false)), String(cast.get("message", "")))
+	assert_true(_logged(e.log_lines, "casts Scorching Ray"), "the ray was fired")
+	assert_true(
+		_logged(e.log_lines, "has cover, +4 AC"),
+		"a ranged touch spell is a ranged attack and the creature in the line still covers",
+	)
+
+
+## The roll itself: cover is a modifier on AC, so a touch attack loses it too.
+func test_the_cover_term_raises_touch_ac_in_the_roll() -> void:
+	var sera := _char("sera")
+	_equip_crossbow(sera)
+	var ghoul := _monster("ghoul")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 424242
+	var weapon: Dictionary = content.items["light_crossbow"]
+	var plain := Rules.attack(rng, sera, ghoul, weapon, 20, {"touch": true})
+	var covered := Rules.attack(rng, sera, ghoul, weapon, 20, {"touch": true, "cover": 4})
+	assert_eq(int(plain["target_ac"]), Rules.touch_ac(ghoul, {}), "touch AC without cover")
+	assert_eq(int(covered["target_ac"]), int(plain["target_ac"]) + 4, "cover is +4 on touch AC")
+	assert_eq(int(covered["cover"]), 4, "the result records the term it applied")
+
+
+## The inspect panel must not show a bare attacker-dependent AC, and it must
+## state the AC the actual attack type uses: a ranged touch attack resolves
+## against touch AC and keeps cover, so both numbers appear with the +4.
+func test_the_inspector_states_both_covered_acs_for_the_named_shooter() -> void:
+	var ghoul := _monster("ghoul")
+	var summary := CombatScreen.cover_summary(ghoul, false, 4, "Sera Vane")
+	assert_eq(
+		summary,
+		"Sera Vane's ranged attack: AC %d • touch %d (+4 cover, PHB p.151)"
+		% [Rules.armor_class(ghoul, {}) + 4, Rules.touch_ac(ghoul, {}) + 4],
+		"the clause names the shooter and states both covered ACs",
+	)
+	assert_true(summary.contains("PHB p.151"), "the panel cites the rule")

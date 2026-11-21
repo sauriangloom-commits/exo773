@@ -1204,10 +1204,45 @@ func _inspect_active() -> void:
 
 
 ## The AC an attack resolves against for this combatant right now. The inspector
-## and the attack resolver both come through Rules.armor_class, so the panel
-## cannot disagree with the roll it is describing.
-static func effective_ac(ch: Character, flat_footed: bool) -> int:
-	return Rules.armor_class(ch, {"flat_footed": flat_footed})
+## and the attack resolver both come through Rules.armor_class / Rules.touch_ac
+## and add the encounter's cover term the same way, so the panel cannot disagree
+## with the roll it is describing. `touch` selects the AC a ranged touch attack
+## uses, and cover applies to both (Rules Compendium, "Touch Attacks").
+static func effective_ac(ch: Character, flat_footed: bool, cover := 0, touch := false) -> int:
+	var base := (
+		Rules.touch_ac(ch, {"flat_footed": flat_footed})
+		if touch
+		else Rules.armor_class(ch, {"flat_footed": flat_footed})
+	)
+	return base + maxi(0, cover)
+
+
+## The panel's attacker-dependent cover line. One function so the text cannot
+## drift from `effective_ac`: it states the normal AC and the touch AC a ranged
+## touch attack would use, both with the same cover term the resolver adds.
+static func cover_summary(
+	ch: Character, flat_footed: bool, cover: int, shooter_name: String
+) -> String:
+	return "%s's ranged attack: AC %d • touch %d (+%d cover, PHB p.151)" % [
+		shooter_name,
+		effective_ac(ch, flat_footed, cover),
+		effective_ac(ch, flat_footed, cover, true),
+		cover,
+	]
+
+
+## Soft cover exists only against a particular attacker, so the inspector asks
+## the encounter only when the active combatant is an enemy of the inspected
+## one; the panel then names that shooter next to the number.
+func _cover_vs_active(index: int) -> int:
+	if Game.encounter == null:
+		return 0
+	var active: Dictionary = Game.encounter.active_entry()
+	if active.is_empty() or int(active["index"]) == index:
+		return 0
+	if int(active["team"]) == int(Game.encounter.combatants[index]["team"]):
+		return 0
+	return Game.encounter.creature_cover(int(active["index"]), index)
 
 
 func _inspect_index(index: int) -> void:
@@ -1246,6 +1281,16 @@ func _inspect_index(index: int) -> void:
 				false,
 				13
 			))
+			# A covered target does not get a bare attacker-dependent number: the
+			# clause names the shooter and states both ACs the roll can use, because
+			# a ranged touch attack resolves against touch AC and keeps cover.
+			var cover := _cover_vs_active(index)
+			if cover > 0:
+				var shooter_entry: Dictionary = Game.encounter.active_entry()
+				var shooter: Character = shooter_entry["char"]
+				box.add_child(ThemeBuilder.body(
+					cover_summary(ch, flat, cover, shooter.display_name), true, 12
+				))
 			for attack in ch.attacks:
 				box.add_child(ThemeBuilder.body(Panels._attack_line(ch, attack), true, 12))
 			return box
