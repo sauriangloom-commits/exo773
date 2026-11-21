@@ -2258,7 +2258,8 @@ Remaining defects are unchanged: reveal only inside modals, a control taller tha
 its pane clips, one pane follows focus per key press, `follow_focus` is
 redundant beside the reveal walk, and there is no key repeat, gamepad page keys or
 reveal after a silent relayout. Verification gaps and deferred features are split
-out in [TEST_REPORT.md](TEST_REPORT.md): the Journal wheel is unverified, no
+out in [TEST_REPORT.md](TEST_REPORT.md): the Journal wheel is verified with a
+70-question overflow fixture, no
 OS-level crash injection was run, case-sensitive filesystems are unproven,
 latest layout evidence is 1280x720 only, several older acceptance logs do not
 bind their exe, and the earlier `modal_focus` `fe7511b3` binary is missing. The
@@ -2267,6 +2268,11 @@ foundation ships with no step and no version bump.
 
 Latest hash-bound candidates: `pattern_2026-11-20` `dc2d1b5e` (13/13) and
 `creator_probe_2026-11-20` `4196d978` (9/9); `probe_2026-11-20` is the same bytes
-from a dirty tree and carries no acceptance. The next highest-priority unresolved
-item is the taller-than-pane clipping at 160 %; its bounded task (measure, then
-choose pane-scroll or a height cap) is stated in TEST_REPORT and not started.
+from a dirty tree and carries no acceptance.
+
+Two unresolved content warnings are back on the priority list: the bell token is
+spent for good with no warning, and *Ring twice for the dead.* starts a fight from
+a dialogue row with no hint. One-line labels are proposed in TEST_REPORT and not
+applied. Oversized-control clipping is a conditional limit - no shipped modal
+reproduces it - and the silence epilogue row remains reachable at 160 % by wheel
+or scrollbar (it sits seven unavailable rows down and has no keyboard reveal).

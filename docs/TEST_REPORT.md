@@ -3975,7 +3975,7 @@ and the places where that record is weaker than a result are named as gaps.
 | Item | Status | Fix | Evidence recorded | Residual |
 | --- | --- | --- | --- | --- |
 | UI scaling | **Closed** | `15329d3` (client-size layout, 160 % fit) | `ui_scaling_2026-11-20b` `6d38c18d`; 18/18 in `runs/2026-11-20_ui_fix/`; settings/journal/refusal layouts at 100 % and 160 % on `pattern_2026-11-20` `dc2d1b5e` (13/13) | Latest layout evidence is 1280x720 only; the modal limits below remain |
-| Journal output | **Closed** | `3dc28cc` (+ `4b63c88` uid) | `journal_2026-11-20` `d3070eae`, 7/7 (list, both validators, Inspect, journal 1.0/1.6, save-compat); native Journal close by mouse and Enter at both scales | Mouse wheel over the Journal body is still unverified (demo content fits one screen) |
+| Journal output | **Closed** | `3dc28cc` (+ `4b63c88` uid) | `journal_2026-11-20` `d3070eae`, 7/7 (list, both validators, Inspect, journal 1.0/1.6, save-compat); native Journal close by mouse and Enter at both scales; native wheel over a 70-question overflow fixture at both scales (`2026-11-20_modal/report.md`) | None for scrolling; the overflow fixture is a user package, not shipped content |
 | Refusal logging | **Closed** | `c3ede47` (+ `b203a1d` uid) | `refusals_2026-11-20` `06883c82`: both validators, Inspect, refusal layout at 100 % and 160 %; native real W/F input at both scales | Export exercises the wall family only; the key binding rests on the input tests, not the layout scenario |
 | Migration foundation | **Foundation only; no production step** | `93e8199` | `migration_2026-11-20` `00136308`, 11/11 hash-bound; `SAVE_VERSION` still 1, `steps` empty | A production step is deferred; `content_version` stays a refusal by design |
 | Recovery | **Closed with limits** | `accbc62`, `dafacd8`, `437fa40` | `recovery_2026-11-20` `a0e30502` 13/13; `interruption_2026-11-20` `4c0d699d` 13/13; `pattern_2026-11-20` `dc2d1b5e` 13/13 | No OS crash injection; 2..100 working-copy cap; case-sensitive-filesystem behavior unproven; tie order is deterministic, not newest |
@@ -4005,7 +4005,9 @@ and the places where that record is weaker than a result are named as gaps.
 ### Remaining defects (known, not fixed)
 
 1. Reveal runs only while a modal is open; the campaign creator keeps its own path.
-2. A control taller than its pane aligns to the pane's top, so its bottom can clip.
+2. **Conditional:** a control taller than its pane aligns to the pane's top, so
+   its bottom can clip. No shipped modal reaches that condition at 100 % or
+   160 %; it guards future layouts rather than describing a reproduced defect.
 3. One pane follows the focus per key press; with two scrolling panes only one moves.
 4. `follow_focus` remains on the shared body beside the reveal walk (redundant half).
 5. No key repeat; gamepad page keys unhandled; no reveal after a silent relayout.
@@ -4015,8 +4017,9 @@ limits, unchanged.
 
 ### Verification gaps (distinct from defects)
 
-- Journal mouse wheel over the body at 100 % and 160 %: never verified; the demo
-  Journal fits its modal, so there is nothing to scroll.
+- Shift+Tab was never injected as a real OS chord (the synthetic modifier never
+  reached Godot); the backward cycle rests on two unit tests. Enter activation is
+  native-only, because headless GUI key activation does not fire in the harness.
 - No OS-level crash injection for save writes; interruption states are built
   directly and failure paths simulated.
 - Case-sensitive filesystems: two slot names differing only by case are asserted
@@ -4065,13 +4068,61 @@ acceptance. Source head `c23f96c` is documentation only and has no binary. The
 older `modal_scroll` (`0c2f982e`), `modal_pane` (`6217fe39`) and `modal_focus`
 (`42b003c9`) candidates remain as recorded in the audit; nothing was rebuilt.
 
+### Open priority list and the next item
+
+The two unresolved **content** warnings from the silent-bell assessment are back
+on the list. Both are wording gaps on the bell page; neither changes a condition,
+effect, destination, flag or reward.
+
+1. **The token is spent for good with no warning.** *Break the token and leave the
+   bell silent.* removes `ivo_token` immediately (`ferry_bell.json`); *Ring once
+   for passage.* removes it too. The narration says so only after the choice.
+   Proposed one-line label, not applied:
+   `Break the token and leave the bell silent. — The token is gone for good.`
+   Applying the same clause to *Ring once* would make the pair consistent, but
+   that is a third edit and needs its own approval.
+2. **A fight starts from a dialogue row with no hint.** *Ring twice for the dead.*
+   sets `bell_called`, narrates "Something answers the second ring." and runs
+   `start_combat` on `ashwick_bell_answer` (a ghoul and a zombie). Proposed
+   one-line label, not applied:
+   `Ring twice for the dead. — Something answers, and it fights.`
+
+### Epilogue row reachability at 160 % (checked, no change)
+
+The silence epilogue row - *Tell me what the silence means for the ferry.* -
+is still in `maela_vey.json` (`next = epilogue_silent`), gated by
+`bell_resolved`, `bell_silenced` and not `maela_epilogue`. It sits in the same
+single-column choice list as the account rows, seven unavailable rows down, and
+was reached by scrolling at 160 % in the silence playthrough
+(`account_decision_2026-11-14`, captures `s10`-`s12`). `15329d3` then capped the
+dialogue panel to the client and kept one vertical ScrollContainer (horizontal
+disabled), so the row stays reachable by wheel or scrollbar. Nothing was captured
+after that change at 160 %, and the dialogue scroller has no `follow_focus`, so
+Tab can focus the row without scrolling it into view. That is the recorded
+discoverability refinement, not a reachability failure.
+
 ### Next highest-priority unresolved item
 
-**A control taller than its pane clips at the bottom (remaining defect 2).** It is
-the only item left that can hide content at a supported text scale, and it is
-independent of the deferred migration work. The next bounded task is to
-reproduce it at 160 % on the Settings modal with its tallest single control,
-record the control and pane rectangles, and then choose the smaller fix: let the
-pane scroll far enough to reveal the focused control's bottom, or cap that
-control's height. Not started here: no measurement, code or capture was added in
-this pass.
+**Apply the two bell-page warnings** (content only). Oversized-control clipping is
+now a **conditional limit** - no shipped modal has a single control taller than
+its pane at 100 % or 160 %, so nothing reproduces it. The bounded task is to
+append the two one-line clauses above to
+`content/campaigns/ashwick_ferry/dialogue/ferry_bell.json`, add a text assertion
+in `test_ashwick_second_ring.gd` that both rows carry their warning, and rerun the
+suite plus both validators. No condition, effect, flag or outcome changes. Not
+started: no content file was edited in this pass.
+
+### Corrections to this refresh
+
+- **Journal wheel scrolling is verified.** `builds/qa/runs/2026-11-20_modal/report.md`
+  records OS-level wheel input over a 70-question `qa_journal_overflow` user
+  fixture (shipped content untouched) at 100 % and 160 %: questions 09-18 then
+  back at 100 %, 06-13 then back at 160 %. The journal acceptance's "not scrolled
+  by input" limit was superseded the same day by that native pass; this refresh
+  repeated the older line. The Journal item is now closed without that residual.
+- **Oversized-control clipping is conditional**, not a reproduced defect: no
+  shipped example exists at either supported scale.
+- **The two content warnings are restored** above, with proposed wording; neither
+  is implemented.
+- The removed Journal gap is replaced by the genuinely open input gap: Shift+Tab
+  was never injected as a real OS chord.
