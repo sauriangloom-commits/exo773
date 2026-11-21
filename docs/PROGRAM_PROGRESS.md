@@ -2388,3 +2388,31 @@ nor useful.
 6. Untested until performed: the restore test, off-disk copies, and external
    media integrity. The snapshot directories are on the same `Downloads` disk,
    so they do not mitigate disk loss.
+## Dialogue HUD shortcuts (2026-11-21)
+
+C, I and J now open the Sheet, Inventory and Journal while a conversation is
+open and no modal is open. The handler lives in `Main._input` after rebind
+capture and after the modal branch: Page, arrow and Tab navigation keep their
+priority, and Enter, Escape and Pause keep their existing activation/dismissal
+paths even if one of these actions is rebound. Tab still cycles dialogue choices;
+no Save shortcut or new binding was added. The modal focus walk now skips
+`FOCUS_ACCESSIBILITY` controls, which the panels exposed as screen-reader-only
+stops that `grab_focus()` cannot take without an active reader.
+
+Tests: `tests/test_dialogue_focus.gd` is **23 tests, 283 assertions** (six new:
+each panel, focus containment and return, Escape ordering, rebind capture, open
+modal priority, and unchanged combat/creator handling). Suite **705/705 tests,
+7,619 assertions, 56 scripts, exit 0**; both validators PASS; `--demo-silence`
+and `--demo-dialogue` dialogue layout probes PASS at 1280x720 at 100 % and 160 %.
+
+Candidate `dialogue_hud_2026-11-21` (source `77f266d`, clean tree, 110,689,720
+bytes, SHA-256 `fa3ff024...f1ac71`) passes 19/19 hash-bound native checks. At both
+scales C/I/J open their titled panels, Escape closes each and returns to the
+prior choice, and a final Escape ends the conversation. The pre-panel choice
+frame and each closed frame are byte-identical.
+
+Limits: the native state uses the QA-only `--demo-silence` seed, not a full
+playthrough; evidence is 1280x720 on Windows at 100 %/160 % only; one Tab per
+panel was sent, and only Inventory visibly changed focus inside its panel; no
+human playtest; the native harness cannot read the focus owner, so return is
+pixel equality plus unit-tested ownership. Save still has no shortcut.

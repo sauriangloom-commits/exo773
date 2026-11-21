@@ -4298,3 +4298,47 @@ captures (`open.png` equals `after_enter.png`; `choice.png` equals
 Automated evidence for the same source: 17/17 dialogue tests (214 assertions),
 699/699 suite (7,550 assertions), both validators PASS, both dialogue probes PASS
 at 1280x720 at 100 % and 160 %.
+## Dialogue HUD shortcuts — candidate `dialogue_hud_2026-11-21` (2026-11-21)
+
+**Scope.** Sheet (C), Inventory (I) and Journal (J) open during dialogue when no
+modal is open. Routing sits after rebind capture and modal priority; dialogue
+Page/arrow/Tab handling stays ahead of it; Enter, Escape and Pause are reserved
+so a rebound shortcut cannot steal activation or dismissal. Tab continues to
+cycle choices. `FOCUS_ACCESSIBILITY` controls are excluded from the modal focus
+walk because the new panels exposed controls that cannot be manually focused
+without a screen reader.
+
+**Automated.** `tests/test_dialogue_focus.gd`: **23/23, 283 assertions** (six new
+cases: each panel opens with focus contained, Escape returns to the prior choice,
+Escape with no panel ends the conversation, rebind capture wins, an open modal
+keeps priority, and combat/creator do not open HUD panels). Suite **705/705
+tests, 7,619 assertions, 56 scripts, exit 0**; both validators PASS; both dialogue
+layout probes PASS at 1280x720 at 100 % and 160 % (30 and 22 controls, 0 failures).
+
+**Candidate.** `dialogue_hud_2026-11-21` from clean commit `77f266d`, 0 worktree
+entries and 0 untracked files: 110,689,720 bytes, SHA-256
+`fa3ff0244a8cfe545b26211c7d1759a7af3dc1f18718167c4084647390f1ac71`. Its own
+campaign list and both validators pass.
+
+**Native acceptance.** `acceptance.log`: **19 checks, 0 failures**, hash recorded
+at both ends and unchanged. At 1280x720, client text 100 % and 160 %, real OS
+input, campaign `ashwick_ferry` with the QA-only silence seed:
+
+| Check | 100 % | 160 % |
+| --- | --- | --- |
+| C opens Party & Character Sheet | pass | pass |
+| I opens Inventory & Equipment | pass | pass |
+| J opens Journal | pass | pass |
+| Escape closes each; ring returns to the prior choice | pass | pass |
+| Tab focuses a choice first | pass | pass |
+| Escape after panels ends the conversation | pass | pass |
+
+Every `*_closed.png` is byte-identical to the corresponding `choice.png`; every
+panel-open frame differs. Evidence: `builds/qa/runs/2026-11-21_dialogue_hud_shortcuts/`.
+
+**Limits.** Native state is seeded with `--demo-silence`, not a full playthrough;
+1280x720 on Windows only; no other window size or OS scaling; one Tab inside each
+panel, with only Inventory visibly moving focus; no human playtest. Focus return
+is pixel equality plus unit-tested ownership, because the native harness cannot
+read the focus owner. Save has no shortcut, and gamepad/controller behavior is
+unchanged.

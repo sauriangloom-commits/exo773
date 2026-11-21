@@ -4,8 +4,9 @@
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
 > `--demo-silence` / `--demo-dialogue` layout probes pass at 1280×720 at 100 %
 > and 160 %. Keyboard access to the Sheet, Inventory and Journal panels is now
-> available during dialogue. (The 2026-11-14 boundary was 538/538, 6,263
-> assertions, 44 scripts.) Earlier
+> available during dialogue; candidate `dialogue_hud_2026-11-21` (`fa3ff024`)
+> passes 19/19 hash-bound native checks. (The 2026-11-14 boundary was 538/538,
+> 6,263 assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue
 > holds **41** entries. Items marked **Done** are complete and are kept for the
