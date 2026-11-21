@@ -11,6 +11,9 @@ var modal_return_focus: Control = null
 var modal_scroll: ScrollContainer = null
 var modal_builder: Callable
 var modal_title := ""
+## Optional strip above a modal's scrolling body for a fact that must stay
+## visible while the panel is used (currently the read-only Settings notice).
+var modal_notice := ""
 ## The modal size a caller asked for at 100 % text, kept so `refresh_modal()`
 ## re-applies the same request instead of resetting every modal to 760x540.
 var modal_base_size := Vector2(760, 540)
@@ -108,6 +111,7 @@ const APP_FLAGS: Array[String] = [
 	"--ranged-probe",
 	"--save-compat-probe",
 	"--save-compat-ui-probe",
+	"--settings-notice-probe",
 	"--shield-probe",
 	"--training-probe",
 	"--trip-probe",
@@ -343,6 +347,8 @@ func _ready() -> void:
 		_save_compat_probe()
 	if "--save-compat-ui-probe" in args:
 		_save_compat_ui_probe()
+	if "--settings-notice-probe" in args:
+		_settings_notice_probe()
 	if "--campaign-list-probe" in args:
 		_campaign_list_probe()
 	if "--party-layout-probe" in args:
@@ -2913,6 +2919,51 @@ func _save_compat_ui_probe() -> void:
 	_probe_check(modal == null and Game.position == Vector2i(2, 3), "restoring compatible content recovers the save")
 	close_modal()
 
+	# Interrupted write: the primary is gone and the backup holds the same save.
+	# The list names the source, the load succeeds, and its message stays open
+	# because the restored game is already live behind the panel.
+	var backup_path := save_path + ".bak"
+	var temp_path := save_path + ".tmp"
+	_write_probe_text(backup_path, original_save)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	Game.load_campaign(id)
+	_open_load_modal()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_probe_check(_probe_label_contains(modal, "(from backup)"), "the Load list names the backup")
+	var backup_status := await _compat_press_load("slot2")
+	print("UI COMPAT backup status=%s pos=%s" % [backup_status, str(Game.position)])
+	_probe_check(backup_status.contains("from its backup"), "the recovered load names its source")
+	_probe_check(modal != null, "the recovered load leaves its message open")
+	_probe_check(Game.position == Vector2i(2, 3), "the backup restores the saved cell")
+	_probe_check(_probe_bytes(backup_path) == original_save, "the backup keeps its bytes")
+	_probe_check(not FileAccess.file_exists(save_path), "loading does not promote the backup")
+	close_modal()
+
+	# A readable primary that is newer keeps the refusal even with a good backup.
+	var newer: Dictionary = _probe_read_json(backup_path)
+	newer["save_version"] = 99
+	_probe_write_json(save_path, newer)
+	var newer_status := await _compat_press_load("slot2")
+	print("UI COMPAT newer primary status=%s" % newer_status)
+	_probe_check(newer_status.contains("incompatible version"), "a newer primary keeps its refusal")
+	_probe_check(modal != null, "the refusal keeps the Load modal open")
+	_probe_check(_probe_bytes(backup_path) == original_save, "the refused load leaves the backup alone")
+	close_modal()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+
+	# With no readable backup, the temp file of the interrupted write stands in.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	_write_probe_text(temp_path, original_save)
+	var temp_status := await _compat_press_load("slot2")
+	print("UI COMPAT temp status=%s pos=%s" % [temp_status, str(Game.position)])
+	_probe_check(temp_status.contains("unfinished write"), "the temp stands in when no backup reads")
+	_probe_check(Game.position == Vector2i(2, 3), "the temp restores the saved cell")
+	close_modal()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+	_write_probe_text(save_path, original_save)
+	Game.load_campaign(id)
+
 	if capture_dir != "":
 		rows[3] = row.substr(0, 2) + "#" + row.substr(3)
 		area["rows"] = rows
@@ -2926,6 +2977,61 @@ func _save_compat_ui_probe() -> void:
 	SaveSystem.delete_save("slot2")
 	Game.load_campaign("ravenloft_demo")
 	_probe_finish("save_compat_ui")
+
+
+## Drives the real Settings modal at the requested text scale with a settings
+## file that is newer than this build: the read-only notice must be visible
+## without scrolling, inside the panel, outside the scrolling body, and it must
+## survive a panel refresh without freezing the controls.
+func _settings_notice_probe() -> void:
+	probe_scenario = "settings_notice"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog()
+	get_window().size = probe_size
+	if probe_text_scale > 0.0:
+		# The scale itself is exercised through the player-facing slider by the
+		# layout probes; this probe pins the scale it measures.
+		Game.settings["text_scale"] = probe_text_scale
+		_apply_theme()
+		await get_tree().process_frame
+	Game.settings_newer = true
+	_open_settings()
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(modal != null, "the Settings modal opens")
+	if modal == null:
+		_probe_finish("settings_notice")
+		return
+	var notice := modal.find_child("ModalNotice", true, false) as Label
+	_probe_check(notice != null and notice.text.contains("not written"), "the read-only notice is shown")
+	if notice == null:
+		_probe_finish("settings_notice")
+		return
+	var panel: Control = notice.get_parent()
+	while panel != null and not (panel is PanelContainer):
+		panel = panel.get_parent()
+	_probe_check(panel != null, "the notice lives in the modal panel")
+	if panel == null:
+		_probe_finish("settings_notice")
+		return
+	var rect := notice.get_global_rect()
+	var panel_rect := panel.get_global_rect()
+	print("NOTICE scale=%s applied=%s notice=%s panel=%s" % [str(probe_text_scale), str(Game.settings.get("text_scale", 0.0)), str(rect), str(panel_rect)])
+	_probe_check(rect.position.y >= panel_rect.position.y and rect.end.y <= panel_rect.end.y, "the notice stays inside the panel vertically")
+	_probe_check(rect.position.x >= panel_rect.position.x and rect.end.x <= panel_rect.end.x, "the notice does not run off the panel")
+	_probe_check(modal_scroll != null and not modal_scroll.is_ancestor_of(notice), "the notice is outside the scrolling body")
+	if modal_scroll != null:
+		_probe_check(rect.end.y <= modal_scroll.get_global_rect().position.y + 1.0, "the notice is visible without scrolling")
+	var sliders := modal.find_children("*", "HSlider", true, false)
+	_probe_check(not sliders.is_empty(), "the controls are still offered")
+	Game.settings_newer = true
+	refresh_modal()
+	for i in 4:
+		await get_tree().process_frame
+	_probe_check(modal != null and modal.find_child("ModalNotice", true, false) != null, "the notice survives a panel refresh")
+	close_modal()
+	Game.settings_newer = false
+	_probe_finish("settings_notice")
 
 
 func _compat_reload(id: String) -> Dictionary:
@@ -6596,7 +6702,7 @@ func _show_victory() -> void:
 
 # ---------------------------------------------------------------- modals
 
-func open_modal(title: String, builder: Callable, width := 760, height := 540, preserve_rebind := false) -> void:
+func open_modal(title: String, builder: Callable, width := 760, height := 540, preserve_rebind := false, notice := "") -> void:
 	var pending_rebind := awaiting_rebind
 	# The opener is the control focused before this modal stack began. A refresh,
 	# or a modal that opens another, keeps it, so closing returns to the world
@@ -6609,6 +6715,7 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 		awaiting_rebind = pending_rebind
 	modal_title = title
 	modal_builder = builder
+	modal_notice = notice
 	modal_base_size = Vector2(width, height)
 	modal = Control.new()
 	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -6651,6 +6758,13 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 	close.pressed.connect(close_modal)
 	header.add_child(close)
 	box.add_child(ThemeBuilder.separator())
+	if modal_notice != "":
+		# Outside the scroll on purpose: a notice about the panel's own limits is
+		# useless if reading the controls can scroll it away.
+		var banner := ThemeBuilder.body(modal_notice, true, 13)
+		banner.name = "ModalNotice"
+		banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(banner)
 	var content_scroll := ScrollContainer.new()
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -6674,7 +6788,8 @@ func refresh_modal() -> void:
 			modal_builder,
 			int(modal_base_size.x),
 			int(modal_base_size.y),
-			true
+			true,
+			modal_notice
 		)
 
 
@@ -6688,6 +6803,7 @@ func close_modal(restore_focus := true) -> void:
 	modal_scroll = null
 	modal_builder = Callable()
 	modal_title = ""
+	modal_notice = ""
 	awaiting_rebind = ""
 	if restore_focus:
 		_restore_modal_focus()
@@ -6997,6 +7113,9 @@ func _open_save_modal() -> void:
 
 
 func _open_settings() -> void:
+	var notice := ""
+	if Game.settings_newer:
+		notice = "Read-only settings: this file was saved by a newer version of the game, so changes here apply for this session but are not written."
 	open_modal("Settings", func() -> Control:
 		return Panels.settings(awaiting_rebind, func(action: String) -> void:
 			awaiting_rebind = action
@@ -7011,7 +7130,7 @@ func _open_settings() -> void:
 			Game.reset_default_controls()
 			refresh_modal()
 		)
-	, 780, 560)
+	, 780, 560, false, notice)
 
 
 func _open_pause() -> void:

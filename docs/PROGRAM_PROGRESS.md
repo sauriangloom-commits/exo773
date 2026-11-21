@@ -2129,3 +2129,38 @@ with `worktree_entries=0` and no untracked files - 110,670,872 bytes, SHA-256
 `00136308f9a3237504daa89da37db782105b75b3289b2baea08dd0378dbada71` - and its
 11/11 acceptance log records that hash at both ends
 (`builds/qa/runs/2026-11-20_migration/acceptance.log`).
+
+**Read-only Settings notice and conservative save recovery.** The Settings modal
+now opens with a line above its scrolling body when `settings_newer` is set:
+changes still apply for this session and nothing is written back. The line lives
+outside the scroll (`modal_notice` on `Main`), so it cannot scroll away, and it
+survives the panel refreshes the setters trigger.
+
+Saves recover from an interrupted write without touching a byte. `SaveSystem`
+exposes the slot's three artifacts (`artifact_paths`, `has_artifacts`,
+`read_payload` with `missing`/`corrupt`/`unsupported_version`), and `GameSession`
+splits the old `load_game` into `_choose_save_source` + `_prepare_save` (the
+validation that always ran) + `_apply_prepared_save`. A readable primary always
+wins and its refusals stand - a newer version or a content-version mismatch is
+still the same refusal, never a silent downgrade to older bytes. Only a missing or
+unreadable primary lets the backup and then the temp file stand in; each is
+validated by the same checks and must belong to the loaded campaign, and a
+recovered load names its source in the status line and keeps the panel open
+because the restored game is already live behind it. `list_saves`/`_save_info`
+now show a slot whose primary is gone instead of "empty", tagged
+"(from backup)" / "(unfinished save)". Pre-campaign legacy saves still stand in,
+but only when the campaign slot holds no artifact at all.
+
+The write path stopped deleting files it did not create: when a crashed write's
+`.bak` or `.tmp` occupies the working name, the new save stages through
+`.bak.w` / `.tmp.w`, removes only its own files, and leaves crash artifacts intact
+on success and on failure. `save_game` also refuses to overwrite a crashed slot
+whose readable leftover belongs to another campaign.
+
+**Verified.** 18 new tests (`tests/test_save_recovery.gd`,
+`tests/test_persistence_notices.gd`) plus the extended `--save-compat-ui-probe`
+(backup recovery, newer-primary refusal, temp recovery) and a new
+`--settings-notice-probe`; suite **641/641, 6,931 assertions, 52 scripts, exit 0**.
+In source, `--validate-campaigns`, `--validate-diagnostics`, the Inspect probe,
+the settings/journal/refusal layouts and the notice probe at 100 % and 160 % all
+PASS.

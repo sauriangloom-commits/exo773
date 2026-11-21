@@ -547,8 +547,14 @@ static func saves(mode: String, on_done: Callable) -> Control:
 			list.add_child(ThemeBuilder.body("No saves yet.", true, 14))
 		for save_info in saves_list:
 			var row := HBoxContainer.new()
+			var source := String(save_info.get("source", "primary"))
+			var tag := ""
+			if source == "backup":
+				tag = " (from backup)"
+			elif source == "temp":
+				tag = " (unfinished save)"
 			var info := ThemeBuilder.body(
-				"%s — %s — %s" % [String(save_info["slot"]), String(save_info["saved_at"]), String(save_info["summary"])],
+				"%s — %s — %s%s" % [String(save_info["slot"]), String(save_info["saved_at"]), String(save_info["summary"]), tag],
 				false,
 				13
 			)
@@ -560,10 +566,15 @@ static func saves(mode: String, on_done: Callable) -> Control:
 			button.pressed.connect(func() -> void:
 				var result := Game.load_game(captured_slot)
 				status.text = String(result.get("message", ""))
-				if bool(result.get("ok", false)):
-					on_done.call()
-				else:
+				if not bool(result.get("ok", false)):
 					status.text = String(result.get("message", "Load failed."))
+					return
+				if String(result.get("recovered_from", "")) != "":
+					# Keep the panel open so the recovery is read, not implied: the
+					# restored game is already live behind it.
+					status.text += " The restored game is live behind this panel."
+					return
+				on_done.call()
 			)
 			row.add_child(button)
 			list.add_child(row)
@@ -576,6 +587,16 @@ static func _save_info(slot: String) -> String:
 	if not FileAccess.file_exists(path) and Game.campaign_id == Game.LEGACY_CAMPAIGN_ID:
 		path = SaveSystem.path_for(slot)
 	if not FileAccess.file_exists(path):
+		# An interrupted write can leave a backup or temp with no primary. It is
+		# not an empty slot, and saving over it must not look like the first save.
+		for suffix in [".bak", ".tmp"]:
+			var read := SaveSystem.read_payload(slot, SaveSystem.path_for(slot, Game.campaign_id) + suffix)
+			if bool(read.get("ok", false)):
+				var recovered: Dictionary = read["data"]
+				return "interrupted — %s — %s" % [
+					String(recovered.get("saved_at", "")),
+					String(recovered.get("summary", "")),
+				]
 		return "empty"
 	var text := FileAccess.get_file_as_string(path)
 	var parsed = JSON.parse_string(text)

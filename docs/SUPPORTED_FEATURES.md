@@ -232,6 +232,15 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 
 - JSON saves under `user://saves` (`auto`, `slot1`, `slot2`, `slot3`).
 - Save version check; corrupt/incompatible files produce a message, not a crash.
+- Recovery from an interrupted save: a missing or unreadable primary is replaced
+  in memory by the same write's backup, then its temp file. Every candidate runs
+  the ordinary load checks and is named in the Load list and the status line; a
+  newer primary is still refused (no downgrade). Loading never renames, deletes
+  or rewrites a file, and a later save beside a crash's leftovers leaves them
+  intact - even when that save fails.
+- Settings written by a newer build are read-only: the Settings panel says so in
+  a line above its controls, this session's changes still apply, and the file is
+  never written back.
 - Saved state includes party (HP, conditions, inventory, spells, XP), current
   area, per-area doors/removed objects/searched/visited cells, position and facing,
   world flags, quests, gold, RNG state and encounter completion flags. Settings

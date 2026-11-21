@@ -139,7 +139,11 @@ are not claimed as proof.
      `null` when it cannot honestly upgrade, which keeps today's refusal message.
      A migrated save is **not** written on load - the upgrade lands only when the
      player saves again - so a refused or interrupted save still cannot rewrite
-     player data. The existing `.tmp` + `.bak` write path is unchanged.
+     player data. **Recovery landed 2026-11-20:** that write path is no longer
+     unread - a missing/unreadable primary falls back to the backup and then the
+     temp file, each validated by the ordinary load checks, and a later save
+     stages through `.bak.w`/`.tmp.w` instead of deleting crash artifacts. A newer
+     primary keeps the refusal; the file is still never written on load.
    - **Version floor.** `SUPPORTED_MIN_VERSION = 1`: older files are refused with
      "too old to migrate" rather than by accident, and a newer file than the
      binary keeps the current incompatible-version refusal (no downgrade path).

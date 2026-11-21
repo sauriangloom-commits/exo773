@@ -82,8 +82,16 @@ static func write_save(slot: String, payload: Dictionary, campaign_id := "") -> 
 	data["saved_at"] = Time.get_datetime_string_from_system(false, true)
 	data["saved_unix"] = int(Time.get_unix_time_from_system())
 	var final_path := path_for(slot, campaign_id)
+	# A file already sitting on a working path is a leftover from an interrupted
+	# save, not this write's file. It is never truncated, renamed or removed: this
+	# write works beside it (`.tmp.w` / `.bak.w`) and only cleans up its own files,
+	# so a crash's recovery copy survives even if this write fails.
 	var temp_path := final_path + ".tmp"
+	if FileAccess.file_exists(temp_path):
+		temp_path = final_path + ".tmp.w"
 	var backup_path := final_path + ".bak"
+	if FileAccess.file_exists(backup_path):
+		backup_path = final_path + ".bak.w"
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return {"ok": false, "message": "Could not open %s for writing." % temp_path}
@@ -94,7 +102,6 @@ static func write_save(slot: String, payload: Dictionary, campaign_id := "") -> 
 		return {"ok": false, "message": "Save verification failed; the existing save was not changed."}
 	var had_existing := FileAccess.file_exists(final_path)
 	if had_existing:
-		_remove_file(backup_path)
 		if DirAccess.rename_absolute(_global(final_path), _global(backup_path)) != OK:
 			_remove_file(temp_path)
 			return {"ok": false, "message": "Could not stage the existing save for replacement."}
@@ -107,15 +114,35 @@ static func write_save(slot: String, payload: Dictionary, campaign_id := "") -> 
 	return {"ok": true, "message": "Saved to %s." % slot, "data": data}
 
 
-static func read_save(slot: String, campaign_id := "") -> Dictionary:
-	if not DirAccess.dir_exists_absolute(_target_dir(campaign_id)):
-		return {"ok": false, "message": "No save in %s." % slot}
-	var path := path_for(slot, campaign_id)
+## Every file a slot can be recovered from, in preference order. A load looks at
+## the primary first and only then at the interrupted write's leftovers.
+static func artifact_paths(slot: String, campaign_id := "") -> Array:
+	var final_path := path_for(slot, campaign_id)
+	return [final_path, final_path + ".bak", final_path + ".tmp"]
+
+
+## True when any artifact of the slot exists, valid or not. A crashed save leaves
+## a backup or temp behind, and that is what stops the pre-campaign fallback from
+## standing in for the slot.
+static func has_artifacts(slot: String, campaign_id := "") -> bool:
+	for path in artifact_paths(slot, campaign_id):
+		if FileAccess.file_exists(String(path)):
+			return true
+	return false
+
+
+## Reads one save file and applies the version rules, without touching the file.
+## `reason` separates damage (missing/corrupt), which a load may recover from, from
+## an incompatible version, which is a refusal and never a downgrade.
+static func read_payload(slot: String, path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
-		return {"ok": false, "message": "No save in %s." % slot}
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
-		return {"ok": false, "message": "Save %s is corrupt (invalid JSON)." % slot}
+		return {"ok": false, "message": "No save in %s." % slot, "reason": "missing"}
+	# JSON.parse_string() logs an engine error for damaged bytes; the recovery path
+	# expects those, so parse through an object and read the error code instead.
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(path)) != OK or not json.data is Dictionary:
+		return {"ok": false, "message": "Save %s is corrupt (invalid JSON)." % slot, "reason": "corrupt"}
+	var parsed: Variant = json.data
 	var from := int(Dictionary(parsed).get("save_version", -1))
 	# Tests raise the target so synthetic steps can exercise this path while the
 	# shipped version stays 1; in production the target is SAVE_VERSION itself.
@@ -140,19 +167,39 @@ static func read_save(slot: String, campaign_id := "") -> Dictionary:
 	}
 
 
+static func read_save(slot: String, campaign_id := "") -> Dictionary:
+	return read_payload(slot, path_for(slot, campaign_id))
+
+
+## One row per slot that can be offered, including a slot whose primary is gone
+## but whose backup or temp survived: hiding those would make an interrupted save
+## look like an empty slot. `source` says which file the row describes.
 static func list_saves(campaign_id := "") -> Array:
 	var saves: Array = []
 	for slot in SLOTS:
-		if not exists(slot, campaign_id):
+		if not has_artifacts(slot, campaign_id):
 			continue
-		var info := {"slot": slot, "saved_at": "", "saved_unix": 0, "summary": "", "campaign_id": campaign_id}
-		var text := FileAccess.get_file_as_string(path_for(slot, campaign_id))
-		var parsed = JSON.parse_string(text)
-		if parsed is Dictionary:
+		var info := {
+			"slot": slot,
+			"saved_at": "",
+			"saved_unix": 0,
+			"summary": "",
+			"campaign_id": campaign_id,
+			"source": "primary",
+		}
+		var sources := ["primary", "backup", "temp"]
+		var paths := artifact_paths(slot, campaign_id)
+		for index in paths.size():
+			var json := JSON.new()
+			if json.parse(FileAccess.get_file_as_string(String(paths[index]))) != OK or not json.data is Dictionary:
+				continue
+			var parsed: Variant = json.data
 			info["saved_at"] = String(Dictionary(parsed).get("saved_at", ""))
 			info["saved_unix"] = int(Dictionary(parsed).get("saved_unix", 0))
 			info["summary"] = String(Dictionary(parsed).get("summary", ""))
 			info["campaign_id"] = String(Dictionary(parsed).get("campaign_id", campaign_id))
+			info["source"] = String(sources[index])
+			break
 		saves.append(info)
 	saves.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("saved_unix", 0)) > int(b.get("saved_unix", 0))
@@ -167,7 +214,7 @@ static func latest_slot(campaign_id := "") -> String:
 
 static func has_saves(campaign_id: String) -> bool:
 	for slot in SLOTS:
-		if exists(slot, campaign_id):
+		if has_artifacts(slot, campaign_id):
 			return true
 	return false
 

@@ -497,6 +497,14 @@ func save_game(slot := "slot1") -> Dictionary:
 	# Never overwrite a save that belongs to another campaign or to a different
 	# content version. Refusing is recoverable; a silent overwrite is not.
 	var existing := SaveSystem.read_save(slot, campaign_id)
+	if not bool(existing.get("ok", false)) and SaveSystem.has_artifacts(slot, campaign_id):
+		# The primary did not read, but a crashed slot's leftovers still belong to
+		# somebody: another campaign's backup must not be overwritten either.
+		for path in SaveSystem.artifact_paths(slot, campaign_id):
+			var recovered := SaveSystem.read_payload(slot, String(path))
+			if bool(recovered.get("ok", false)):
+				existing = recovered
+				break
 	if bool(existing.get("ok", false)):
 		var existing_data: Dictionary = existing["data"]
 		var existing_campaign := String(existing_data.get("campaign_id", ""))
@@ -519,21 +527,99 @@ func save_game(slot := "slot1") -> Dictionary:
 	return result
 
 
+## Loads a slot, preferring the primary save and recovering from the leftovers of
+## an interrupted write. Nothing on disk is renamed, deleted or repaired: the
+## chosen bytes run through the same validation a normal load has always run, and
+## only then are they applied.
 func load_game(slot: String) -> Dictionary:
-	var read := SaveSystem.read_save(slot, campaign_id)
-	if not bool(read.get("ok", false)) and campaign_id != "" and not SaveSystem.exists(slot, campaign_id):
-		# Pre-campaign saves live in the legacy directory. They are read as
-		# Ravenloft demo saves and never rewritten in place. Only a missing
-		# namespaced file falls back; a corrupt or unsupported save must keep its
-		# own explanation.
-		read = SaveSystem.read_save(slot)
-	if not bool(read.get("ok", false)):
-		return read
-	var data: Dictionary = read["data"]
+	var choice := _choose_save_source(slot)
+	if not bool(choice.get("ok", false)):
+		return choice
+	var prepared: Dictionary = choice["prepared"]
+	_apply_prepared_save(prepared)
+	var source := String(choice.get("source", "primary"))
+	var message := "Loaded %s." % slot
+	if source == "backup" or source == "temp":
+		message = "Loaded %s from its %s; the save was interrupted." % [
+			slot,
+			"backup" if source == "backup" else "unfinished write",
+		]
+	_log("Loaded %s (%s)." % [slot, str(prepared.get("saved_at", ""))])
+	if message != "Loaded %s." % slot:
+		_log(message)
+	emit_signal("state_changed")
+	return {
+		"ok": true,
+		"message": message,
+		"recovered_from": source if source == "backup" or source == "temp" else "",
+	}
+
+
+## Picks the bytes a load will use without changing any file. A readable primary
+## always wins, and its own refusal (version, campaign, content, structure) stands:
+## quietly loading older leftovers there would be a downgrade, not a recovery.
+## Only a missing or unreadable primary lets the backup and then the temp file of
+## an interrupted write stand in, and each must pass the same checks first.
+func _choose_save_source(slot: String) -> Dictionary:
+	var primary := SaveSystem.read_payload(slot, SaveSystem.path_for(slot, campaign_id))
+	if bool(primary.get("ok", false)):
+		var prepared := _prepare_save(slot, Dictionary(primary["data"]), true)
+		if bool(prepared.get("ok", false)):
+			prepared["source"] = "primary"
+		return prepared
+	if String(primary.get("reason", "")) == "unsupported_version":
+		return primary
+	for index in [1, 2]:
+		var source := "backup" if index == 1 else "temp"
+		var path := String(SaveSystem.artifact_paths(slot, campaign_id)[index])
+		var read := SaveSystem.read_payload(slot, path)
+		if not bool(read.get("ok", false)):
+			continue
+		var data: Dictionary = read["data"]
+		# A leftover is only usable when it belongs to the campaign that is loaded:
+		# switching campaigns for a recovery copy would hide which progress is shown.
+		var saved_campaign := String(data.get("campaign_id", ""))
+		if saved_campaign == "":
+			saved_campaign = LEGACY_CAMPAIGN_ID
+		if saved_campaign != campaign_id:
+			continue
+		if int(data.get("content_version", 1)) != content_version:
+			continue
+		var prepared := _prepare_save(slot, data, false)
+		if not bool(prepared.get("ok", false)):
+			continue
+		prepared["source"] = source
+		return prepared
+	# Pre-campaign saves live in the legacy directory. They are read as Ravenloft
+	# demo saves and never rewritten in place. They only stand in when the campaign
+	# slot holds no artifact at all: an interrupted save leaves one behind, and that
+	# must be offered instead of an older demo save with the same slot name.
+	if campaign_id != "" and not SaveSystem.has_artifacts(slot, campaign_id):
+		var legacy := SaveSystem.read_payload(slot, SaveSystem.path_for(slot))
+		if bool(legacy.get("ok", false)):
+			var prepared := _prepare_save(slot, Dictionary(legacy["data"]), true)
+			if bool(prepared.get("ok", false)):
+				prepared["source"] = "legacy"
+				return prepared
+			return prepared
+	if String(primary.get("reason", "")) == "corrupt":
+		return primary
+	return {"ok": false, "message": "No save in %s." % slot}
+
+
+## The checks a load runs before touching live state, split out so a recovery
+## candidate can be validated exactly like a normal save. Returns the prepared
+## values under "prepared" instead of assigning them.
+func _prepare_save(slot: String, data: Dictionary, switch_campaign: bool) -> Dictionary:
 	var saved_campaign := String(data.get("campaign_id", ""))
 	if saved_campaign == "":
 		saved_campaign = LEGACY_CAMPAIGN_ID
 	if saved_campaign != campaign_id:
+		if not switch_campaign:
+			return {
+				"ok": false,
+				"message": "Save '%s' belongs to campaign '%s', which is not loaded." % [slot, saved_campaign],
+			}
 		var switched := load_campaign(saved_campaign)
 		if not bool(switched.get("ok", false)):
 			return {
@@ -547,8 +633,12 @@ func load_game(slot: String) -> Dictionary:
 		}
 	if not content_ready:
 		return {"ok": false, "message": "Content failed validation; cannot load."}
+	return _validate_payload(data)
 
-	# Validate the complete payload before replacing any live session state.
+
+## Validates a complete payload and builds the replacement values. Pure with
+## respect to session state: nothing is assigned until the load is accepted.
+func _validate_payload(data: Dictionary) -> Dictionary:
 	var party_data: Variant = data.get("party", [])
 	if not party_data is Array or Array(party_data).is_empty():
 		return {"ok": false, "message": "Save contains no valid party members."}
@@ -668,18 +758,40 @@ func load_game(slot: String) -> Dictionary:
 	var loaded_rng := RandomNumberGenerator.new()
 	loaded_rng.seed = int(float(seed_text))
 	loaded_rng.state = int(rng_text)
+	return {
+		"ok": true,
+		"message": "Loaded.",
+		"prepared": {
+			"party": loaded_party,
+			"seed": int(float(seed_text)),
+			"rng": loaded_rng,
+			"area_id": loaded_area_id,
+			"areas": loaded_areas,
+			"dungeon": new_dungeon,
+			"quests": new_quests,
+			"flags": Dictionary(saved_flags).duplicate(true),
+			"gold": int(float(gold_text)),
+			"position": loaded_position,
+			"facing": facing_value,
+			"log": Array(log_data),
+			"saved_at": str(data.get("saved_at", "")),
+		},
+	}
 
-	party = loaded_party
-	seed_value = int(float(seed_text))
-	rng = loaded_rng
-	area_id = loaded_area_id
-	area_states = loaded_areas
-	dungeon = new_dungeon
-	quests = new_quests
-	flags = Dictionary(saved_flags).duplicate(true)
-	gold = int(float(gold_text))
-	position = loaded_position
-	facing = facing_value
+
+## Assigns a validated payload. This is the only place a load changes live state.
+func _apply_prepared_save(prepared: Dictionary) -> void:
+	party = prepared["party"]
+	seed_value = int(prepared["seed"])
+	rng = prepared["rng"] as RandomNumberGenerator
+	area_id = String(prepared["area_id"])
+	area_states = prepared["areas"]
+	dungeon = prepared["dungeon"] as Dungeon
+	quests = prepared["quests"] as QuestLog
+	flags = prepared["flags"]
+	gold = int(prepared["gold"])
+	position = prepared["position"]
+	facing = int(prepared["facing"])
 	encounter = null
 	dialogue = null
 	active_encounter_id = ""
@@ -689,12 +801,9 @@ func load_game(slot: String) -> Dictionary:
 	last_combat_result = ""
 	_encounter_resolved = false
 	log_lines.clear()
-	for line in Array(log_data):
+	for line in Array(prepared["log"]):
 		log_lines.append(str(line))
 	_set_mode("explore")
-	_log("Loaded %s (%s)." % [slot, str(data.get("saved_at", ""))])
-	emit_signal("state_changed")
-	return {"ok": true, "message": "Loaded %s." % slot}
 
 
 func has_save(slot := "auto") -> bool:
