@@ -2961,6 +2961,19 @@ func _save_compat_ui_probe() -> void:
 	_probe_check(Game.position == Vector2i(2, 3), "the temp restores the saved cell")
 	close_modal()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+
+	# Two interruptions leave the committed copy under a working name next to a
+	# damaged canonical backup: it must be discovered, not called an empty slot.
+	_write_probe_text(save_path + ".bak", "not json")
+	_write_probe_text(save_path + ".bak.2", original_save)
+	var working_status := await _compat_press_load("slot2")
+	print("UI COMPAT working copy status=%s pos=%s" % [working_status, str(Game.position)])
+	_probe_check(working_status.contains("from its backup"), "a working backup copy is discovered")
+	_probe_check(Game.position == Vector2i(2, 3), "the working backup restores the saved cell")
+	_probe_check(modal != null, "the working-copy load leaves its message open")
+	close_modal()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".bak"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path + ".bak.2"))
 	_write_probe_text(save_path, original_save)
 	Game.load_campaign(id)
 

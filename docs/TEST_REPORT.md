@@ -3486,9 +3486,10 @@ older demo save with the same slot name. `save_game` also refuses to overwrite a
 crashed slot whose readable leftover belongs to another campaign.
 
 **Write-path preservation.** When a crash's `.bak` or `.tmp` occupies the normal
-working name, a new save stages through `.bak.w` / `.tmp.w`, removes only the
-files it created, and leaves crash artifacts intact - on success and on failure.
-The previous unconditional pre-staging `.bak` delete is gone.
+working name, a new save staged through a free working name (`.bak.w` /
+`.tmp.w` in that release; numbered names after the interruption audit below),
+removed only the files it created, and left crash artifacts intact - on success
+and on failure. The previous unconditional pre-staging `.bak` delete is gone.
 
 **UI.** `Main` gained an optional `modal_notice` strip above a modal's scrolling
 body (kept across `refresh_modal`); Settings passes the read-only line only when
@@ -3551,3 +3552,96 @@ installed campaign's content, so a recovery copy written for a different
 covers 1280x720 only; other sizes rest on the earlier resolution pass. (6) GUT
 runs in the source tree; the exported binary was verified by the probes above,
 not by the suite.
+
+## Save write interruption audit (2026-11-20)
+
+The recovery release read `.bak`/`.tmp` but the write sequence could still place
+the only valid copy under a name nothing looked at, and a repeated interrupted
+write could truncate an earlier crash copy. This audit lists every interruption
+point, shows which copies survive, and fixes the states that reported an empty
+slot while a valid copy remained.
+
+### The write sequence and its interruption points
+
+`SaveSystem.write_save` now runs: (W1) ensure the directory; (W2) reserve the
+first free temp name from `.tmp`, `.tmp.2`, `.tmp.3`, ...; (W3) reserve the first
+free backup name the same way; (W4) create the temp and write the payload; (W5)
+verify it parses (on failure the temp is removed and nothing else changes); (W6)
+note whether a primary exists; (W7) rename the primary to the backup name; (W8)
+rename the temp to the primary; (W9) remove the backup this write created. Steps
+W2/W3 write nothing; a name that already exists is never reused, so a crash copy
+can no longer be truncated by a later attempt.
+
+| killed after | files on disk | valid copies | loader discovers | data outcome |
+| --- | --- | --- | --- | --- |
+| W1-W3 | unchanged | the previous set | the previous set | nothing lost |
+| W4/W5 (temp partial) | temp (maybe unparseable) + previous set | previous set | previous copies; the partial temp is skipped | nothing lost |
+| W6 (temp verified, before rename) | temp (valid) + previous set | previous set + new temp | primary if readable, else the backup tier | the staged save is not chosen while a committed copy exists |
+| W7 (primary renamed away) | backup name holds the previous committed save, temp holds the new one, primary missing | both | backup tier, newest copy = the just-staged previous save | previous committed state, never an empty slot |
+| W8 (new primary in place) | primary (new), backup name (previous) | both | primary | new state; the orphan backup copy is preserved |
+| W9 | primary (new) + any older crash copies | primary and preserved copies | primary | new state |
+
+### Repeated interrupted writes
+
+Working names are reserved, not reused, so each interruption adds at most one
+file and every earlier one stays readable. Within a tier the loader takes the
+copy with the greatest `saved_unix` (a tie goes to the canonical name), so the
+least stale copy wins.
+
+| files | loader chooses | note |
+| --- | --- | --- |
+| `.bak` + `.bak.2` + `.bak.3` | `.bak.3` | newest committed copy |
+| `.tmp` + `.tmp.w` | `.tmp.w` | newest staged copy (old `.w` names still discovered) |
+| `.bak` (damaged) + `.bak.2` (valid) | `.bak.2` | previously "No save in slot" |
+| `.tmp.2` only | `.tmp.2` | previously "No save in slot" |
+| `.bak` + `.tmp` | `.bak` | tier policy: a committed state beats a staged one |
+| `.bak` + `.tmp` with a foreign campaign | skipped copies | refusal "No save in", campaign not switched |
+| primary version 99 + `.bak.w` | refused | the incompatible-primary refusal is preserved |
+| legacy save + `.bak.2` | `.bak.2` | legacy fallback stays blocked by any artifact |
+
+### What changed
+
+- `SaveSystem.slot_files` discovers every file whose name starts with
+  `<slot>.json`, classifying `.bak*` as backup and `.tmp*` as temp, so `.bak.2`,
+  `.tmp.2`, `.bak.w` and `.tmp.w` are all visible. `has_artifacts`,
+  `list_saves`, `first_readable` (list rows, overwrite guard) and `delete_save`
+  use it; `Game.has_save` counts artifacts, so Continue is offered for a crashed
+  slot.
+- Working names are reserved with `_free_working_name`; at 100 existing copies of
+  one family a save refuses with "Too many interrupted saves" instead of
+  overwriting one.
+- `_choose_save_source` walks the backup tier and then the temp tier over
+  `slot_files`, keeping the same validation, campaign and content checks, and
+  picking the newest readable copy within a tier. The primary is still
+  unconditional and its refusal still stops the search.
+- On an interrupted second write, a crash copy is no longer truncated: the old
+  code reused `.tmp.w`/`.bak.w` and `FileAccess.WRITE` truncated them.
+
+### Tests and checks
+
+`tests/test_save_interruption.gd` (17 tests) builds each state above and asserts
+the chosen source, the recovered state, that every file is byte-identical after
+selection, repeated-interruption naming, that a failed write never truncates a
+working copy, the campaign guard, listing/Continue for a working-copy-only slot,
+and deletion of working copies. Suite **658/658, 7,113 assertions, 53 scripts,
+exit 0**. In source: `--validate-campaigns` and `--validate-diagnostics` PASS,
+Inspect PASS, settings/journal/refusal layouts PASS at 100 % and 160 %, the
+settings-notice probe PASS at 100 % and 160 %, and `--save-compat-ui-probe` PASS
+with the added working-copy case (`UI COMPAT working copy status=Loaded slot2
+from its backup; the save was interrupted...`).
+
+**Remaining durability limits.** (1) Interruptions are reproduced by building
+their file states, not by killing the process at each step; no OS-level crash
+injection ran. (2) Tier order beats recency: a crash between W7 and W8 recovers
+the committed backup, so one save's worth of new progress is not restored even
+though its temp remains on disk (it is never chosen while a backup reads).
+(3) Crash copies are never pruned; each interruption adds one file and nothing
+collects them (the 100-copy cap turns that into a refused save, not a silent
+loss). (4) `write_save` does not fsync, so a power loss may still lose the most
+recent file data on some filesystems; rename ordering is assumed. (5) `saved_unix`
+has one-second resolution, so copies written in the same second tie and the
+canonical name wins - deterministic, but not necessarily the newest. (6) A
+recovery copy from another campaign or another `content_version` is skipped, not
+migrated, so a slot holding only such copies still reports "No save in".
+(7) Layout evidence covers 1280x720 only. (8) GUT runs in the source tree; the
+exported binary is verified by the probes.

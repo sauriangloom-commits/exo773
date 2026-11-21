@@ -2152,9 +2152,9 @@ now show a slot whose primary is gone instead of "empty", tagged
 but only when the campaign slot holds no artifact at all.
 
 The write path stopped deleting files it did not create: when a crashed write's
-`.bak` or `.tmp` occupies the working name, the new save stages through
-`.bak.w` / `.tmp.w`, removes only its own files, and leaves crash artifacts intact
-on success and on failure. `save_game` also refuses to overwrite a crashed slot
+`.bak` or `.tmp` occupies the working name, the new save takes a free working name
+(numbered after the interruption audit below), removes only its own files, and
+leaves crash artifacts intact on success and on failure. `save_game` also refuses to overwrite a crashed slot
 whose readable leftover belongs to another campaign.
 
 **Verified.** 18 new tests (`tests/test_save_recovery.gd`,
@@ -2170,3 +2170,15 @@ with `worktree_entries=0` and no untracked files - 110,678,072 bytes, SHA-256
 acceptance log records that hash at both ends
 (`builds/qa/runs/2026-11-20_recovery/acceptance.log`). Limits are listed at the
 end of [TEST_REPORT.md](TEST_REPORT.md).
+**Save write interruption audit.** Every interruption point of the write sequence
+was listed with the files it leaves behind; the loader now discovers every file
+whose name starts with `<slot>.json` (canonical and numbered working copies, plus
+the older `.bak.w`/`.tmp.w` spelling), so a slot is no longer called empty while a
+valid copy parses. Working names are reserved rather than reused, so a repeated
+interrupted write can no longer truncate an earlier crash copy; within the backup
+and temp tiers the newest readable copy wins, the primary stays unconditional,
+and its incompatible-version refusal, the campaign guards, read-only selection
+and the preservation of surviving recovery files are unchanged. 17 new
+interruption-state tests; suite **658/658, 7,113 assertions, 53 scripts**. The
+state table and the remaining durability limits are in
+[TEST_REPORT.md](TEST_REPORT.md).

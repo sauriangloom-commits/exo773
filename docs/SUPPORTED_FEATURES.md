@@ -235,9 +235,11 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Recovery from an interrupted save: a missing or unreadable primary is replaced
   in memory by the same write's backup, then its temp file. Every candidate runs
   the ordinary load checks and is named in the Load list and the status line; a
-  newer primary is still refused (no downgrade). Loading never renames, deletes
-  or rewrites a file, and a later save beside a crash's leftovers leaves them
-  intact - even when that save fails.
+  newer primary is still refused (no downgrade). Discovery covers every file of
+  the slot (`<slot>.json`, `.bak`/`.tmp` and their numbered working copies), so a
+  repeated interrupted write cannot hide a valid copy. Loading never renames,
+  deletes or rewrites a file, and a later save beside a crash's leftovers leaves
+  them intact - even when that save fails.
 - Settings written by a newer build are read-only: the Settings panel says so in
   a line above its controls, this session's changes still apply, and the file is
   never written back.

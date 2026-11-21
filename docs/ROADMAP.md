@@ -142,7 +142,8 @@ are not claimed as proof.
      player data. **Recovery landed 2026-11-20:** that write path is no longer
      unread - a missing/unreadable primary falls back to the backup and then the
      temp file, each validated by the ordinary load checks, and a later save
-     stages through `.bak.w`/`.tmp.w` instead of deleting crash artifacts. A newer
+     reserves a free working name (numbered copies) instead of deleting or
+     reusing crash artifacts, and discovery covers every `<slot>.json*` file. A newer
      primary keeps the refusal; the file is still never written on load.
    - **Version floor.** `SUPPORTED_MIN_VERSION = 1`: older files are refused with
      "too old to migrate" rather than by accident, and a newer file than the

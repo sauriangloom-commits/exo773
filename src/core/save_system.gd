@@ -84,14 +84,14 @@ static func write_save(slot: String, payload: Dictionary, campaign_id := "") -> 
 	var final_path := path_for(slot, campaign_id)
 	# A file already sitting on a working path is a leftover from an interrupted
 	# save, not this write's file. It is never truncated, renamed or removed: this
-	# write works beside it (`.tmp.w` / `.bak.w`) and only cleans up its own files,
-	# so a crash's recovery copy survives even if this write fails.
-	var temp_path := final_path + ".tmp"
-	if FileAccess.file_exists(temp_path):
-		temp_path = final_path + ".tmp.w"
-	var backup_path := final_path + ".bak"
-	if FileAccess.file_exists(backup_path):
-		backup_path = final_path + ".bak.w"
+	# write takes the next free working name (`.tmp.2`, `.bak.2`, ...) and only
+	# cleans up its own files, so every earlier crash copy stays readable even if
+	# this write fails or the process dies partway through it. Repeated interrupted
+	# writes therefore accumulate copies instead of overwriting the last one.
+	var temp_path := _free_working_name(final_path + ".tmp")
+	var backup_path := _free_working_name(final_path + ".bak")
+	if temp_path == "" or backup_path == "":
+		return {"ok": false, "message": "Too many interrupted saves in %s; nothing was written." % slot}
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return {"ok": false, "message": "Could not open %s for writing." % temp_path}
@@ -114,21 +114,86 @@ static func write_save(slot: String, payload: Dictionary, campaign_id := "") -> 
 	return {"ok": true, "message": "Saved to %s." % slot, "data": data}
 
 
-## Every file a slot can be recovered from, in preference order. A load looks at
-## the primary first and only then at the interrupted write's leftovers.
+## The three canonical files of a slot. Prefer `slot_files` for discovery: a
+## working copy carries a numbered suffix (`.bak.2`, `.tmp.2`) or the older
+## `.bak.w` / `.tmp.w` spelling, and any of them can be the only surviving copy.
 static func artifact_paths(slot: String, campaign_id := "") -> Array:
 	var final_path := path_for(slot, campaign_id)
 	return [final_path, final_path + ".bak", final_path + ".tmp"]
 
 
-## True when any artifact of the slot exists, valid or not. A crashed save leaves
-## a backup or temp behind, and that is what stops the pre-campaign fallback from
+## The first name of this family this write can own, or "" when the slot already
+## holds so many interrupted-save copies that writing would have to destroy one.
+static func _free_working_name(base: String) -> String:
+	if not FileAccess.file_exists(base):
+		return base
+	for index in range(2, 101):
+		var candidate := "%s.%d" % [base, index]
+		if not FileAccess.file_exists(candidate):
+			return candidate
+	return ""
+
+
+## Every file name under the slot's directory that belongs to the slot. Matching
+## on the prefix is what makes a working copy visible: `.bak.2`, `.tmp.2` and the
+## older `.bak.w` / `.tmp.w` are all the same slot's files.
+static func _slot_file_names(slot: String, campaign_id := "") -> PackedStringArray:
+	var names := PackedStringArray()
+	var directory := DirAccess.open(_target_dir(campaign_id))
+	if directory == null:
+		return names
+	var prefix := slot + ".json"
+	for name in directory.get_files():
+		if String(name).begins_with(prefix):
+			names.append(name)
+	return names
+
+
+## Every file of a slot that exists, with the role a load gives it: the primary
+## first, then committed backups, then staged temps. Working copies sit in the
+## same tier as their family; within a tier the loader picks the newest readable
+## copy, so this order is only the canonical/tie-break order.
+static func slot_files(slot: String, campaign_id := "") -> Array:
+	var final_path := path_for(slot, campaign_id)
+	var files: Array = []
+	if FileAccess.file_exists(final_path):
+		files.append({"path": final_path, "source": "primary"})
+	var names := _slot_file_names(slot, campaign_id)
+	for family in ["bak", "tmp"]:
+		var canonical := "%s.%s" % [final_path, family]
+		var role := "backup" if family == "bak" else "temp"
+		if FileAccess.file_exists(canonical):
+			files.append({"path": canonical, "source": role})
+		var extras: Array = []
+		for name in names:
+			if String(name).begins_with("%s.%s." % [slot + ".json", family]):
+				extras.append(String(name))
+		extras.sort()
+		for name in extras:
+			files.append({
+				"path": _target_dir(campaign_id).path_join(name),
+				"source": role,
+			})
+	return files
+
+
+## True when any file of the slot exists, valid or not. A crashed save leaves a
+## backup or temp behind, and that is what stops the pre-campaign fallback from
 ## standing in for the slot.
 static func has_artifacts(slot: String, campaign_id := "") -> bool:
-	for path in artifact_paths(slot, campaign_id):
-		if FileAccess.file_exists(String(path)):
-			return true
-	return false
+	return not _slot_file_names(slot, campaign_id).is_empty()
+
+
+## The first artifact of the slot that parses, in canonical order. Used by list
+## rows and by the overwrite guard, which must know a crashed slot still holds a
+## save. `{}` when no file of the slot reads.
+static func first_readable(slot: String, campaign_id := "") -> Dictionary:
+	for entry in slot_files(slot, campaign_id):
+		var read := read_payload(slot, String(entry["path"]))
+		if bool(read.get("ok", false)):
+			var data: Dictionary = read["data"]
+			return {"path": entry["path"], "source": entry["source"], "data": data}
+	return {}
 
 
 ## Reads one save file and applies the version rules, without touching the file.
@@ -187,19 +252,14 @@ static func list_saves(campaign_id := "") -> Array:
 			"campaign_id": campaign_id,
 			"source": "primary",
 		}
-		var sources := ["primary", "backup", "temp"]
-		var paths := artifact_paths(slot, campaign_id)
-		for index in paths.size():
-			var json := JSON.new()
-			if json.parse(FileAccess.get_file_as_string(String(paths[index]))) != OK or not json.data is Dictionary:
-				continue
-			var parsed: Variant = json.data
-			info["saved_at"] = String(Dictionary(parsed).get("saved_at", ""))
-			info["saved_unix"] = int(Dictionary(parsed).get("saved_unix", 0))
-			info["summary"] = String(Dictionary(parsed).get("summary", ""))
-			info["campaign_id"] = String(Dictionary(parsed).get("campaign_id", campaign_id))
-			info["source"] = String(sources[index])
-			break
+		var found := first_readable(slot, campaign_id)
+		if not found.is_empty():
+			var parsed: Dictionary = found["data"]
+			info["saved_at"] = String(parsed.get("saved_at", ""))
+			info["saved_unix"] = int(parsed.get("saved_unix", 0))
+			info["summary"] = String(parsed.get("summary", ""))
+			info["campaign_id"] = String(parsed.get("campaign_id", campaign_id))
+			info["source"] = String(found["source"])
 		saves.append(info)
 	saves.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("saved_unix", 0)) > int(b.get("saved_unix", 0))
@@ -227,16 +287,16 @@ static func any_legacy_save() -> bool:
 ## directory. Used by tests and by explicit player deletion.
 static func delete_save(slot: String) -> bool:
 	var removed := false
-	for suffix in ["", ".bak", ".tmp"]:
-		var legacy_path: String = path_for(slot) + String(suffix)
-		if FileAccess.file_exists(legacy_path):
-			_remove_file(legacy_path)
-			removed = true
+	# Every file of the slot, including working copies, so a deleted slot cannot
+	# leave a recoverable copy behind. That is what the player asked for.
+	var campaign_ids: Array = [""]
 	if DirAccess.dir_exists_absolute(save_dir):
 		for campaign_id in DirAccess.get_directories_at(save_dir):
-			for suffix in ["", ".bak", ".tmp"]:
-				var path: String = path_for(slot, String(campaign_id)) + String(suffix)
-				if FileAccess.file_exists(path):
-					_remove_file(path)
-					removed = true
+			campaign_ids.append(String(campaign_id))
+	for campaign_id in campaign_ids:
+		for entry in slot_files(slot, String(campaign_id)):
+			var path := String(entry["path"])
+			if FileAccess.file_exists(path):
+				_remove_file(path)
+				removed = true
 	return removed

@@ -500,11 +500,9 @@ func save_game(slot := "slot1") -> Dictionary:
 	if not bool(existing.get("ok", false)) and SaveSystem.has_artifacts(slot, campaign_id):
 		# The primary did not read, but a crashed slot's leftovers still belong to
 		# somebody: another campaign's backup must not be overwritten either.
-		for path in SaveSystem.artifact_paths(slot, campaign_id):
-			var recovered := SaveSystem.read_payload(slot, String(path))
-			if bool(recovered.get("ok", false)):
-				existing = recovered
-				break
+		var recovered := SaveSystem.first_readable(slot, campaign_id)
+		if not recovered.is_empty():
+			existing = {"ok": true, "data": recovered["data"]}
 	if bool(existing.get("ok", false)):
 		var existing_data: Dictionary = existing["data"]
 		var existing_campaign := String(existing_data.get("campaign_id", ""))
@@ -569,27 +567,41 @@ func _choose_save_source(slot: String) -> Dictionary:
 		return prepared
 	if String(primary.get("reason", "")) == "unsupported_version":
 		return primary
-	for index in [1, 2]:
-		var source := "backup" if index == 1 else "temp"
-		var path := String(SaveSystem.artifact_paths(slot, campaign_id)[index])
-		var read := SaveSystem.read_payload(slot, path)
-		if not bool(read.get("ok", false)):
-			continue
-		var data: Dictionary = read["data"]
-		# A leftover is only usable when it belongs to the campaign that is loaded:
-		# switching campaigns for a recovery copy would hide which progress is shown.
-		var saved_campaign := String(data.get("campaign_id", ""))
-		if saved_campaign == "":
-			saved_campaign = LEGACY_CAMPAIGN_ID
-		if saved_campaign != campaign_id:
-			continue
-		if int(data.get("content_version", 1)) != content_version:
-			continue
-		var prepared := _prepare_save(slot, data, false)
-		if not bool(prepared.get("ok", false)):
-			continue
-		prepared["source"] = source
-		return prepared
+	# Every working copy belongs to a tier: committed backups first, then staged
+	# temps. Repeated interrupted writes can leave more than one copy per tier, so
+	# the newest readable one is taken - the least stale recovery rather than
+	# whichever name happens to sort first.
+	for tier in ["backup", "temp"]:
+		var chosen: Dictionary = {}
+		var chosen_unix := -1
+		for entry in SaveSystem.slot_files(slot, campaign_id):
+			if String(entry["source"]) != String(tier):
+				continue
+			var read := SaveSystem.read_payload(slot, String(entry["path"]))
+			if not bool(read.get("ok", false)):
+				continue
+			var data: Dictionary = read["data"]
+			# A leftover is only usable when it belongs to the campaign that is
+			# loaded: switching campaigns for a recovery copy would hide which
+			# progress is shown.
+			var saved_campaign := String(data.get("campaign_id", ""))
+			if saved_campaign == "":
+				saved_campaign = LEGACY_CAMPAIGN_ID
+			if saved_campaign != campaign_id:
+				continue
+			if int(data.get("content_version", 1)) != content_version:
+				continue
+			var prepared := _prepare_save(slot, data, false)
+			if not bool(prepared.get("ok", false)):
+				continue
+			var saved_unix := int(data.get("saved_unix", 0))
+			if chosen.is_empty() or saved_unix > chosen_unix:
+				chosen = prepared
+				chosen_unix = saved_unix
+				chosen["source"] = String(tier)
+				chosen["recovered_path"] = String(entry["path"])
+		if not chosen.is_empty():
+			return chosen
 	# Pre-campaign saves live in the legacy directory. They are read as Ravenloft
 	# demo saves and never rewritten in place. They only stand in when the campaign
 	# slot holds no artifact at all: an interrupted save leaves one behind, and that
@@ -807,9 +819,11 @@ func _apply_prepared_save(prepared: Dictionary) -> void:
 
 
 func has_save(slot := "auto") -> bool:
-	if SaveSystem.exists(slot, campaign_id):
+	# Any file of the slot counts: a crashed save leaves a backup or temp that a
+	# load can recover, so Continue must not be disabled by a missing primary.
+	if SaveSystem.has_artifacts(slot, campaign_id):
 		return true
-	return campaign_id == LEGACY_CAMPAIGN_ID and SaveSystem.exists(slot)
+	return campaign_id == LEGACY_CAMPAIGN_ID and SaveSystem.has_artifacts(slot)
 
 
 func has_campaign_save(id: String) -> bool:

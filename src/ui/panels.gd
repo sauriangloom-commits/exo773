@@ -587,16 +587,15 @@ static func _save_info(slot: String) -> String:
 	if not FileAccess.file_exists(path) and Game.campaign_id == Game.LEGACY_CAMPAIGN_ID:
 		path = SaveSystem.path_for(slot)
 	if not FileAccess.file_exists(path):
-		# An interrupted write can leave a backup or temp with no primary. It is
+		# An interrupted write can leave any working copy with no primary. It is
 		# not an empty slot, and saving over it must not look like the first save.
-		for suffix in [".bak", ".tmp"]:
-			var read := SaveSystem.read_payload(slot, SaveSystem.path_for(slot, Game.campaign_id) + suffix)
-			if bool(read.get("ok", false)):
-				var recovered: Dictionary = read["data"]
-				return "interrupted — %s — %s" % [
-					String(recovered.get("saved_at", "")),
-					String(recovered.get("summary", "")),
-				]
+		var found := SaveSystem.first_readable(slot, Game.campaign_id)
+		if not found.is_empty():
+			var recovered: Dictionary = found["data"]
+			return "interrupted — %s — %s" % [
+				String(recovered.get("saved_at", "")),
+				String(recovered.get("summary", "")),
+			]
 		return "empty"
 	var text := FileAccess.get_file_as_string(path)
 	var parsed = JSON.parse_string(text)
