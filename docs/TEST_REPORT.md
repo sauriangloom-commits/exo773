@@ -4160,8 +4160,52 @@ Sheet, Inventory, Journal and Save open panels over the conversation; Pause ends
 it and autosaves (existing pause handler). Movement and turn buttons fire but
 `Game` returns early outside explore mode, so world state is unchanged. The
 policy the code implies is full modality for world actions with read-only panels
-allowed on top; the gaps are the 0x0 dim and arrow focus. Limits are in
-`builds/qa/runs/2026-11-21_dialogue_page/report.md`.
+allowed on top; the 0x0 dim and arrow focus were closed the same day (below).
+Limits are in `builds/qa/runs/2026-11-21_dialogue_page/report.md`.
+
+### Dialogue geometry and input policy (closed, 2026-11-21)
+
+The overlay root and its dim now fill the viewport, the dim is visual only, and
+the framed panel stays at the left edge so the read-only HUD column is never
+covered. The root and dim ignore the mouse pick: Party, Sheet, Inventory,
+Journal, Save and Pause stay clickable, while the framed panel keeps its own
+clicks and the world action grid stays behind it (and remains mode-guarded).
+Arrow keys now cycle available choices only (Left/Up backward, Right/Down
+forward, wrapping); Tab/Shift+Tab, PageUp/PageDown, Enter activation, modal
+priority and rebind capture are unchanged. Pause keeps its existing meaning:
+during a conversation it ends it and autosaves.
+
+Policy while a conversation is open:
+
+- Keyboard: Tab/Shift+Tab and arrows move through available choices;
+  PageUp/PageDown scroll the body 90 % of a page; Enter/Space activate the
+  focused choice; a rebind capture consumes the key; an open modal wins.
+- Mouse: wheel and scrollbar scroll the body; the framed panel consumes its own
+  clicks (disabled rows still show their reason); the HUD column and Pause remain
+  clickable; world action buttons are covered by the panel and mode-guarded.
+
+Tests: `tests/test_dialogue_focus.gd` is 12 tests, adding viewport geometry (root,
+dim, both ignoring the mouse pick, panel clear of the HUD column) and directional
+cycling (skip unavailable, stay inside, wrap). Suite **694/694 tests, 7,485
+assertions, 56 scripts, exit 0**; both validators PASS; `--demo-silence` and
+`--demo-dialogue` dialogue probes PASS at 1280x720 at 100 % and 160 %;
+`--creator-story-probe` exit 0.
+
+Candidate `dialogue_geometry_2026-11-21b` (source `263e2e0`, SHA-256
+`94af082ed7b6f679c6e5a13270e3d91b81630a4819958b1a55d17f27a69afd55`, 110,687,000
+bytes, clean tree): native at 100 % and 160 % shows the full-screen dimmed
+backdrop, the panel left of the HUD, Tab reaching the epilogue, arrows skipping
+unavailable rows, PageDown/PageUp scrolling without moving the ring, Enter
+opening `epilogue_silent`, Party opening over the conversation, and Pause ending
+it. The earlier `dialogue_geometry_2026-11-21` build used PASS on the root and is
+superseded.
+
+Limits: QA-seeded state; native only at 1280x720, 100 %/160 %; HUD panels are
+mouse-only during a conversation (Tab and arrows are confined to choices); the
+panel still clips the first glyph of the gold readout; the dim is visual only, so
+world-action safety rests on panel coverage plus the explore-mode guards; paging
+can leave the focused row off-screen until the next focus move; Home/End are not
+bound.
 
 ### Corrections to this refresh
 

@@ -2288,5 +2288,12 @@ wraps. Candidate `dialogue_page_2026-11-21` (source `da12abf`, SHA-256
 `29298fe2`) passes the 10-test dialogue file, 692/692 suite, both validators and
 the dialogue layout probes at 100 %/160 %. The trace found the dialogue dim is
 0x0 (HUD stays mouse-live) and arrow focus can land on unavailable rows; both are
-recorded, not changed. Oversized-control clipping remains a conditional limit -
-no shipped modal reproduces it.
+recorded, not changed.
+
+Dialogue geometry and focus are closed in `263e2e0`: the root and dim fill the
+viewport, both ignore the mouse pick (read-only HUD and Pause stay usable), arrows
+cycle available choices, and Tab, paging, activation, modal priority and rebind
+capture are unchanged. Candidate `dialogue_geometry_2026-11-21b` (source
+`263e2e0`, SHA-256 `94af082e`) passes 12 dialogue tests, 694/694 suite, both
+validators and the dialogue probes at 100 %/160 %. Oversized-control clipping
+remains a conditional limit - no shipped modal reproduces it.
