@@ -7075,15 +7075,18 @@ func _reveal_in_pane(container: ScrollContainer, control: Control) -> void:
 ## Scrolls the open modal's body with the keyboard and reports whether the event
 ## was consumed. Focus is never touched, so the ring stays on the control it was
 ## on and focus containment is exactly as it was; a body that fits does not move;
-## and a control that needs the key keeps it.
+## and a control that needs the key keeps it. Held repeats come through the same
+## path, so holding the key keeps scrolling and stops at the same bounds.
 func _scroll_modal_body(event: InputEventKey) -> bool:
 	if modal == null or modal_scroll == null or not _modal_owns_keyboard():
 		return false
-	var page := event.is_action_pressed("ui_page_down") or event.is_action_pressed("ui_page_up")
+	# Godot's is_action_pressed() refuses a repeat (echo) unless asked, so the
+	# allow-echo form is what makes a held key reach the scroll step at all.
+	var page := event.is_action_pressed("ui_page_down", true) or event.is_action_pressed("ui_page_up", true)
 	var direction := 0
-	if event.is_action_pressed("ui_page_down") or event.is_action_pressed("ui_down"):
+	if event.is_action_pressed("ui_page_down", true) or event.is_action_pressed("ui_down", true):
 		direction = 1
-	elif event.is_action_pressed("ui_page_up") or event.is_action_pressed("ui_up"):
+	elif event.is_action_pressed("ui_page_up", true) or event.is_action_pressed("ui_up", true):
 		direction = -1
 	if direction == 0:
 		return false
@@ -7304,12 +7307,25 @@ func _open_pause() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
+	if event is InputEventKey and event.pressed:
 		if awaiting_rebind != "":
-			Game.rebind(awaiting_rebind, event.physical_keycode)
-			awaiting_rebind = ""
-			refresh_modal()
-			get_viewport().set_input_as_handled()
+			# Capture takes the press itself, never its repeats: a held key must
+			# not bind the action again on every echo.
+			if not event.echo:
+				Game.rebind(awaiting_rebind, event.physical_keycode)
+				awaiting_rebind = ""
+				refresh_modal()
+				get_viewport().set_input_as_handled()
+			return
+		if event.echo:
+			# A held key repeats, and only the open modal's body scroll is meant
+			# to follow those repeats. Every other echo keeps the old path and is
+			# left alone here, so Tab, Enter and Escape stay one action per press
+			# and dialogue paging still takes a press at a time. An echo the body
+			# does not take is left for the GUI, so a focused text field, list or
+			# slider still owns its own repeats.
+			if modal != null and _scroll_modal_body(event as InputEventKey):
+				get_viewport().set_input_as_handled()
 			return
 		if modal != null:
 			# Keyboard access to a body taller than its panel. Handled before Tab

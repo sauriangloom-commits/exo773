@@ -120,6 +120,21 @@ function Send-Key([string]$name, [int]$count) {
     Write-Output "KEY $name x$count"
 }
 
+# One press held down for a duration, then released. Windows does not
+# auto-repeat injected keys, so this proves press/hold/release only; it cannot
+# stand in for the OS keyboard repeat that a physical held key produces.
+function Send-Hold([string]$name, [int]$ms) {
+    if (-not $keys.ContainsKey($name)) { throw "unknown key '$name'" }
+    if ([Native]::GetForegroundWindow() -ne $handle) { Focus-Game | Out-Null }
+    $vk = [byte]$keys[$name]
+    $scan = [byte]([Native]::MapVirtualKey([uint32]$vk, 0))
+    [Native]::keybd_event($vk, $scan, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds $ms
+    [Native]::keybd_event($vk, $scan, 2, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 300
+    Write-Output "HOLD $name ${ms}ms"
+}
+
 function Send-Wheel([int]$x, [int]$y, [int]$delta) {
     if ([Native]::GetForegroundWindow() -ne $handle) { Focus-Game | Out-Null }
     [Native]::SetCursorPos($origin.X + $x, $origin.Y + $y) | Out-Null
@@ -154,6 +169,7 @@ try {
                 if ($parts.Count -gt 2) { $count = [int]$parts[2] }
                 Send-Key $parts[1] $count
             }
+            'hold' { Send-Hold $parts[1] ([int]$parts[2]) }
             'wheel' { Send-Wheel ([int]$parts[1]) ([int]$parts[2]) ([int]$parts[3]) }
             'click' { Send-Click ([int]$parts[1]) ([int]$parts[2]) }
             default { throw "unknown step '$step'" }

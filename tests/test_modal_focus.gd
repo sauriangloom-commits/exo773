@@ -244,6 +244,11 @@ func _open_tall_modal(extra := "") -> void:
 			for item in 6:
 				list.add_item("QA list row %d" % item)
 			box.add_child(list)
+		if extra == "editor":
+			var editor := TextEdit.new()
+			editor.custom_minimum_size = Vector2(0, 150)
+			editor.text = "QA editor line\nsecond line\nthird line"
+			box.add_child(editor)
 		return box
 	, 660, 380)
 	await wait_frames(2)
@@ -854,3 +859,174 @@ func test_a_popup_from_the_modal_leaves_the_list_where_it_is() -> void:
 	await wait_frames(2)
 	assert_not_null(_modal(), "the settings modal is still open")
 	assert_eq(inner.scroll_vertical, before, "the list is unchanged after the popup closes")
+
+
+# ------------------------------------------------ held-key repeat of the body
+
+## A held key despatches its first press and then repeats (`echo`). Only the
+## open modal's scroll keys are meant to follow those repeats; everything else
+## keeps acting once per press.
+func _send_echo(code: int) -> void:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.physical_keycode = code
+	event.pressed = true
+	event.echo = true
+	main.get_viewport().push_input(event)
+
+
+func test_held_page_keys_repeat_and_stop_at_both_ends() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	if scroll == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var page := int(scroll.get_v_scroll_bar().page)
+	assert_gt(page, 0, "the body has a measured page")
+	var travel: int = main.call("_modal_body_scroll_range")
+	var step := mini(int(round(0.9 * float(page))), travel)
+	assert_gt(step, 0, "a page has a positive step")
+	scroll.scroll_vertical = 0
+	await wait_frames(1)
+	_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, step, "a repeat pages exactly like the press that started it")
+	_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, mini(2 * step, travel), "a second repeat pages again")
+	for held in 12:
+		_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, travel, "a held PageDown stops at the last page")
+	for held in 12:
+		_send_echo(KEY_PAGEUP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 0, "a held PageUp stops at the top")
+
+
+func test_held_arrows_repeat_and_stop_at_both_ends() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	if scroll == null:
+		fail_test("the modal exposes its scrolling body")
+		return
+	var line: int = main.call("_modal_body_line_height")
+	assert_gt(line, 0, "a text line has a positive height")
+	var travel: int = main.call("_modal_body_scroll_range")
+	var step := mini(2 * line, travel)
+	scroll.scroll_vertical = 0
+	await wait_frames(1)
+	_send_echo(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, step, "a held Down moves two text lines per repeat")
+	_send_echo(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, mini(2 * step, travel), "a second repeat moves two more")
+	_send_echo(KEY_UP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, mini(step, travel), "a held Up moves two lines back")
+	for held in 40:
+		_send_echo(KEY_DOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, travel, "a held Down stops at the bottom")
+	for held in 40:
+		_send_echo(KEY_UP)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, 0, "a held Up stops at the top")
+
+
+func test_held_scrolling_never_moves_focus() -> void:
+	await _open_modal()
+	var owner := _focus_owner()
+	assert_not_null(owner, "a control holds focus")
+	for code in [KEY_PAGEDOWN, KEY_PAGEDOWN, KEY_DOWN, KEY_DOWN, KEY_UP, KEY_PAGEUP, KEY_PAGEUP]:
+		_send_echo(code)
+	await wait_frames(1)
+	assert_eq(_focus_owner(), owner, "every repeat leaves the ring on the same control")
+	assert_true(_modal().is_ancestor_of(_focus_owner()), "repeats keep focus contained")
+
+
+## The repeats must not become extra activations or dismissals of their own,
+## and the body must never claim a key it does not scroll with.
+func test_non_scroll_echoes_are_left_alone() -> void:
+	await _open_modal()
+	var focusables: Array = main.call("_modal_focusables")
+	var button := focusables[1] as Button
+	button.grab_focus()
+	var count := {"activations": 0}
+	button.pressed.connect(func() -> void: count["activations"] += 1)
+	for code in [KEY_ENTER, KEY_TAB, KEY_ESCAPE, KEY_W]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = true
+		event.echo = true
+		assert_false(
+			bool(main.call("_scroll_modal_body", event)),
+			"%s echo is not a body scroll key" % OS.get_keycode_string(code),
+		)
+	_send_echo(KEY_ENTER)
+	await wait_frames(1)
+	assert_eq(int(count["activations"]), 0, "a held Enter does not activate again")
+	assert_eq(_focus_owner(), button, "a held Enter leaves the ring where it was")
+	_send_echo(KEY_ESCAPE)
+	await wait_frames(1)
+	assert_not_null(_modal(), "a held Escape does not dismiss the modal")
+	assert_true(_modal().is_ancestor_of(_focus_owner()), "focus stays inside after a held Escape")
+
+
+func test_echoes_scroll_nothing_without_a_modal() -> void:
+	assert_null(_modal(), "no modal is open")
+	var before := Game.position
+	for code in [KEY_PAGEDOWN, KEY_PAGEUP, KEY_DOWN, KEY_UP]:
+		_send_echo(code)
+	await wait_frames(2)
+	assert_null(_modal(), "an echo opens no modal")
+	assert_null(main.get("modal_scroll"), "there is no body to scroll")
+	assert_eq(Game.position, before, "an echo moves no party")
+
+
+func test_echoes_do_not_scroll_or_capture_during_rebind() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	main.set("awaiting_rebind", "not_a_real_action")
+	_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(
+		String(main.get("awaiting_rebind")), "not_a_real_action",
+		"a repeat does not complete the capture",
+	)
+	if scroll != null:
+		assert_eq(scroll.scroll_vertical, 0, "the body does not scroll during capture")
+	main.set("awaiting_rebind", "")
+
+
+## A popup raised from the modal takes the keyboard by taking focus; the echo
+## must be left alone instead of scrolling the body behind it.
+func test_echoes_do_not_scroll_while_the_modal_does_not_own_the_keyboard() -> void:
+	await _open_tall_modal()
+	var scroll := _scroll()
+	var outside := await _opener()
+	assert_false(bool(main.call("_modal_owns_keyboard")), "focus outside the modal means it does not own the keys")
+	_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	if scroll != null:
+		assert_eq(scroll.scroll_vertical, 0, "an echo with the keyboard elsewhere does not scroll")
+	assert_eq(_focus_owner(), outside, "the echo leaves the popup's focus where it was")
+	outside.queue_free()
+
+
+func test_a_focused_editor_keeps_held_page_keys() -> void:
+	await _open_tall_modal("editor")
+	var scroll := _scroll()
+	var editor := _first_of_type(_modal(), "TextEdit") as TextEdit
+	assert_not_null(editor, "the tall body offers a multi-line editor")
+	if editor == null or scroll == null:
+		return
+	editor.grab_focus()
+	await wait_frames(2)
+	var before := scroll.scroll_vertical
+	_send_echo(KEY_PAGEDOWN)
+	await wait_frames(1)
+	assert_eq(scroll.scroll_vertical, before, "a multi-line editor keeps its held page keys")
+	assert_eq(_focus_owner(), editor, "the editor keeps focus")
