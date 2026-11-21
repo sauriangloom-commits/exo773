@@ -2201,3 +2201,9 @@ the greatest `saved_unix` wins and a tie resolves canonical name first, then
 lexicographic name - deterministic, but not proof of newest. 16 new tests; suite
 **674/674, 7,227 assertions, 54 scripts**. Details and the exact pattern are in
 [TEST_REPORT.md](TEST_REPORT.md).
+**Acceptance.** `pattern_2026-11-20` was built at 19:55:49 from commit `437fa40`
+with `worktree_entries=0` and no untracked files - 110,683,464 bytes, SHA-256
+`dc2d1b5e97d3400917f60acbc7381b9ffacf28c12d14b140add4848521f10963` - and its 13/13
+acceptance log records that hash at both ends
+(`builds/qa/runs/2026-11-20_pattern/acceptance.log`). Platform limits are listed
+at the end of [TEST_REPORT.md](TEST_REPORT.md).

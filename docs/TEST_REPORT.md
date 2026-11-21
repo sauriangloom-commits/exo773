@@ -3757,3 +3757,43 @@ layouts PASS at 100 % and 160 %, the settings-notice probe PASS at 100 % and
 160 %, and `--save-compat-ui-probe` PASS including the new incompatible-only
 case (`UI COMPAT incompatible-only status=Save slot2 was written by an
 incompatible version (99.0).`) and the stray-file check.
+**Exported candidate from the clean tree.** `pattern_2026-11-20` was built at
+2026-11-20T19:55:49-05:00 from commit `437fa40` with `worktree_entries=0` and no
+untracked files; both diff hashes are `e3b0c442...` (SHA-256 of empty input).
+
+| field | value |
+| --- | --- |
+| build_id | `pattern_2026-11-20` |
+| built_at | 2026-11-20T19:55:49-05:00 |
+| source_head | `437fa407ff246da49bab1ded848893d726dab62e` |
+| worktree_entries | 0 |
+| untracked_files | 0 |
+| exe_bytes | 110,683,464 |
+| exe_sha256 | `dc2d1b5e97d3400917f60acbc7381b9ffacf28c12d14b140add4848521f10963` |
+
+Acceptance against that hash: **13/13** - list-campaigns, both validators, the
+Inspect probe, the settings/journal/refusal layouts at 100 % and 160 %, the
+settings-notice probe at 100 % and 160 %, and `--save-compat-ui-probe`, whose new
+cases report `UI COMPAT incompatible-only status=Save slot2 was written by an
+incompatible version (99.0).` and reject a hand-made `slot2.json.2026-11-20`
+archive. `builds/qa/runs/2026-11-20_pattern/acceptance.log` records the exe hash
+at its start and its end line repeats
+`sha256=dc2d1b5e97d3400917f60acbc7381b9ffacf28c12d14b140add4848521f10963` with
+`runs=13 failures=0`.
+
+**Platform limits.** (1) Only Windows was exercised. Names are matched
+case-insensitively because Windows and macOS are; on a case-sensitive filesystem
+the distinct-entry behavior is covered by the pure `_classify_names` test, not by
+a real macOS/Linux run. (2) A name that matches the accepted pattern is treated
+as a slot file regardless of who created it: a hand-made copy named exactly
+`slot2.json.bak.3` is recovery, while `slot2.json.2026-11-20` is not. (3) On a
+case-insensitive filesystem two names differing only by case cannot coexist, so
+the "two distinct files" case is only observable on a case-sensitive volume.
+(4) The pattern accepts 2..100 working copies per family; at the cap a save
+refuses instead of overwriting. (5) Legacy `.w` names are read only; this build
+never produces them. (6) Deleting a slot still removes that slot from every
+campaign directory, by design. (7) Timestamps remain second-resolution,
+clock-derived and player-editable, so tie order is deterministic but not a
+recency proof. (8) No OS-level crash injection; filesystem rename ordering and
+the absence of fsync are unchanged. (9) Layout evidence is 1280x720 only; GUT
+runs in the source tree and the exported binary is verified by the probes.
