@@ -124,7 +124,11 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   Shot (PHB p. 98, requires Point Blank Shot) removes it. Ranged spells that
   require an attack roll are weaponlike (Complete Arcane p. 85) and take the
   same penalty, so Scorching Ray is covered while Magic Missile, which has no
-  attack roll, is not. Cover and concealment are still not modeled.
+  attack roll, is not. A creature standing on the line gives soft cover: +4 AC
+  on the ranged attack, and on a ranged touch attack's touch AC. The grid uses
+  the printed corner rule rather than a centre-to-centre line. Wall cover, low
+  walls, reach-melee cover, big-creature cover and concealment are still not
+  modeled.
 - Grid line of sight: ranged attacks, spells and movement require an unblocked
   Bresenham line; walls stop the line.
 - Damage reduction with bypass types (zombie DR 5/slashing).

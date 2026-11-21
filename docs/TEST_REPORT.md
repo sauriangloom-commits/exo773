@@ -4439,3 +4439,48 @@ Environment: Windows 10 (10.0.19045.6466), 1280x720 client, physical keyboard.
 The status stays pending until a human operator has recorded all four runs; no
 operator has run it, and the automated session could not produce physical key
 repeats.
+
+
+### Creature soft cover on ranged attacks (2026-11-21)
+
+A creature standing on the line now gives the target +4 AC against ranged,
+thrown and ranged touch attacks. The grid uses the printed method rather than a
+centre-to-centre line: each of the attacker's four corners is tried, and cover
+exists only when every corner still has a line to a corner of the target's
+square that crosses another creature's square (PHB p.151; "Soft Cover", p.152).
+The test that the existing LOS code would have suggested is wrong on this grid:
+attacker (0,0), target (3,3) and a creature at (2,3) - the centre line visits
+(1,1), (2,2), (3,3) and never the creature, while the corner line (1,0)->(3,4)
+passes through it. Centre-to-centre both misses cover the rule grants and counts
+squares a line only grazes; no attack, log line or panel reads it.
+
+Corrected expectation: Precise Shot removes the -4 into-melee penalty and
+nothing else. Its test now asserts `into_melee_penalty == 0` and `cover == 4` in
+the same shot. Improved Precise Shot ignores cover but needs BAB +11, so no
+supported feat suppresses it.
+
+Tests: **731/731 tests, 7,700 assertions, 57 scripts, exit 0**. The new
+`tests/test_cover_geometry.gd` (13 tests) pins every geometry example: a body
+between attacker and target, a body off the line, a body beside the attacker, the
+corner-versus-centre counterexample above, one clear corner shooting past a body
+behind the target, the attacker's and target's own squares, no stacking, a body
+at the target's shoulder, and the edge/corner rules of `cells_crossed`.
+`tests/test_ranged_melee.gd` gains the crossbow shot, the thrown dagger, the
+ranged touch spell, the touch-AC arithmetic in `Rules.attack`, and the inspect
+panel's shooter line through `CombatScreen.cover_summary`.
+
+Candidate `creature_cover_2026-11-21` (source `4e56d1e`, clean tree,
+110,693,592 bytes, SHA-256
+`3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39`): its own
+`--validate-campaigns` and `--validate-diagnostics` PASS; `--demo-inspect
+--inspect-probe` PASS (`PROBE RESULT PASS scenario=inspect`); `--layout-probe`
+for the inspect modal and the dialogue PASS at 1280x720 at 100 % and 160 %
+(27 and 22 controls, 0 failures; captures under
+`builds/qa/runs/2026-11-21_creature_cover/`).
+
+Limits: the inspect panel's cover clause is asserted through the panel's own
+text function plus the resolver-parity test, not rendered in a windowed probe -
+the demo fixtures have no creature in the shooting line, so no capture shows the
+clause, and the panel was not viewed. Walls, low walls, reach-melee cover,
+big-creature cover and concealment stay unmodelled (ADAPTATION_LOG 19d-19f).
+Native input was not exercised because no binding or focus behaviour changed.

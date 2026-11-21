@@ -122,6 +122,34 @@ presentation choices are omitted; nothing here changes a rule silently.
     on its next turn. Reason: bounded, auditable movement rather than a new
     navigation system.
 
+19d. **A creature covers a line only when it crosses the square's interior.**
+    The printed rule asks whether a line passes "through a square occupied by a
+    creature". On a grid, a line that merely shares an edge (two allies standing
+    in one row, or the segment between two corners of a shared border) is not
+    counted, and a diagonal passing exactly through a corner enters only the
+    diagonal square. Reason: counting edge contact would make a creature beside
+    the line block every shot along that row and make a diagonal neighbour always
+    grant cover. Consequence: a body that only touches the line at an edge gives
+    no cover. The four corner lines make that rare, but it is a real difference
+    from a miniatures mat, where the physical line is what matters.
+
+19e. **Wall cover is left to line of sight.** A wall on the line either blocks
+    line of effect - the attack is refused as total cover - or, when the centre
+    line clears it, grants nothing. The printed rule would give +4 AC when a
+    corner line passes through a wall square. Reason: the maps are coarse and
+    the existing contract is "no line of effect, no attack"; a second, partial
+    cover term for walls would report +4 AC against targets the game otherwise
+    treats as either hittable or unhittable. Low walls, which the printed rules
+    treat as cover without blocking line of sight, have no terrain type here.
+
+19f. **Reach melee does not take creature cover.** PHB p.151 says a reach
+    attacker uses the ranged cover determination, so a creature between a
+    glaive and its target would give +4 AC. Melee attacks here never read
+    creature cover. Reason: the bounded scope is ranged attacks; no supported
+    character uses a reach weapon, and a melee cover path would change numbers
+    in fights this change did not intend to touch. This is a recorded deviation,
+    not a claim of full cover support.
+
 ## Narrative and content
 
 20. **Dialogue checks default to the best conscious party member.** Content can

@@ -2457,3 +2457,26 @@ overflow, so the Journal check uses `ashwick_ferry --demo-silence`;
 `014f3b8` too and pass in suite order; focus ownership during scrolling rests on
 the tests, because the frames only show the ring in place; held Tab still
 traverses Godot's chain as before.
+
+### Creature soft cover on ranged attacks (2026-11-21)
+
+Ranged, thrown and ranged touch attacks now give the target +4 AC when another
+creature stands on the line (PHB p.151). The encounter reads the grid with the
+printed corner method - every attacker corner is tried, and cover applies unless
+some corner has all four lines clear - not a centre-to-centre line, which both
+misses cover the rule grants and counts squares a line only grazes. The term
+reaches the roll, the log and the inspect panel from one function; the panel names
+the shooter and states the normal and touch AC it would use, because a covered
+target has no single attacker-independent AC. Precise Shot's test was corrected:
+it removes the -4 into-melee penalty and leaves cover in place.
+
+Tests: **731/731 tests, 7,700 assertions, 57 scripts, exit 0**; both validators
+PASS. Candidate `creature_cover_2026-11-21` (source `4e56d1e`, clean tree,
+110,693,592 bytes, SHA-256 `30455961…382b974a39`) passes both validators from its
+own exe, `--demo-inspect --inspect-probe`, and layout probes for the inspect modal
+and dialogue at 1280x720 at 100 %/160 %.
+
+Limits: the panel's cover clause is unit-tested, not seen in a capture (no demo
+fixture has a creature in the shooting line); wall cover, low walls, reach-melee
+cover, big-creature cover and concealment are out of scope (ADAPTATION_LOG
+19d-19f); native input unchanged.
