@@ -3961,3 +3961,117 @@ combat probe's profile as its message requires. The acceptance probe passed in
 records the exe hash at its start and end
 (`runs=9 failures=0`); `builds/qa/runs/creator_probe_acceptance.sh` is kept
 outside its own output directory so the run cannot delete itself.
+
+## Batch closure: audit refresh (2026-11-20; documentation only)
+
+This reconciles the 2026-11-20 audit ("Candidate audit and migration readiness"
+and the sections after it) with the fixes that are now committed. No code was
+changed, no candidate rebuilt and no check re-run for this section; every status
+below is what the recorded logs and `BUILD.txt` files already on disk support,
+and the places where that record is weaker than a result are named as gaps.
+
+### Status of the audit's seven items
+
+| Item | Status | Fix | Evidence recorded | Residual |
+| --- | --- | --- | --- | --- |
+| UI scaling | **Closed** | `15329d3` (client-size layout, 160 % fit) | `ui_scaling_2026-11-20b` `6d38c18d`; 18/18 in `runs/2026-11-20_ui_fix/`; settings/journal/refusal layouts at 100 % and 160 % on `pattern_2026-11-20` `dc2d1b5e` (13/13) | Latest layout evidence is 1280x720 only; the modal limits below remain |
+| Journal output | **Closed** | `3dc28cc` (+ `4b63c88` uid) | `journal_2026-11-20` `d3070eae`, 7/7 (list, both validators, Inspect, journal 1.0/1.6, save-compat); native Journal close by mouse and Enter at both scales | Mouse wheel over the Journal body is still unverified (demo content fits one screen) |
+| Refusal logging | **Closed** | `c3ede47` (+ `b203a1d` uid) | `refusals_2026-11-20` `06883c82`: both validators, Inspect, refusal layout at 100 % and 160 %; native real W/F input at both scales | Export exercises the wall family only; the key binding rests on the input tests, not the layout scenario |
+| Migration foundation | **Foundation only; no production step** | `93e8199` | `migration_2026-11-20` `00136308`, 11/11 hash-bound; `SAVE_VERSION` still 1, `steps` empty | A production step is deferred; `content_version` stays a refusal by design |
+| Recovery | **Closed with limits** | `accbc62`, `dafacd8`, `437fa40` | `recovery_2026-11-20` `a0e30502` 13/13; `interruption_2026-11-20` `4c0d699d` 13/13; `pattern_2026-11-20` `dc2d1b5e` 13/13 | No OS crash injection; 2..100 working-copy cap; case-sensitive-filesystem behavior unproven; tie order is deterministic, not newest |
+| Cleanup hardening | **Closed (QA-only)** | `4e1188b`, uid `2dc61e1` | Source suite 680/680 and the six probe runs in `runs/creator_probes/`; the helper is present in `creator_probe_2026-11-20` | No dedicated export check, because the helper has no player-facing path to exercise |
+| Creator acceptance | **Closed** | `161ceb2`, uid `2dc61e1` | `creator_probe_2026-11-20` `4196d978`, 9/9 hash-bound (both validators + seven creator probes); acceptance probe 50 checks, exit 0, 4.0 s in the export | Probe still depends on frame timing; the 60 s watchdog bounds a regression |
+
+### Where the original audit is now out of date
+
+- "No `acceptance.log` exists for any of the three runs" was true for the three
+  modal builds. Later candidates write one and bind the exe hash at both ends
+  (`migration`, `recovery`, `interruption`, `pattern`, `creator_probe`).
+  `journal` (7/7), `ui_fix` (18/18) and `refusals` (per-check logs only) still
+  lack a consolidated, hash-named log - a gap, not a passing check.
+- "The `.bak` is never read, so a crash leaves an unread backup" is superseded by
+  `accbc62`/`dafacd8`/`437fa40`: the backup and temp are read, validated, and
+  only used when the primary is missing or unreadable.
+- "Migration readiness (assessment only; nothing implemented)" is superseded by
+  the foundation in `93e8199`. The version-refusal-only state is no longer
+  accurate for settings either: `settings.cfg` now carries `[meta] version = 1`,
+  merges on write, and refuses to write a newer file.
+- The audit's UI status split still stands: the 27 px Settings list, HSlider/TabBar
+  traversal, clipped last row and off-screen focus are closed on `modal_pane` and
+  `modal_focus`, and the remaining limits are unchanged.
+- Both focus defects found by the native pass (Tab escaping a modal, no focus
+  after close) are closed by `e9a5086` and `b5dfd9b`.
+
+### Remaining defects (known, not fixed)
+
+1. Reveal runs only while a modal is open; the campaign creator keeps its own path.
+2. A control taller than its pane aligns to the pane's top, so its bottom can clip.
+3. One pane follows the focus per key press; with two scrolling panes only one moves.
+4. `follow_focus` remains on the shared body beside the reveal walk (redundant half).
+5. No key repeat; gamepad page keys unhandled; no reveal after a silent relayout.
+
+None of these regressed during the batch; they are the audit's own remaining
+limits, unchanged.
+
+### Verification gaps (distinct from defects)
+
+- Journal mouse wheel over the body at 100 % and 160 %: never verified; the demo
+  Journal fits its modal, so there is nothing to scroll.
+- No OS-level crash injection for save writes; interruption states are built
+  directly and failure paths simulated.
+- Case-sensitive filesystems: two slot names differing only by case are asserted
+  through `_classify_names`, not by a real macOS/Linux run.
+- Latest layout and notice evidence covers 1280x720 only.
+- GUT runs in the source tree; exported binaries are covered by probes, not by
+  the suite.
+- `journal` 7/7 and `ui_fix` 18/18 do not name the exe they ran; `refusals` has
+  no consolidated log; the three modal runs have none (recorded in the audit).
+- The cleanup helper's per-file failure path is exercised by an open handle on
+  Windows; hosts that allow unlinking an open file take a success-only branch.
+- The earlier `modal_focus_2026-11-20` binary (`fe7511b3...`) is missing; its
+  results stay documented but cannot be re-verified.
+
+### Deferred features
+
+- Any save migration production step: the table, floor and in-memory upgrade
+  exist, `steps` is empty, `SAVE_VERSION` stays 1, and a migrated save is only
+  written when the player saves again. **Foundation only; no production step.**
+- Content-version migration: deliberately a refusal - a save names ids only the
+  campaign author can re-map.
+- Key repeat, gamepad page keys and reveal outside modals are limits, not
+  scheduled work in this batch.
+- Deferred mechanics in `FEATS_SKILLS_COVERAGE.md` remain outside this batch.
+
+### Latest candidates and what each acceptance covered
+
+All under `builds/qa/candidates/`, source heads from `BUILD.txt`; "bound" means
+the acceptance log records the exe hash at its start and end.
+
+| Candidate | source_head | exe_sha256 | bytes | Acceptance scope | Bound |
+| --- | --- | --- | --- | --- | --- |
+| `ui_scaling_2026-11-20b` | `a64eead` | `6d38c18d8f533a245343ae4df9731e7ae41ad27e2d7b7477c4b2c5a17435dbd7` | 110,647,296 | 18/18 in `runs/2026-11-20_ui_fix/` (layouts, notice, save UI) | no |
+| `journal_2026-11-20` | `3dc28cc` | `d3070eae4878c85884d374b83561865cf9f3f14fda2fc1d2a2174dfd4816ca79` | 110,662,552 | 7/7 (list, both validators, Inspect, journal 1.0/1.6, save-compat) | no |
+| `refusals_2026-11-20` | `c3ede47` | `06883c8254ed8cf2411ae7174adb847b4ca0f7818a2b45903a2b6ccd1ef29d7d` | 110,662,808 | Both validators, Inspect, refusal layout 1.0/1.6 (per-check logs) | no |
+| `migration_2026-11-20` | `93e8199` | `00136308f9a3237504daa89da37db782105b75b3289b2baea08dd0378dbada71` | 110,670,872 | 11/11 (list, both validators, Inspect, three layouts at both scales, save UI) | yes |
+| `recovery_2026-11-20` | `accbc62` | `a0e305021ac295cc958d0c97421af2652a1468c21841ceecaa44f66ed4f0b7f8` | 110,678,072 | 13/13 (adds the settings-notice probe at both scales) | yes |
+| `interruption_2026-11-20` | `dafacd8` | `4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` | 110,679,352 | 13/13, same scope as recovery | yes |
+| `pattern_2026-11-20` | `437fa40` | `dc2d1b5e97d3400917f60acbc7381b9ffacf28c12d14b140add4848521f10963` | 110,683,464 | 13/13, including the incompatible-only and stray-file compat cases | yes |
+| `probe_2026-11-20` | `161ceb2` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | none recorded; exported with one untracked uid | no |
+| `creator_probe_2026-11-20` | `2dc61e1` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | 9/9 (both validators + seven creator probes) | yes |
+
+`probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
+executable bytes, re-exported from a clean tree, and only the clean one carries
+acceptance. Source head `c23f96c` is documentation only and has no binary. The
+older `modal_scroll` (`0c2f982e`), `modal_pane` (`6217fe39`) and `modal_focus`
+(`42b003c9`) candidates remain as recorded in the audit; nothing was rebuilt.
+
+### Next highest-priority unresolved item
+
+**A control taller than its pane clips at the bottom (remaining defect 2).** It is
+the only item left that can hide content at a supported text scale, and it is
+independent of the deferred migration work. The next bounded task is to
+reproduce it at 160 % on the Settings modal with its tallest single control,
+record the control and pane rectangles, and then choose the smaller fix: let the
+pane scroll far enough to reveal the focused control's bottom, or cap that
+control's height. Not started here: no measurement, code or capture was added in
+this pass.

@@ -2171,8 +2171,8 @@ acceptance log records that hash at both ends
 (`builds/qa/runs/2026-11-20_recovery/acceptance.log`). Limits are listed at the
 end of [TEST_REPORT.md](TEST_REPORT.md).
 **Save write interruption audit.** Every interruption point of the write sequence
-was listed with the files it leaves behind; the loader now discovers every file
-the slot's accepted names (canonical, numbered working copies 2-100, plus the
+was listed with the files it leaves behind; the loader now discovers every accepted name of the
+slot (canonical, numbered working copies 2-100, plus the
 older `.bak.w`/`.tmp.w` spelling), so a slot is no longer called empty while a
 valid copy parses. Working names are reserved rather than reused, so a repeated
 interrupted write can no longer truncate an earlier crash copy; within the backup
@@ -2239,3 +2239,34 @@ the combat-reload probe pass. Details in [TEST_REPORT.md](TEST_REPORT.md).
 - both validators and seven creator probes, the acceptance probe in 4.0 s - with
 the hash recorded at both ends of
 `builds/qa/runs/2026-11-20_creator_probe/acceptance.log`.
+## Batch closure: audit refresh (2026-11-20; documentation only)
+
+The audit's seven items are now reconciled with the committed fixes; no code,
+build or check was repeated for this record.
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| UI scaling | Closed (`15329d3`) | `ui_scaling_2026-11-20b` `6d38c18d`, 18/18; layouts at 1.0/1.6 on `pattern` `dc2d1b5e` |
+| Journal output | Closed (`3dc28cc`) | `journal_2026-11-20` `d3070eae`, 7/7; native close at both scales |
+| Refusal logging | Closed (`c3ede47`) | `refusals_2026-11-20` `06883c82`; refusal layout 1.0/1.6; native W/F input |
+| Migration foundation | **Foundation only; no production step** (`93e8199`) | `migration_2026-11-20` `00136308`, 11/11; `SAVE_VERSION` 1, `steps` empty |
+| Recovery | Closed with limits (`accbc62`, `dafacd8`, `437fa40`) | `a0e30502` 13/13, `4c0d699d` 13/13, `dc2d1b5e` 13/13 |
+| Cleanup hardening | Closed, QA-only (`4e1188b`) | suite 680/680, six probes, helper present in `4196d978` |
+| Creator acceptance | Closed (`161ceb2`) | `creator_probe_2026-11-20` `4196d978`, 9/9 hash-bound; probe exit 0 in 4.0 s |
+
+Remaining defects are unchanged: reveal only inside modals, a control taller than
+its pane clips, one pane follows focus per key press, `follow_focus` is
+redundant beside the reveal walk, and there is no key repeat, gamepad page keys or
+reveal after a silent relayout. Verification gaps and deferred features are split
+out in [TEST_REPORT.md](TEST_REPORT.md): the Journal wheel is unverified, no
+OS-level crash injection was run, case-sensitive filesystems are unproven,
+latest layout evidence is 1280x720 only, several older acceptance logs do not
+bind their exe, and the earlier `modal_focus` `fe7511b3` binary is missing. The
+only deferred item in this batch is a save migration production step - the
+foundation ships with no step and no version bump.
+
+Latest hash-bound candidates: `pattern_2026-11-20` `dc2d1b5e` (13/13) and
+`creator_probe_2026-11-20` `4196d978` (9/9); `probe_2026-11-20` is the same bytes
+from a dirty tree and carries no acceptance. The next highest-priority unresolved
+item is the taller-than-pane clipping at 160 %; its bounded task (measure, then
+choose pane-scroll or a height cap) is stated in TEST_REPORT and not started.
