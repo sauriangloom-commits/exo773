@@ -65,6 +65,7 @@ const APP_FLAGS: Array[String] = [
 	"--creator-combat-probe",
 	"--creator-combat-reload-probe",
 	"--creator-encounter-click-probe",
+	"--creator-focus-probe",
 	"--creator-interaction-probe",
 	"--creator-probe",
 	"--creator-story-probe",
@@ -393,6 +394,8 @@ func _ready() -> void:
 		_creator_probe()
 	if "--creator-ui-probe" in args:
 		_creator_ui_probe()
+	if "--creator-focus-probe" in args:
+		_creator_focus_probe()
 	if "--creator-interaction-probe" in args:
 		_creator_interaction_ui_probe()
 	if "--creator-story-probe" in args:
@@ -1183,6 +1186,280 @@ func _creator_probe_check(ok: bool, label: String, detail := "") -> void:
 	print("CREATOR PROBE %s %s%s" % ["PASS" if ok else "FAIL", label, suffix])
 	if not ok:
 		creator_probe_failures += 1
+
+
+## Headless keyboard-focus walk of the real campaign creator at 1280x720, at
+## 100 % and 160 % text. It focuses every focusable control in tree order and
+## asserts the control's rect sits inside the viewport once the reveal has run,
+## then pins Tab/Shift+Tab order, a modal opened over the creator with nested
+## panes, and a dropdown popup.
+##
+## Rects, not rendered pixels: a control can still overlap a neighbour, clip a
+## glyph or render behind another pane without failing this probe.
+func _creator_focus_probe() -> void:
+	creator_probe_failures = 0
+	probe_scenario = "creator_focus"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog()
+	get_window().size = Vector2i(1280, 720)
+	var original_scale := float(Game.settings.get("text_scale", 1.0))
+	var campaign_id := "probe_focus_campaign"
+	CampaignStore.delete_user_campaign(campaign_id)
+	for scale in [1.0, 1.6]:
+		Game.settings["text_scale"] = scale
+		_apply_theme()
+		await get_tree().process_frame
+		var label := "%d%%" % int(round(scale * 100.0))
+		var screen := CampaignCreator.new()
+		_set_screen(screen)
+		screen.setup(self, _demo_creator_interaction_draft())
+		for i in 8:
+			await get_tree().process_frame
+		_creator_probe_check(screen.scroll != null, "%s: the creator body exists" % label)
+		if screen.scroll == null:
+			continue
+		await _creator_focus_walk(screen, label)
+		await _creator_focus_pinned_cases(screen, label)
+		if modal != null:
+			close_modal(false)
+	Game.settings["text_scale"] = original_scale
+	_apply_theme()
+	CampaignStore.delete_user_campaign(campaign_id)
+	print(
+		"CREATOR FOCUS PROBE %s window=1280x720 scales=100,160 failures=%d"
+		% ["PASS" if creator_probe_failures == 0 else "FAIL", creator_probe_failures]
+	)
+	get_tree().quit(0 if creator_probe_failures == 0 else 1)
+
+
+## Focuses every focusable control in the creator, then walks the real Tab order
+## and its reverse.
+func _creator_focus_walk(screen: CampaignCreator, label: String) -> void:
+	var viewport := get_viewport().get_visible_rect()
+	var focusables: Array[Control] = []
+	_collect_focusables(screen, focusables)
+	_creator_probe_check(focusables.size() > 20, "%s: the creator exposes a walkable set (%d)" % [label, focusables.size()])
+	var focused := 0
+	var outside := 0
+	for control in focusables:
+		if not is_instance_valid(control) or not control.is_visible_in_tree():
+			continue
+		control.grab_focus()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var owner := get_viewport().gui_get_focus_owner()
+		if owner != control:
+			_creator_probe_check(
+				false, "%s: %s takes focus" % [label, _focus_label(control)],
+				"owner=%s" % ("none" if owner == null else _focus_label(owner))
+			)
+			continue
+		focused += 1
+		if not viewport.encloses(control.get_global_rect()):
+			outside += 1
+			if outside <= 12:
+				print(
+					"CREATOR FOCUS %s OUTSIDE control=%s rect=%s viewport=%s scroll=%d"
+					% [label, _focus_label(control), str(control.get_global_rect()), str(viewport), screen.scroll.scroll_vertical]
+				)
+	print("CREATOR FOCUS %s focused=%d outside=%d focusables=%d" % [label, focused, outside, focusables.size()])
+	_creator_probe_check(focused == focusables.size(), "%s: every focusable control takes focus (%d/%d)" % [label, focused, focusables.size()])
+	_creator_probe_check(outside == 0, "%s: every focused control's rect is inside the viewport (%d outside)" % [label, outside])
+
+	# The real Tab order, and its reverse, from a stop with no text editor that
+	# swallows the key. A repeat means Godot's traversal could not move further.
+	var start: Control = null
+	if screen.map_grid != null and screen.map_grid.get_child_count() > 40:
+		start = screen.map_grid.get_child(40) as Control
+	if start == null and not focusables.is_empty():
+		start = focusables[0]
+	_creator_probe_check(start != null, "%s: the walk has a starting control" % label)
+	if start == null:
+		return
+	start.grab_focus()
+	await get_tree().process_frame
+	var forward: Array[Control] = []
+	var stops := 0
+	for _i in 8:
+		var before := get_viewport().gui_get_focus_owner()
+		_creator_focus_send_tab(false)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var owner := get_viewport().gui_get_focus_owner()
+		if owner == null or not screen.is_ancestor_of(owner):
+			_creator_probe_check(false, "%s: Tab keeps focus inside the creator" % label, "owner=%s" % ("none" if owner == null else _focus_label(owner)))
+			break
+		if owner == before:
+			print("CREATOR FOCUS %s TAB STALLED at %s" % [label, _focus_label(owner)])
+			break
+		forward.append(owner)
+		stops += 1
+		if not viewport.encloses(owner.get_global_rect()):
+			_creator_probe_check(
+				false, "%s: Tab stop %d is inside the viewport" % [label, stops],
+				"%s rect=%s" % [_focus_label(owner), str(owner.get_global_rect())]
+			)
+	_creator_probe_check(forward.size() >= 2, "%s: Tab moves through at least two stops (%d)" % [label, forward.size()])
+	if forward.size() < 2:
+		return
+	# Shift+Tab walks the same stops back. From the last stop it lands on the one
+	# before it and ends on the starting control.
+	var back: Array[Control] = []
+	for _i in forward.size():
+		_creator_focus_send_tab(true)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var owner := get_viewport().gui_get_focus_owner()
+		if owner == null or not screen.is_ancestor_of(owner):
+			_creator_probe_check(false, "%s: Shift+Tab keeps focus inside the creator" % label)
+			back.clear()
+			break
+		back.append(owner)
+		if not viewport.encloses(owner.get_global_rect()):
+			_creator_probe_check(
+				false, "%s: Shift+Tab stop %d is inside the viewport" % [label, back.size()],
+				"%s rect=%s" % [_focus_label(owner), str(owner.get_global_rect())]
+			)
+	var expected: Array[Control] = []
+	for index in range(forward.size() - 2, -1, -1):
+		expected.append(forward[index])
+	expected.append(start)
+	var order_ok := back.size() == expected.size()
+	if order_ok:
+		for index in expected.size():
+			if back[index] != expected[index]:
+				order_ok = false
+				break
+	_creator_probe_check(
+		order_ok, "%s: Shift+Tab reverses the Tab order" % label,
+		"back=%s expected=%s" % [str(back.size()), str(expected.size())]
+	)
+
+
+## A real modal over the creator (Settings, whose list has its own scroller inside
+## the shared body) and a dropdown popup. Both must use the same reveal path and
+## leave the creator's own scroll alone.
+func _creator_focus_pinned_cases(screen: CampaignCreator, label: String) -> void:
+	var viewport := get_viewport().get_visible_rect()
+	var creator_scroll := screen.scroll.scroll_vertical
+	# Dropdown first: opening Settings would take focus away from it.
+	var dropdown: OptionButton = screen.facing_option
+	_creator_probe_check(dropdown != null, "%s: the creator has a dropdown" % label)
+	if dropdown != null:
+		dropdown.grab_focus()
+		for i in 2:
+			await get_tree().process_frame
+		_creator_probe_check(
+			get_viewport().gui_get_focus_owner() == dropdown and viewport.encloses(dropdown.get_global_rect()),
+			"%s: the dropdown is focused and inside the viewport" % label,
+			"rect=%s" % str(dropdown.get_global_rect())
+		)
+		var before_popup := screen.scroll.scroll_vertical
+		dropdown.show_popup()
+		for i in 5:
+			await get_tree().process_frame
+		var popup := dropdown.get_popup()
+		var popup_open := popup != null and popup.visible
+		print("CREATOR FOCUS %s POPUP open=%s creator_scroll=%d before=%d" % [label, str(popup_open), screen.scroll.scroll_vertical, before_popup])
+		_creator_probe_check(popup_open, "%s: the dropdown popup opens" % label)
+		_creator_probe_check(
+			screen.scroll.scroll_vertical == before_popup,
+			"%s: the open dropdown does not scroll the creator body" % label,
+			"creator=%d before=%d" % [screen.scroll.scroll_vertical, before_popup]
+		)
+		if popup != null:
+			popup.hide()
+		for i in 3:
+			await get_tree().process_frame
+		_creator_probe_check(
+			screen.scroll.scroll_vertical == before_popup,
+			"%s: closing the dropdown leaves the body where it was" % label
+		)
+
+	# Settings holds a list with its own scroller inside the modal's shared body,
+	# so it pins the nested-pane walk through both panes.
+	creator_scroll = screen.scroll.scroll_vertical
+	var opener := get_viewport().gui_get_focus_owner()
+	_open_settings()
+	for i in 8:
+		await get_tree().process_frame
+	_creator_probe_check(modal != null, "%s: Settings opens over the creator" % label)
+	if modal == null:
+		return
+	var inner: ScrollContainer = null
+	for found in modal.find_children("*", "ScrollContainer", true, false):
+		var pane := found as ScrollContainer
+		if pane != modal_scroll and pane.is_visible_in_tree():
+			inner = pane
+	_creator_probe_check(inner != null, "%s: the modal holds a nested scroller" % label, "inner=%s" % str(inner))
+	if inner != null:
+		var inner_focusables: Array[Control] = []
+		_collect_focusables(inner, inner_focusables)
+		var deep: Control = inner_focusables[inner_focusables.size() - 1] if not inner_focusables.is_empty() else null
+		_creator_probe_check(deep != null, "%s: the nested pane has focusable rows" % label)
+		if deep != null:
+			deep.grab_focus()
+			for i in 4:
+				await get_tree().process_frame
+			var owner := get_viewport().gui_get_focus_owner()
+			_creator_probe_check(owner == deep, "%s: a nested modal row takes focus" % label)
+			_creator_probe_check(
+				modal.is_ancestor_of(deep) and viewport.encloses(deep.get_global_rect()),
+				"%s: the nested modal row is inside the viewport" % label,
+				"%s rect=%s inner=%d body=%d" % [
+					_focus_label(deep), str(deep.get_global_rect()), inner.scroll_vertical,
+					modal_scroll.scroll_vertical if modal_scroll != null else -1,
+				]
+			)
+	# Modal Tab keeps its existing containment and reveal.
+	_creator_focus_send_tab(false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var modal_owner := get_viewport().gui_get_focus_owner()
+	_creator_probe_check(
+		modal_owner != null and modal.is_ancestor_of(modal_owner) and viewport.encloses(modal_owner.get_global_rect()),
+		"%s: Tab inside the modal stays in it and is visible" % label,
+		"owner=%s" % ("none" if modal_owner == null else _focus_label(modal_owner))
+	)
+	_creator_probe_check(
+		screen.scroll.scroll_vertical == creator_scroll,
+		"%s: the creator behind the modal does not scroll" % label,
+		"creator=%d before=%d" % [screen.scroll.scroll_vertical, creator_scroll]
+	)
+	close_modal()
+	for i in 4:
+		await get_tree().process_frame
+	_creator_probe_check(
+		screen.scroll.scroll_vertical == creator_scroll,
+		"%s: closing the modal leaves the creator's scroll alone" % label
+	)
+	_creator_probe_check(
+		get_viewport().gui_get_focus_owner() == opener,
+		"%s: closing the modal returns focus to its opener" % label,
+		"owner=%s" % str(get_viewport().gui_get_focus_owner())
+	)
+
+
+func _creator_focus_send_tab(backward: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = KEY_TAB
+	event.physical_keycode = KEY_TAB
+	event.shift_pressed = backward
+	event.pressed = true
+	get_viewport().push_input(event)
+
+
+func _focus_label(control: Control) -> String:
+	var text := ""
+	if control is Button:
+		text = (control as Button).text
+	elif control is LineEdit:
+		text = (control as LineEdit).text
+	elif control is TextEdit:
+		text = String((control as TextEdit).text).substr(0, 24)
+	if String(text).strip_edges() == "":
+		text = String(control.name)
+	return "%s:%s" % [control.get_class(), text]
 
 
 ## Asserts the creator's own controls and the playtest pause/return loop. This
@@ -7615,7 +7892,7 @@ func _first_focusable(root: Node) -> Control:
 
 ## The controls Tab may visit inside the active modal, in tree order. Scroll
 ## bodies are skipped: they have no focus style, so a stop there would make the
-## ring vanish mid-cycle; `_reveal_modal_focus` scrolls the chosen control into
+## ring vanish mid-cycle; `_reveal_focused_control` scrolls the chosen control into
 ## view, through every pane that holds it.
 func _modal_focusables() -> Array[Control]:
 	var out: Array[Control] = []
@@ -7656,7 +7933,7 @@ func _cycle_modal_focus(direction: int) -> void:
 
 
 func _on_modal_focus_changed(_control: Control) -> void:
-	_reveal_modal_focus()
+	_reveal_focused_control()
 
 
 ## Scrolls every pane that holds the focused control - the inner list first, then
@@ -7670,13 +7947,22 @@ func _on_modal_focus_changed(_control: Control) -> void:
 ##
 ## A control inside a popup raised from the modal is left alone: the popup has its
 ## own coordinates and its own scrolling, and the body behind it must not move.
-func _reveal_modal_focus() -> void:
+func _reveal_focused_control() -> void:
+	var root: Control = modal
+	if root == null:
+		# The campaign creator is the one screen whose body has no follow_focus of
+		# its own, so its keyboard focus is revealed through the same walk. Every
+		# other screen keeps its existing scrolling, and a modal keeps the exact
+		# path it had before.
+		if not current_screen is CampaignCreator:
+			return
+		root = current_screen
 	var owner := get_viewport().gui_get_focus_owner()
-	if owner == null or modal == null or not modal.is_ancestor_of(owner):
+	if owner == null or not root.is_ancestor_of(owner):
 		return
 	var panes: Array[ScrollContainer] = []
 	var node: Node = owner
-	while node != null and node != modal:
+	while node != null and node != root:
 		if node is Window:
 			return
 		if node is ScrollContainer:
