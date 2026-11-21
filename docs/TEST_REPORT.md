@@ -4265,3 +4265,36 @@ at 100 %/160 % only; state is QA-seeded.
   refresh had also carried a withdrawn Shift+Tab note; `2026-11-20_scrollkeys/
   assessment.md` records Shift+Tab wrapping Close -> Return to main menu ->
   Settings natively at 100 % and 160 %, so that item is closed too.
+
+
+### Final candidate acceptance scope (2026-11-21; evidence review)
+
+Candidate `dialogue_header_2026-11-21` was checked against stored evidence, not
+rerun. `BUILD.txt` records source `7d1729f`, 0 worktree entries and 0 untracked
+files; the executable hashes to
+`1796fb2a55387d5b56313a007599174820151797445197d86605ff4ae5e81bb9` and
+110,689,192 bytes, matching `BUILD.txt`. That source commit is an ancestor of
+HEAD `3af98a0`; the tree is clean. Reviewed: `report.md` and 11 screenshots in
+`builds/qa/runs/2026-11-21_dialogue_header/` (5 at 100 %, 6 at 160 %).
+
+| Check | 100 % | 160 % | Result |
+| --- | --- | --- | --- |
+| Header (gold, seed, Pause) above the panel | yes | yes | pass |
+| Tab moves the ring to a choice | yes | yes | pass |
+| Party opens over the conversation | yes | yes | pass |
+| Escape returns to the conversation | equals the choice capture | ring visible on the choice | indicated at 100 %, visible at 160 % |
+| Pause ends the conversation | not captured | yes | pass at 160 % only |
+| Panel keeps its normal size | visual only | visual only | tests measure 860x600 |
+| Enter after the focused choice | root page | root page | content loop (`crossing` has `next: root`), not a focus check |
+
+Unverified for this candidate: native long gold/seed readouts (test-only);
+native C/I/J/Tab behavior (unit test here, native trace on
+`dialogue_geometry_2026-11-21b`); nested-modal native run; Inventory, Journal and
+Save panels native; Pause at 100 %; window sizes other than 1280x720; a fresh
+rerun or archived driver stdout. At 100 % no focus ring is visible in the
+captures (`open.png` equals `after_enter.png`; `choice.png` equals
+`party_closed.png`), so focus return there is inferred rather than seen.
+
+Automated evidence for the same source: 17/17 dialogue tests (214 assertions),
+699/699 suite (7,550 assertions), both validators PASS, both dialogue probes PASS
+at 1280x720 at 100 % and 160 %.

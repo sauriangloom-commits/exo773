@@ -2287,8 +2287,8 @@ clamps, leaving focus, Tab order and activation alone; reverse Tab walks back an
 wraps. Candidate `dialogue_page_2026-11-21` (source `da12abf`, SHA-256
 `29298fe2`) passes the 10-test dialogue file, 692/692 suite, both validators and
 the dialogue layout probes at 100 %/160 %. The trace found the dialogue dim is
-0x0 (HUD stays mouse-live) and arrow focus can land on unavailable rows; both are
-recorded, not changed.
+0x0 (HUD stays mouse-live) and arrow focus can land on unavailable rows; both were
+fixed in `01e7016` and `263e2e0` the same day (see the audit refresh below).
 
 Dialogue geometry and focus are closed in `263e2e0`: the root and dim fill the
 viewport, both ignore the mouse pick (read-only HUD and Pause stay usable), arrows
@@ -2308,3 +2308,82 @@ dialogue tests, 699/699 suite, both validators and the dialogue probes at
 100 %/160 %. Keyboard access to the HUD panels during dialogue remains deferred:
 C/I/J are blocked, Tab is reserved for choices, Esc ends the conversation, and
 Save has no binding.
+## Audit refresh: UI batch closure (2026-11-21; documentation only)
+
+The 2026-11-20 table above is the historical modal/UI snapshot. The dialogue
+work after it is closed as follows; no code, build or check was repeated for this
+record.
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Dialogue choice focus | Closed (`01d1cfc`) | `dialogue_focus_2026-11-21b` `cd00d389`, 10/10; epilogue revealed at 1.0/1.6 |
+| Dialogue paging | Closed (`da12abf`) | `dialogue_page_2026-11-21` `29298fe2`, 10/10; clamps, Enter, reverse Tab, wheel |
+| Dialogue geometry and arrows | Closed with limits (`263e2e0`) | `dialogue_geometry_2026-11-21b` `94af082e`, 12/12; full-screen dim, HUD/Pause live, arrows on choices |
+| Header clearance and focus return | Closed with limits (`7d1729f`) | `dialogue_header_2026-11-21` `1796fb2a`, 17/17; panel below measured header, ring returns to the choice |
+
+Remaining limits after the refresh:
+
+- **Keyboard access to HUD panels during dialogue is deferred.** C/I/J remain
+  blocked by the explore-mode guard, Tab is reserved for choice focus, Esc ends
+  the conversation, and Save has no binding. No shortcut was added.
+- At 160 % with ten-digit gold/seed readouts the header grows and the panel
+  shrinks to 589 px (one less visible row; scroll/paging still reaches all 13
+  choices). Covered by tests only, not by a native capture.
+- The 100 % exported captures do not show a distinct focus ring:
+  `shots100/open.png` equals `after_enter.png`, and `choice.png` equals
+  `party_closed.png` by SHA-256. Focus return at 100 % is inferred; it is visible
+  at 160 %.
+- Oversized-control clipping remains conditional; reveal-only-inside-modals, the
+  focus walk, `follow_focus` redundancy, no key repeat and no gamepad page keys
+  are unchanged.
+- Verification gaps unchanged: 1280x720 only; no OS-level crash injection;
+  case-sensitive filesystems unproven; older acceptance logs do not bind their
+  exe; the `modal_focus` `fe7511b3` binary is missing. The final candidate was
+  not rerun for this closure (evidence reused).
+
+
+## Backup risk and bounded plan (2026-11-21; assessment only)
+
+No artifact was copied, deleted, uploaded or overwritten for this assessment.
+
+The editable source is a local Git repository (`a64eead`..`3af98a0`, 43 commits)
+with **no remote**, on the same disk as the working tree. `builds/` is gitignored,
+so the candidate executable and all QA runs exist only there.
+
+| Artifact | Separate recoverable copy? | Detail |
+| --- | --- | --- |
+| Source (`RL_Edit`, HEAD `3af98a0`) | **No current copy** | Only local `.git` (14 MB) and the working tree. The original checkout `Project Ravenloft/ravenloft-foundation` (`1af0253`, separate history) lags the source. |
+| Source snapshots | Partial, stale | `workspace/snapshots/2026-11-13_*` hold `RL_Edit_source.tar.gz` (four entries, two with manifests). Latest is 2026-11-13, before the 2026-11-20/21 batches. |
+| `builds/qa/rev_before` | Partial, stale | 11 MB revision-comparison copy, not the current tree. |
+| Candidate `dialogue_header_2026-11-21` | **No copy** | One directory (exe + `BUILD.txt`), gitignored; no file of that size elsewhere in the workspace; not in any snapshot. |
+| Evidence `runs/2026-11-21_dialogue_header` | **No copy** | 12 files (report + 5 shots at 100 %, 6 at 160 %), 1.5 MB, gitignored; earlier runs are likewise single copies. |
+| Docs | In Git only | Committed (`3af98a0`), recoverable from `.git` history, but on the same disk with no off-machine copy. |
+| `edit_copy_audit` | Reference only | Source hash manifests and logs from 2026-11-09; no content. |
+
+Risk: one disk loss removes the current source history, the accepted candidate and
+all evidence; snapshots stop two milestone days earlier. `builds/qa` holds 4.7 GB
+of candidates and 317 MB of runs, so backing it up wholesale is neither bounded
+nor useful.
+
+**Bounded plan (one accepted batch, about 126 MB).**
+
+1. Snapshot set: `git bundle create ravenloft-3af98a0.bundle --all`; the final
+   candidate directory; the final evidence run directory; a `SHA256SUMS` file for
+   every file; and a text record of bundle HEAD, candidate hash/size and counts.
+2. Destinations: two independent user-controlled media (for example an external
+   drive and a cloud folder). Nothing was copied.
+3. Integrity before storage: `git bundle verify`; `git fsck --full`; recorded
+   HEAD matches `git rev-parse HEAD`; `sha256sum -c SHA256SUMS`; candidate hash
+   and bytes match `BUILD.txt`; screenshot hashes match the manifest.
+4. Restore test (about 10 minutes): in a new empty temporary directory,
+   `git clone` the bundle; confirm HEAD `3af98a0`, `git fsck --full` and a clean
+   status; run `tests/test_dialogue_focus.gd` (17/17) with the shared Godot
+   binary; verify the restored candidate hash and launch it at 1280x720/160 %
+   with `--campaign=ashwick_ferry --demo-silence`, comparing its open capture
+   with the archived `shots160/open.png` (fall back to visible header/panel checks
+   if timing makes pixels differ).
+5. Retention: newest bundle, candidate and evidence per accepted batch, last
+   three batches; exclude the rest of `builds/qa` and Godot caches.
+6. Untested until performed: the restore test, off-disk copies, and external
+   media integrity. The snapshot directories are on the same `Downloads` disk,
+   so they do not mitigate disk loss.
