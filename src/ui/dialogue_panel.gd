@@ -23,7 +23,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The overlay itself must not swallow clicks outside the framed panel: the
 	# read-only HUD panels and Pause stay usable while a conversation is open.
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	# IGNORE (not PASS) is required: a PASS cover still wins the mouse pick and
+	# keeps the HUD behind it unreachable.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	get_viewport().size_changed.connect(_clamp_panel)
 	resized.connect(_clamp_panel)
 	_rebuild()

@@ -283,6 +283,11 @@ func test_root_and_dim_cover_the_viewport_without_covering_the_hud() -> void:
 		Control.MOUSE_FILTER_IGNORE,
 		"the dim never blocks the HUD panels behind it",
 	)
+	assert_eq(
+		panel.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"the overlay root never wins the mouse pick over the HUD",
+	)
 	var party := _find_button(main, "Party (Tab)")
 	assert_not_null(party, "the read-only HUD panel button exists")
 	if party != null:
