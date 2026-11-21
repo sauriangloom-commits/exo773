@@ -180,6 +180,18 @@ pending-decision flow, the shared movement helpers, log wording, exclusions and
 the deterministic test list. Done means focused tests, the full suite, both validators,
 docs and a traceability row, and no rebuild unless the sidebar changes.
 
+**Implemented as candidate `resolution_smoke_2026-11-21a` (2026-11-21).** The
+bounded scope above was followed without widening it: `--resolution-smoke=<profile>`
+in `src/main.gd`, the `qa_victory` fixture, a pre-decided follow through
+`combat_bull_rush` + `combat_resolve_bull_rush(true)`, total defense held to
+resolution, the autosave read and reloaded, 32 checks, isolated profile only. It
+refuses a missing profile, a profile that does not contain `user://`, and a profile
+inside the platform's roaming app-data folder, all before the first save access.
+Neither the Push 5 ft / Follow buttons nor any click are exercised, so that decision
+UI stays engine-test evidence. Source: suite 778/778, 7,979 assertions, both
+validators, smoke PASS. Exported: clean `de79c17`, hash bound before/after,
+validators and smoke PASS from the exe (see TEST_REPORT).
+
 **State after the closure, kept separate.**
 
 - *Confirmed defects:* none open in these areas. The stance leak is fixed and

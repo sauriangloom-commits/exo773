@@ -201,6 +201,22 @@ Content checks:
 was never implemented; it is now rejected with exit 2 like any other unknown
 option. Use the two validators above.
 
+Resolution and action smoke (headless, isolated profile only):
+
+```bash
+mkdir -p builds/qa/appdata_smoke
+APPDATA="$(pwd)/builds/qa/appdata_smoke" "..\\Project Ravenloft\\Godot_v4.7.2-stable_win64.exe" \
+  --headless --path . -- --resolution-smoke="$(pwd)/builds/qa/appdata_smoke"
+```
+
+`--resolution-smoke=<profile>` plays the QA victory encounter through the real
+`Game` wrappers and exits 0 only if every check passes. It refuses (exit 1, before
+any save access) when the profile is missing, when Godot's `user://` directory is
+not inside it, or when it lies in the platform's roaming app-data folder. The
+process's `APPDATA` must point at that same profile, which is what the command
+above does. It removes only that profile's `auto` slot, and it does not click the
+Push 5 ft / Follow buttons.
+
 ## Layout and resolution
 
 - Reference viewport: **1280×720**; the window opens at that size and cannot be

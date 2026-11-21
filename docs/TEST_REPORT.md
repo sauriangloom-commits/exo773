@@ -4901,3 +4901,84 @@ Consequences for earlier conclusions:
 - The fix cannot retroactively certify old binaries: none of the archived
   candidates was re-run, and the corrected coverage applies to the current build
   and to future ones.
+
+
+## Resolution and action smoke - candidate `resolution_smoke_2026-11-21a` (2026-11-21)
+
+One headless application flag, `--resolution-smoke=<profile>`, plays the QA victory
+encounter through the real `Game` wrappers and then checks the packaged behaviour
+the source suite had been proving alone. It adds no play, no content, no UI and no
+save-schema change: the only source edit is the flag, its smoke, and its helpers in
+`src/main.gd`.
+
+### What the flag does
+
+1. Refuses to run unless `<profile>` exists, contains Godot's `user://` directory,
+   and is not inside the platform's roaming app-data folder. All three checks run
+   before the first save read or write, so a mistyped profile cannot reach a
+   player's save directory.
+2. Starts the demo campaign with `kaelen` and `ysolde`, opens `qa_victory`, and
+   places the duel fixture the source tests use: the zombie stationary and
+   adjacent at (3,2), the fighter at (2,2), the ally at (6,3), `bless` on the
+   fighter. The seed is chosen by trying 7301..7340 until the bull rush check is
+   won, because the follow only exists after a won check; the winning run is then
+   deterministic (seed 7302 in every recorded run).
+3. Takes the fighter's turn and calls `Game.combat_bull_rush(index)` followed
+   immediately by `Game.combat_resolve_bull_rush(true)` - the pre-decided follow,
+   through the same wrappers the combat screen calls.
+4. Passes the turn, takes `Game.combat_total_defense()` on the fighter's next turn,
+   and has the ally's `magic_missile` drop the zombie, so the fight is won while a
+   combat-scope effect is live.
+5. Asserts the stance effects are gone in memory, absent from `auto.json`, and
+   absent after `Game.load_game("auto")`; base AC is restored after the fight and
+   in the reloaded state; `bless` survives all three; the defender moved exactly
+   the printed push distance (5 ft plus 5 ft per full 5 points of excess) and the
+   rusher ended in the vacated square, with both cells preserved through
+   resolution. 32 checks, exit 0 only if every check passes.
+
+The entry point is `_resolution_smoke_probe` so the existing guard that only
+probes may call `SaveSystem.delete_save_everywhere` still holds; that call removes
+the `auto` slot of the isolated profile only.
+
+### Source evidence (before the export)
+
+- `--resolution-smoke=<isolated profile>`: **PASS, 32 checks, 0 failures**, seed
+  7302, push 10 ft, autosave read and reloaded.
+- Missing profile directory: exit **1**, `RESOLUTION SMOKE FAIL isolation`, no
+  save written.
+- Profile inside the real roaming folder (a throwaway subdirectory under
+  `%APPDATA%\Roaming`, created and removed for the check): exit **1**,
+  `RESOLUTION SMOKE FAIL isolation`, no save written.
+- Full suite: **778/778 tests, 7,979 assertions, 60 scripts**.
+- `--validate-campaigns` and `--validate-diagnostics`: **PASS**.
+
+### Exported evidence - `resolution_smoke_2026-11-21a`
+
+Exported from clean source `de79c17` (worktree entries 0), preset `Windows
+Desktop`, 110,740,824 bytes, SHA-256
+`c1cff4cc4ad18aa3a9b40dfcb7d7c376726bf0909522ca463658c957035d9a75`. The same hash
+was read before the first check and after the last one, and the two readings match.
+
+| Check from the exe | Result |
+| --- | --- |
+| `--validate-campaigns` | PASS |
+| `--validate-diagnostics` | PASS |
+| `--resolution-smoke=<isolated profile>` | PASS, 32 checks, 0 failures, seed 7302 |
+| `--resolution-smoke=<missing directory>` | exit 1, isolation refusal |
+
+Logs: `builds/qa/runs/2026-11-21_resolution_smoke_export/` (exe) and
+`builds/qa/runs/2026-11-21_resolution_smoke/` (source).
+
+### Limits
+
+- The smoke does **not** test the Push 5 ft / Follow decision UI. It calls
+  `combat_bull_rush` and `combat_resolve_bull_rush(true)` directly, so the buttons,
+  their labels and the pending-decision prompt remain covered only by the source
+  suite's engine-level tests and the combat layout probe. No click is made.
+- It is packaging evidence for resolution-time stance cleanup, base AC restoration,
+  bull-rush movement and autosave reload. It is not a rules authority and does not
+  replace the suite; it re-proves a narrow slice of it in the binary.
+- No layout probe was rerun for this candidate: the flag adds no control and the
+  diff touches no screen, so the accepted layout evidence for
+  `bull_rush_2026-11-21b` is not affected.
+- No manual testing was performed or requested, and backups were not touched.

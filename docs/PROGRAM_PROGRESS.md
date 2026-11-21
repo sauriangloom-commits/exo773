@@ -2714,3 +2714,29 @@ held-key acceptance, native-only Enter, synthetic case-sensitive checks, unbound
 creature-cover candidates, missing `modal_focus` binary, fixture-only Tumble
 values, no playtest). No manual testing was requested and backups were not
 touched.
+
+
+### Resolution and action smoke, exported (2026-11-21)
+
+The review's recommended next batch is implemented. One headless flag,
+`--resolution-smoke=<profile>`, plays `qa_victory` through the real `Game`
+wrappers in an isolated profile: a bull rush with a pre-decided follow, total
+defense held to resolution, the ally's spell to win, then `auto.json` read and
+reloaded. It asserts the stance effects are absent from memory, the save and the
+reloaded state, that base AC is restored, that both bull-rush cells moved by the
+printed distance and survived resolution, and that the unrelated `bless` effect is
+kept. It refuses to run when the profile is missing, does not contain `user://`,
+or lies inside the platform's roaming app-data folder, and every refusal happens
+before the first save access.
+
+Source evidence: smoke PASS 32/32 (seed 7302, push 10 ft), suite 778/778 with
+7,979 assertions across 60 scripts, both validators PASS. Exported evidence:
+candidate `resolution_smoke_2026-11-21a` from clean source `de79c17`, 110,740,824
+bytes, SHA-256 `c1cff4cc...035d9a75`, hash matched before and after the runs; both
+validators PASS and the smoke PASS 32/32 from the exe, with the missing-profile
+refusal also reproduced there.
+
+Not covered: the Push 5 ft / Follow decision UI. The smoke calls the wrappers
+directly, so the buttons and their prompt remain engine-test and layout-probe
+evidence only. No manual testing was requested, no layout probe was rerun (no
+control changed), and backups were not touched.
