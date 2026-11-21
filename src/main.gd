@@ -2202,8 +2202,7 @@ func _layout_report(root: Node, label: String) -> Array:
 			controls.append(control)
 	for control in controls:
 		if not client.encloses(control.get_global_rect()):
-			var scroller := _layout_scroller(control)
-			if scroller != null:
+			for scroller in _layout_scrollers(control):
 				scroller.ensure_control_visible(control)
 				await get_tree().process_frame
 		var rect := control.get_global_rect()
@@ -2250,13 +2249,17 @@ func _layout_interactive(control: Control) -> bool:
 	)
 
 
-func _layout_scroller(control: Control) -> ScrollContainer:
+## Every ScrollContainer above `control`, innermost first. A control nested in two
+## scrollers (the combatant list inside the combat sidebar) can only be reached
+## when both move, so the reachability check walks the whole chain.
+func _layout_scrollers(control: Control) -> Array:
+	var result: Array = []
 	var node := control.get_parent()
 	while node != null:
 		if node is ScrollContainer:
-			return node as ScrollContainer
+			result.append(node as ScrollContainer)
 		node = node.get_parent()
-	return null
+	return result
 
 
 func _layout_path(control: Control, root: Node) -> String:
