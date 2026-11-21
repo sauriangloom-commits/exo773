@@ -2182,3 +2182,8 @@ and the preservation of surviving recovery files are unchanged. 17 new
 interruption-state tests; suite **658/658, 7,113 assertions, 53 scripts**. The
 state table and the remaining durability limits are in
 [TEST_REPORT.md](TEST_REPORT.md).
+**Acceptance.** `interruption_2026-11-20` was built at 19:21:11 from commit
+`dafacd8` with `worktree_entries=0` and no untracked files - 110,679,352 bytes,
+SHA-256 `4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` - and
+its 13/13 acceptance log records that hash at both ends
+(`builds/qa/runs/2026-11-20_interruption/acceptance.log`).

@@ -3645,3 +3645,26 @@ recovery copy from another campaign or another `content_version` is skipped, not
 migrated, so a slot holding only such copies still reports "No save in".
 (7) Layout evidence covers 1280x720 only. (8) GUT runs in the source tree; the
 exported binary is verified by the probes.
+**Exported candidate from the clean tree.** `interruption_2026-11-20` was built at
+2026-11-20T19:21:11-05:00 from commit `dafacd8` with `worktree_entries=0` and no
+untracked files; both diff hashes are `e3b0c442...` (SHA-256 of empty input).
+
+| field | value |
+| --- | --- |
+| build_id | `interruption_2026-11-20` |
+| built_at | 2026-11-20T19:21:11-05:00 |
+| source_head | `dafacd8fc24e5b8b89ffeb96b377d33df4abcbad` |
+| worktree_entries | 0 |
+| untracked_files | 0 |
+| exe_bytes | 110,679,352 |
+| exe_sha256 | `4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` |
+
+Acceptance against that hash: **13/13** - list-campaigns, both validators, the
+Inspect probe, the settings/journal/refusal layouts at 100 % and 160 %, the
+settings-notice probe at 100 % and 160 %, and `--save-compat-ui-probe`, whose new
+working-copy case reports `Loaded slot2 from its backup; the save was
+interrupted...` and restores the saved cell.
+`builds/qa/runs/2026-11-20_interruption/acceptance.log` records the exe hash at
+its start and its end line repeats
+`sha256=4c0d699dc3a48cdac42a82b666e736302e312382f1422028a0476fc863cf488a` with
+`runs=13 failures=0`; per-check logs are in its `export/`.
