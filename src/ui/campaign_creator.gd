@@ -416,7 +416,7 @@ func _choice_form_pending() -> bool:
 		return false
 	var current := _choice_form_state()
 	var stored := _stored_choice_state(Dictionary(choices[_selected_choice]))
-	for key in ["text", "guard", "require", "effect", "dc"]:
+	for key in ["text", "guard", "require", "effect"]:
 		if current[key] != stored[key]:
 			return true
 	if bool(current["check"]) != bool(stored["check"]):
@@ -426,6 +426,10 @@ func _choice_form_pending() -> bool:
 	if _option_pending(choice_encounter_option, String(stored["encounter"])):
 		return true
 	if bool(current["check"]):
+		# Skill, DC and branch targets only exist for a check. A DC or skill
+		# left in the form by an earlier check is not an edit to a plain choice.
+		if int(current["dc"]) != int(stored["dc"]):
+			return true
 		return _option_pending(choice_skill_option, String(stored["skill"])) \
 			or _option_pending(choice_actor_option, String(stored["actor"])) \
 			or _option_pending(choice_success_option, String(stored["success"])) \

@@ -2220,3 +2220,16 @@ guards that no `src/ui` file and no non-probe `main.gd` function reaches it.
 Suite **680/680, 7,284 assertions, 55 scripts**; six affected probes pass and
 `--creator-acceptance-probe` is a pre-existing failure (it fails at `87e64bf`
 too). Details in [TEST_REPORT.md](TEST_REPORT.md).
+**Creator acceptance probe repaired.** The probe failed at "Validate draft
+accepts the authored campaign" and then hung because `_choice_form_pending()`
+compared the DC of a plain choice against the DC the form still carried from an
+earlier check, so the draft looked permanently unsaved; validation warned, save
+and playtest refused, playtest never started, `Game.encounter.finish` ran on a
+null encounter, and the aborted coroutine never reached `quit()`. The comparison
+now applies only to check choices, every early return exits through a helper that
+quits 0/1, a missing encounter is an explicit check, and a 60 s watchdog turns a
+runtime error into exit 1 instead of a hang. Reproduced identically at `87e64bf`
+and `4e1188b` with fresh profiles; forced-failure and forced-crash runs exit 1 in
+6 s and 8 s; a creator regression test fails on the old comparison and passes
+now. Suite **681/681, 7,297 assertions, 55 scripts**; all six creator probes and
+the combat-reload probe pass. Details in [TEST_REPORT.md](TEST_REPORT.md).

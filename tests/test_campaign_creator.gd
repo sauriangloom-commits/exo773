@@ -547,6 +547,53 @@ func test_diagnostic_navigation_selects_the_right_similar_entity_and_preserves_d
 	assert_true(_find_diag(screen.diagnostics, "entry.pos.wall").is_empty(), "revalidation clears the corrected error")
 
 
+func test_a_plain_choice_is_not_pending_after_a_check_at_a_custom_dc() -> void:
+	var draft: Dictionary = CampaignStore.make_draft("Pending Choice", "probe_choice_pending")
+	assert_true(bool(CampaignStore.add_dialogue(draft, "keeper_talk", "Keeper").get("ok", false)))
+	var first := CampaignStore.add_dialogue_choice(draft, "keeper_talk", "start")
+	assert_true(bool(first.get("ok", false)))
+	var second := CampaignStore.add_dialogue_choice(draft, "keeper_talk", "start")
+	assert_true(bool(second.get("ok", false)))
+	var screen := CampaignCreator.new()
+	add_child_autofree(screen)
+	screen.setup(null, draft)
+	for i in 3:
+		await get_tree().process_frame
+	assert_true(screen._select_dialogue_by_id("keeper_talk"), "the authored conversation is listed")
+	var start_index := -1
+	for i in screen.node_option.item_count:
+		if String(screen.node_option.get_item_metadata(i)) == "start":
+			start_index = i
+	assert_true(start_index >= 0, "the start node is listed")
+	screen._select_node(start_index)
+	screen._select_choice(0)
+	screen.choice_text_edit.text = "Search the altar. [Search DC 5]"
+	screen.choice_check_toggle.button_pressed = true
+	screen._select_by_meta(screen.choice_skill_option, "search")
+	screen.choice_dc_spin.value = 5
+	screen._select_by_meta(screen.choice_actor_option, "best")
+	screen._select_by_meta(screen.choice_success_option, "start")
+	screen._select_by_meta(screen.choice_failure_option, "start")
+	assert_true(screen._apply_choice(), "the skill check is stored")
+	assert_false(screen._choice_form_pending(), "the applied check is not pending")
+	# The DC field still holds 5. A plain choice beside it is not edited by that
+	# leftover value, so it must not block validate, save or playtest.
+	screen._add_choice()
+	await get_tree().process_frame
+	screen._select_choice(1)
+	assert_eq(screen._selected_choice, 1, "the new choice is selected")
+	screen.choice_text_edit.text = "Leave."
+	screen.choice_check_toggle.button_pressed = false
+	screen._select_by_meta(screen.choice_dest_option, "")
+	assert_true(screen._apply_choice(), "the plain choice is stored")
+	assert_false(screen._choice_form_pending(), "a leftover check DC is not an edit to a plain choice")
+	assert_true(screen.pending_form_keys().is_empty(), "nothing stays pending: %s" % [str(screen.pending_form_keys())])
+	var node: Dictionary = Dictionary(Dictionary(CampaignStore.dialogue_by_id(draft, "keeper_talk").get("nodes", {}))["start"])
+	var stored: Dictionary = Dictionary(Array(node.get("choices", []))[1])
+	assert_eq(String(stored.get("text", "")), "Leave.")
+	assert_true(Dictionary(stored.get("check", {})).is_empty(), "the plain choice stores no check")
+
+
 func test_pending_form_policy_protects_npc_and_apply_discard() -> void:
 	var draft := _diagnostic_draft()
 	var screen := CampaignCreator.new()

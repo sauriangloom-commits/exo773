@@ -3853,3 +3853,89 @@ after 22 passing checks and then hangs until the timeout; the same probe at
 campaign opens the creator" (3 passing checks). It is a pre-existing,
 environment-dependent probe failure, not a regression from the rename, and it is
 not counted as a passing check.
+
+## Creator acceptance probe: cause, exit contract and regression (2026-11-20)
+
+The probe used to fail at "Validate draft accepts the authored campaign" and then
+hang. Both are now explained and fixed.
+
+**Reproduction.** Two revisions, two fresh APPDATA profiles, the same binary and
+flags (`--creator-acceptance-probe`, 90 s bound): `87e64bf` (before the cleanup
+work) and `4e1188b` (current at the time). Both printed the same 22 passes, then
+failed that one check, cascaded through nine dependent checks, hit
+`SCRIPT ERROR: Invalid call. Nonexistent function 'finish' in base 'Nil'` at
+`Game.encounter.finish`, and were killed by the harness at 90 s (exit 124). An
+earlier apparent difference - `87e64bf` failing earlier at "creating a campaign
+opens the creator" - came from running an un-imported `git archive` checkout:
+without a `.godot` cache the first UI frame arrives later. After `--import` both
+revisions fail identically, so the difference was test setup, not behavior.
+
+**First failed check, with diagnostics.** With the probe's new failure detail:
+
+```
+CREATOR PROBE FAIL Validate draft accepts the authored campaign | status=Applied
+draft validates, but pending form edits are not included. Apply or discard them
+before saving or playtesting. pending=["choice"] errors=[]
+```
+
+The draft itself validated; the creator thought a plain choice was edited.
+
+**Confirmed cause.** `CampaignCreator._choice_form_pending()` compared `"dc"` in
+its unconditional field loop, but `dc` only exists for choices with a check. The
+probe authors a check at DC 5, then a plain choice; the DC spin still held 5
+while a plain choice stores the default 12, so the plain choice looked edited
+forever. Every consumer followed: `_validate()` reported the pending-edits
+warning instead of `Draft validates:`, `_save()` and `_playtest()` refused
+(`_guard_pending`), the draft stayed unsaved, playtest never started,
+`Game.encounter` was null, and the unguarded `Game.encounter.finish("victory")`
+aborted the probe coroutine before its final print and `quit()`. With no exit
+call the window stayed open until the harness timeout - the probe looked slow
+instead of failed.
+
+**Hang, second path.** Six early returns in the probe (`create == null`,
+`fields.size() < 2`, and so on) skipped the final `quit()` for the same reason.
+Both paths now end the run.
+
+**Fixes, no assertion weakened.**
+- Production: `_choice_form_pending()` compares the skill, DC and branch fields
+  only when the form's check is on, matching `_apply_choice()`, which writes no
+  DC for a plain choice.
+- Probe: `_creator_probe_check` gained an optional detail that is printed on
+  failure (status, pending form keys, diagnostics).
+- `_creator_probe_exit(campaign_id)` prints `PASS`/`FAIL` with the failure count,
+  cleans the probe campaign and saves, and quits with 0 or 1; every early return
+  and the normal end go through it.
+- `Game.encounter` is checked before `finish`; a missing encounter is an explicit
+  failure instead of a script error.
+- `_creator_probe_watchdog(60.0)` exits 1 if a runtime error aborts the coroutine
+  anyway, so a broken probe fails within a minute instead of hanging.
+
+**Verification.**
+- Probe: `CREATOR ACCEPTANCE PROBE PASS campaign=probe_acceptance failures=0`,
+  50 checks, exit 0, 5.8-6.0 s (fresh profile).
+- Failure exit: a temporary forced failed check (`_creator_probe_check(false, ...)`,
+  not committed) gave exit 1 in 5.9 s with `failures=1`.
+- Runtime-error exit: a temporary null dereference mid-probe (not committed) gave
+  exit 1 at 8.4 s under a 5 s test watchdog, printing
+  `reason=watchdog after 5s`.
+- Regression test: `test_a_plain_choice_is_not_pending_after_a_check_at_a_custom_dc`
+  drives the real creator (check at DC 5, then a plain choice), asserts the
+  choice form is not pending, that `pending_form_keys()` is empty, and that the
+  plain choice stores its text and no check. Restoring the old unconditional
+  `"dc"` comparison makes it fail with `pending=["choice"]`; with the fix it
+  passes.
+- Suite: **681/681 tests, 7,297 assertions, 55 scripts, exit 0**. Both validators
+  PASS.
+- Creator probes: `--creator-probe`, `--creator-ui-probe`,
+  `--creator-interaction-probe`, `--creator-story-probe`, `--creator-combat-probe`,
+  `--creator-combat-reload-probe` (run against the combat probe's profile, as its
+  message requires) and `--creator-acceptance-probe` all exit 0.
+
+**Remaining uncertainty.** (1) The probe still drives real frames; on a heavily
+loaded machine a fixed one-frame wait could race, though it did not across the
+runs above, and the watchdog now bounds it. (2) The watchdog is specific to the
+acceptance probe; the other creator probes have no early returns that skip their
+exit (checked), but they have no crash watchdog either, so a new runtime error
+there would still hang. (3) The DC fix is verified through the creator UI and the
+acceptance probe; no separate end-to-end playtest of a campaign that mixes check
+and plain choices was run beyond that.

@@ -32,6 +32,7 @@ var capture_dir := ""
 var creator_draft: Dictionary = {}
 var creator_dirty := false
 var creator_probe_failures := 0
+var _creator_probe_finished := false
 var creator_focus := ""
 var layout_scenario := "screen"
 
@@ -846,9 +847,35 @@ func _demo_creator_interaction_draft() -> Dictionary:
 	)
 	return draft
 
+## Prints the final verdict and exits with a code the QA scripts can trust.
+## Every early return in a probe goes through this, so a failed precondition
+## never leaves the window running until the timeout kills it.
+func _creator_probe_exit(campaign_id: String) -> void:
+	_creator_probe_finished = true
+	CampaignStore.delete_user_campaign(campaign_id)
+	SaveSystem.delete_save_everywhere("slot1")
+	print("CREATOR ACCEPTANCE PROBE %s campaign=%s failures=%d" % [
+		"PASS" if creator_probe_failures == 0 else "FAIL",
+		campaign_id,
+		creator_probe_failures,
+	])
+	get_tree().quit(0 if creator_probe_failures == 0 else 1)
 
-func _creator_probe_check(ok: bool, label: String) -> void:
-	print("CREATOR PROBE %s %s" % ["PASS" if ok else "FAIL", label])
+
+## A runtime error aborts the probe coroutine before its final exit call. This
+## still ends the run - and fails it - instead of hanging until the harness
+## timeout, which used to make a broken probe look like a slow one.
+func _creator_probe_watchdog(seconds: float) -> void:
+	await get_tree().create_timer(seconds).timeout
+	if _creator_probe_finished:
+		return
+	print("CREATOR ACCEPTANCE PROBE FAIL campaign=probe_acceptance reason=watchdog after %.0fs" % seconds)
+	get_tree().quit(1)
+
+
+func _creator_probe_check(ok: bool, label: String, detail := "") -> void:
+	var suffix := "" if ok or detail == "" else " | " + detail
+	print("CREATOR PROBE %s %s%s" % ["PASS" if ok else "FAIL", label, suffix])
 	if not ok:
 		creator_probe_failures += 1
 
@@ -1553,6 +1580,8 @@ var probe_shots := "user://trip_shots"
 ## and plays/saves normally. It is a model-driven UI script, not a human study.
 func _creator_acceptance_probe() -> void:
 	creator_probe_failures = 0
+	_creator_probe_finished = false
+	_creator_probe_watchdog(60.0)
 	var campaign_id := "probe_acceptance"
 	CampaignStore.delete_user_campaign(campaign_id)
 	SaveSystem.delete_save_everywhere("slot1")
@@ -1562,23 +1591,27 @@ func _creator_acceptance_probe() -> void:
 	var create := _find_button(current_screen, "Create campaign")
 	_creator_probe_check(create != null, "campaign list offers Create campaign")
 	if create == null:
+		_creator_probe_exit(campaign_id)
 		return
 	create.pressed.emit()
 	await get_tree().process_frame
 	var fields: Array = modal.find_children("*", "LineEdit", true, false) if modal != null else []
 	_creator_probe_check(fields.size() >= 2, "Create campaign dialog shows title and id fields")
 	if fields.size() < 2:
+		_creator_probe_exit(campaign_id)
 		return
 	fields[0].text = "Acceptance Chapel"
 	fields[1].text = campaign_id
 	var create_edit := _find_button(modal, "Create and edit")
 	_creator_probe_check(create_edit != null, "Create and edit is available")
 	if create_edit == null:
+		_creator_probe_exit(campaign_id)
 		return
 	create_edit.pressed.emit()
 	await get_tree().process_frame
 	_creator_probe_check(current_screen is CampaignCreator, "creating a campaign opens the creator")
 	if not current_screen is CampaignCreator:
+		_creator_probe_exit(campaign_id)
 		return
 	var screen := current_screen as CampaignCreator
 	_creator_probe_check(String(screen.draft.get("id", "")) == campaign_id, "the creator edits the new campaign")
@@ -1626,6 +1659,7 @@ func _creator_acceptance_probe() -> void:
 			start_index = i
 	_creator_probe_check(start_index >= 0, "the start node is listed")
 	if start_index < 0:
+		_creator_probe_exit(campaign_id)
 		return
 	screen._select_node(start_index)
 	screen._add_choice()
@@ -1685,7 +1719,15 @@ func _creator_acceptance_probe() -> void:
 	screen._place_trigger()
 	_creator_probe_check(String(screen.status_label.text).contains("Placed trigger"), "Place here places the encounter trigger")
 	screen._validate()
-	_creator_probe_check(String(screen.status_label.text).contains("Draft validates"), "Validate draft accepts the authored campaign")
+	_creator_probe_check(
+		String(screen.status_label.text).contains("Draft validates"),
+		"Validate draft accepts the authored campaign",
+		"status=%s pending=%s errors=%s" % [
+			String(screen.status_label.text).replace("\n", " | "),
+			str(screen.pending_form_keys()),
+			str(screen.diagnostics),
+		]
+	)
 	screen._save()
 	_creator_probe_check(not screen.dirty, "Save draft clears the dirty flag")
 	screen.focus_encounter_section()
@@ -1741,7 +1783,10 @@ func _creator_acceptance_probe() -> void:
 	Game.facing = Dungeon.WEST
 	Game.move_forward()
 	_creator_probe_check(Game.mode == "combat", "the placed trigger starts its encounter")
-	Game.encounter.finish("victory")
+	if Game.encounter == null:
+		_creator_probe_check(false, "the trigger's encounter exists to finish")
+	else:
+		Game.encounter.finish("victory")
 	_creator_probe_check(bool(Game.flags.get("beacon_lit", false)), "victory sets the authored flag")
 	_creator_probe_check(Game.quests.is_complete(quest_id), "victory completes the wired quest")
 	Game.move_back()
@@ -1774,6 +1819,7 @@ func _creator_acceptance_probe() -> void:
 	var edit := _find_button(current_screen, "Edit")
 	_creator_probe_check(edit != null, "the authored campaign is listed with Edit")
 	if edit == null:
+		_creator_probe_exit(campaign_id)
 		return
 	edit.pressed.emit()
 	await get_tree().process_frame
@@ -1815,12 +1861,9 @@ func _creator_acceptance_probe() -> void:
 	Game.new_game([], 4343, campaign_id)
 	_creator_probe_check(bool(Game.load_game("slot1").get("ok", false)), "saved progress loads again")
 
-	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 	Game.load_campaign("ravenloft_demo")
-	print("CREATOR ACCEPTANCE PROBE %s campaign=%s" % ["PASS" if creator_probe_failures == 0 else "FAIL", campaign_id])
-	get_tree().quit(0 if creator_probe_failures == 0 else 1)
+	_creator_probe_exit(campaign_id)
 
 
 func _probe_button(root: Node, text: String) -> Button:
