@@ -164,8 +164,12 @@ given client size and text scale, and exits nonzero if one is):
 # exploration at the minimum client and maximum text
 "..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo --layout-probe --layout-scenario=screen --probe-size=1280x720 --text-scale=1.6
 # Settings, the inspect modal, dialogue, the journal, a blocked move and
-# fullscreen: --layout-scenario=settings|inspect|dialogue|journal|refusal|fullscreen
+# fullscreen|cover: --layout-scenario=settings|inspect|cover|dialogue|journal|refusal|fullscreen
 # add --capture-dir=<abs dir> to write the measured frame as a PNG
+# The cover scenario needs its own deterministic fixture (an ally on the firing
+# line) and has an asserting probe for the inspector's cover clause:
+"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo-cover --layout-probe --layout-scenario=cover --probe-size=1280x720 --text-scale=1.0
+"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo-cover --cover-probe --probe-size=1280x720 --text-scale=1.0 --trip-shots=<abs dir>
 ```
 
 Native input check (windowed; drives the exported build with OS-level keys, wheel

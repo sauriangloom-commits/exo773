@@ -2480,3 +2480,20 @@ Limits: the panel's cover clause is unit-tested, not seen in a capture (no demo
 fixture has a creature in the shooting line); wall cover, low walls, reach-melee
 cover, big-creature cover and concealment are out of scope (ADAPTATION_LOG
 19d-19f); native input unchanged.
+
+
+### Cover clause fixture and probe (2026-11-21)
+
+The inspector's cover clause is now displayed by a deterministic fixture:
+`--demo-cover` puts an ally on the firing line of the QA board, and
+`--cover-probe` asserts the rendered text, wrapping, fit and normal/touch AC
+parity, then attacks once to prove the roll uses the same AC. Source `e64a6c9`:
+731/731 tests, 7,704 assertions, exit 0; both validators PASS. Candidate
+`creature_cover_inspector_2026-11-21` (clean tree, 110,698,344 bytes, SHA-256
+`b5b1f674…24c81c89`) passes the probe and the cover layout scenario at
+1280x720 at 100 % and 160 % (23 controls, 0 failures) plus both validators from
+its own exe. Rules code unchanged; no test exposed a defect.
+
+Limits: 1280x720 at 100 %/160 % only; labels are checked for wrapped geometry,
+not for line-break placement; captures were not read by a human and no manual
+testing was requested; `creature_cover_2026-11-21` is preserved unchanged.

@@ -4484,3 +4484,53 @@ the demo fixtures have no creature in the shooting line, so no capture shows the
 clause, and the panel was not viewed. Walls, low walls, reach-melee cover,
 big-creature cover and concealment stay unmodelled (ADAPTATION_LOG 19d-19f).
 Native input was not exercised because no binding or focus behaviour changed.
+
+Correction (later the same day): the clause is now rendered and asserted by the
+`--demo-cover --cover-probe` fixture at 100 % and 160 %, in source and in the
+exported candidate. See the cover-clause section at the end of this file.
+
+
+### Cover clause in the enemy inspector (2026-11-21)
+
+The inspector's cover clause previously had no scenario that displayed it. The
+new QA fixture `--demo-cover` places the shooter at (1,2), an ally at (3,2) and
+the target at (5,2) on the 9x5 `qa_victory` board, then re-runs the real
+initiative path until the shooter acts first; `Encounter.creature_cover` reads 4
+(`QA COVER READY: shooter_first=true cover=4`). The new `--cover-probe` opens the
+enemy panel through its row button and checks, on the rendered controls: the
+clause text; normal AC = `Rules.armor_class` + 4; touch AC = `Rules.touch_ac` +
+4; that the two differ (the fixture has natural armor); that the clause label
+wraps (`AUTOWRAP_WORD_SMART`), is allocated its full minimum width and height,
+and lies inside the panel and the client. It then attacks once and requires the
+roll's `target_ac` to equal the panel's number with `cover == 4`; the logged
+line read `d20(14)+4 = 18 vs AC 15`, so the +4 is in the roll the panel
+described.
+
+Evidence, source `e64a6c9` (731/731 tests, 7,704 assertions, 57 scripts, exit 0;
+both validators PASS) and exported candidate
+`creature_cover_inspector_2026-11-21` (clean tree, 110,698,344 bytes, SHA-256
+`b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89`):
+
+| Run | 100 % | 160 % |
+| --- | --- | --- |
+| `--demo-cover --cover-probe`, source | PASS, 23 checks | PASS, 23 checks |
+| `--demo-cover --layout-probe --layout-scenario=cover`, source | PASS, 23 controls, 0 failures | PASS, 23 controls, 0 failures |
+| `--cover-probe` in the candidate | PASS | PASS |
+| `--layout-scenario=cover` in the candidate | PASS, 23 controls, 0 failures | PASS, 23 controls, 0 failures |
+| candidate `--validate-campaigns` / `--validate-diagnostics` | PASS | PASS |
+
+Captures: `builds/qa/runs/2026-11-21_cover_probe/` (`layout_100`,
+`layout_160`, `cand_layout_100`, `cand_layout_160`, and the probe shots).
+
+Rules code is unchanged in this batch: no test exposed a defect, so only the QA
+fixture and probe were added.
+
+Limits: 1280x720 on this Windows desktop at 100 %/160 % only; the fixture is a
+QA encounter (ids, display names and cells are QA values, while initiative stays
+the real seeded path) and is not campaign content; the probe asserts wrapped-label
+geometry and the panel's own text, not where the string breaks lines; the
+captures were produced but not read by a human, and no manual testing was
+performed or requested; native input was not exercised because no binding or
+focus behaviour changed. The earlier candidate `creature_cover_2026-11-21`
+(SHA-256 `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39`) is
+preserved unchanged.
