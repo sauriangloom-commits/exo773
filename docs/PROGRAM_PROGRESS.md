@@ -2758,3 +2758,27 @@ earlier recorded; and Improved Bull Rush is reachable by no shipped character,
 because no party member has Power Attack and the game has no feat-selection UI, so
 it would need content or a QA fixture before a player could ever use it. No new
 defect was found during the review.
+
+
+### Campaign-creator keyboard reveal fixed (2026-11-21)
+
+`_reveal_modal_focus()` only ran inside a modal, and the creator body has no
+`follow_focus`, so a creator field below the fold took the ring off-screen. Focus
+changes now call `_reveal_focused_control`, which uses the open modal as its root
+when there is one and the campaign creator screen otherwise; the walk itself, the
+Tab traversal and every other screen are unchanged.
+
+A headless `--creator-focus-probe` was written first and failed: 98 of 182 focused
+controls outside the viewport at 100 % and 145 of 182 at 160 %, plus Tab and
+Shift+Tab stops below the fold at 160 %. After the fix it passes at both scales
+with 0 outside, exact Tab/Shift+Tab reversal, the dropdown popup leaving the body
+alone, and Settings over the creator revealing its nested row while the creator
+does not scroll. Suite 778/778 with 7,981 assertions; both validators PASS. Bound
+candidate `creator_focus_2026-11-21a` from clean `8f625f4`, 110,747,912 bytes,
+SHA-256 `53ae457e...c0017b`, hash matched before and after, probe and validators
+PASS from the exe.
+
+Limits: the probe checks control rects, not rendered pixels; its exhaustive pass
+uses programmatic focus and its order pin uses the map-cell stretch because the
+description editor keeps Tab for indentation. No manual testing was requested and
+no backups were touched.

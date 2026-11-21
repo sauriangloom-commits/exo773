@@ -4998,3 +4998,83 @@ no check was repeated for this closure.
 What it does not cover, unchanged: the Push 5 ft / Follow decision UI (the smoke
 calls the wrappers directly), the exported behaviour of any other combat action,
 and any rules not asserted by its 32 checks.
+
+
+## Campaign-creator keyboard reveal - candidate `creator_focus_2026-11-21a` (2026-11-21)
+
+The creator's body scrolls (`ScrollContainer` without `follow_focus`), and the only
+focus-changed hook ran the reveal walk for modals: `_reveal_modal_focus()` returned
+early when `modal == null`. Tab outside a modal falls through to Godot's own
+traversal, so a creator field below the fold took the focus ring while staying
+off-screen. The fix routes non-modal focus changes on that screen through the same
+walk (`_reveal_focused_control`, `8f625f4`); no second scroller, no traversal or
+binding change, no content, save or rules change, and the modal path is the same
+code it was.
+
+### The probe, written first (red)
+
+`--creator-focus-probe` builds the real creator from
+`_demo_creator_interaction_draft()` at 1280x720 and runs at 100 % and 160 % text in
+one invocation. It focuses every focusable control in tree order and asserts the
+focused control's rect is enclosed by the viewport, then walks the real Tab order
+with key events and its Shift+Tab reverse, then pins a modal opened over the
+creator (Settings, whose list has its own scroller inside the shared body), and an
+`OptionButton` popup.
+
+Before the fix, `builds/qa/runs/2026-11-21_creator_focus/probe_before_fix.log`,
+exit 1:
+
+| Scale | Focusables | Outside the viewport |
+| --- | --- | --- |
+| 100 % | 182 | 98 |
+| 160 % | 182 | 145 |
+
+Sample failures: map cells at y = 698 (bottom 733 > 720), `Toggle wall / floor` at
+y = 762, the keeper dropdown at y = 933, and at 160 % eight Tab and eight Shift+Tab
+stops at y = 727/778. The pre-fix probe also recorded that Tab stops moving at the
+description `TextEdit`, which consumes Tab for indentation: the order pinning
+therefore uses a map-cell stretch, and the exhaustive pass covers every control.
+
+### After the fix
+
+- `--creator-focus-probe`: **PASS, failures 0**, 182/182 focusables focused, **0
+  outside the viewport** at 100 % and at 160 %; 8 Tab stops, Shift+Tab exact
+  reverse; dropdown focused and inside; popup opens with the creator body
+  unchanged while open and after closing; Settings over the creator reveals its
+  nested row, keeps focus inside, leaves the creator's scroll alone, and returns
+  focus to its opener on close.
+- Full suite: **778/778 tests, 7,981 assertions, 60 scripts**.
+- `--validate-campaigns` and `--validate-diagnostics`: **PASS**.
+
+Logs: `builds/qa/runs/2026-11-21_creator_focus/`.
+
+### Exported evidence - `creator_focus_2026-11-21a`
+
+Exported from clean source `8f625f4` (worktree entries 0), preset `Windows
+Desktop`, 110,747,912 bytes, SHA-256
+`53ae457ecfc54cfa5e4a57f226908574994d5c9fbbb7b264e79e42d1b0c0017b`. The same hash
+was read before the first check and after the last one, and the readings match.
+
+| Check from the exe | Result |
+| --- | --- |
+| `--validate-campaigns` | PASS |
+| `--validate-diagnostics` | PASS |
+| `--creator-focus-probe` | PASS, 0 failures, 0 outside at both scales |
+
+Logs: `builds/qa/runs/2026-11-21_creator_focus_export/`.
+
+### Limits
+
+- The probe checks **control rects, not rendered pixels**. It cannot see a glyph
+  clipped inside its own rect, two controls overlapping, a focus ring hidden
+  behind another pane, or a frame the compositor never draws.
+- Its exhaustive pass calls `grab_focus()` on each control - the same focus event a
+  Tab press produces - while the order check uses real Tab and Shift+Tab key
+  events; it does not prove the pointer path or that every Tab press in a player's
+  hands reaches the same stops.
+- `TextEdit` keeps Tab for indentation, so the Tab-order pin covers the map-cell
+  stretch and the editor stops there. That is existing traversal behaviour,
+  untouched here and outside this batch.
+- No layout probe was rerun: the change moves scroll offsets only, and the
+  creator's layout is unchanged.
+- No manual testing was performed or requested, and backups were not touched.

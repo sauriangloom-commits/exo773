@@ -340,6 +340,17 @@ building new scrolling machinery.
   through the modal or the body's `follow_focus`, and widening beyond the creator
   is where the risk enters.
 
+**Implemented as candidate `creator_focus_2026-11-21a` (2026-11-21).** The fix is
+the bounded scope above: `_on_modal_focus_changed` now calls
+`_reveal_focused_control`, which keeps the modal as the root when one is open and
+uses the campaign creator screen otherwise, through the same `_reveal_in_pane`
+walk. `--creator-focus-probe` was written first and failed (98/182 and 145/182
+focused controls outside the viewport at 100 % and 160 %); after the fix it is 0
+outside at both scales, with Tab/Shift+Tab order, the dropdown popup, Settings over
+the creator and focus restore pinned. Suite 778/778, both validators, and a bound
+exe (clean `8f625f4`, `53ae457e...c0017b`) that passes the probe. The probe checks
+rects, not rendered pixels. See TEST_REPORT.
+
 ### Candidate 2 - Improved Bull Rush
 
 - **Player impact.** A fighter with the feat gets +4 on the rush check and the
@@ -383,10 +394,10 @@ add: it drives the wrappers, not the buttons, and that stays the stated limit.
 
 **State after the review, kept separate.**
 
-- *Confirmed defects:* the reveal-outside-modals inconsistency in the campaign
-  creator (creator-only, now precisely located and recommended next). Nothing else
-  is open; the stance leak and the bull-rush layout probe artifact are fixed and
-  closed, and the resolution smoke found no new failure.
+- *Confirmed defects:* none. The reveal-outside-modals inconsistency in the
+  campaign creator was fixed in `8f625f4` and accepted as candidate
+  `creator_focus_2026-11-21a`; the stance leak and the bull-rush layout probe
+  artifact are fixed and closed, and the resolution smoke found no new failure.
 - *Deferred features:* the charge form, Improved Bull Rush (unblocked, deferred,
   and gated on content/feat selection), the 25 % redirect, mounted and AI bull
   rushes, multi-square creatures, terrain effects; concealment, hard/low-wall and

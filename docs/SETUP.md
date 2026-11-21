@@ -201,6 +201,17 @@ Content checks:
 was never implemented; it is now rejected with exit 2 like any other unknown
 option. Use the two validators above.
 
+Creator keyboard-focus walk (headless; creator only):
+
+```bash
+"..\\Project Ravenloft\\Godot_v4.7.2-stable_win64.exe" --headless --path . -- --creator-focus-probe
+```
+
+Builds the real campaign creator at 1280x720, focuses every focusable control and
+asserts its rect is inside the viewport at 100 % and 160 % text, then pins the Tab
+and Shift+Tab order, the dropdown popup, and Settings opened over the creator. It
+checks control rects, not rendered pixels. Exit 0 only if every check passes.
+
 Resolution and action smoke (headless, isolated profile only):
 
 ```bash
