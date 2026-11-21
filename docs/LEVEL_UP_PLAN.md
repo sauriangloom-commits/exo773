@@ -317,10 +317,11 @@ and changes no more than its own surface.
    classes, plus `validate()` and `authored_inconsistencies()`, wire the
    validator into `--validate-diagnostics`, and add the table tests. No gameplay
    change. **This is the first batch; landed 2026-11-21 (section 10).**
-2. **`level_up_core` - XP thresholds and application.** `Rules.xp_threshold`,
-   eligibility, the atomic `Character.apply_level` for the 3 to 4 step (HP, BAB,
+2. **`level_up_core` - XP thresholds and application.** `LevelUp.eligibility`,
+   `LevelUp.preview` and the atomic `LevelUp.apply` for the 3 to 4 step (HP, BAB,
    saves, skill points, ability increase incl. Con retroactivity, spell slots,
-   feat slot), idempotence and save round-trip tests. No UI.
+   feat slot), idempotence and save round-trip tests. No UI. Planned in detail in
+   section 12.
 3. **`level_choices` - feat, skill and spell choice rules.** Eligible-feat list
    from the catalog with prerequisite explanations, skill point allocation rules,
    sorcerer known-spell choice, and their tests. No UI.
@@ -467,3 +468,386 @@ numbers moved.
   manual testing was requested and no backups were touched. A one-time `--import`
   refresh was needed so the new `class_name` entered the global class cache; it
   changed no source or content.
+
+## 11. Batch 1 closure and the accepted inconsistencies (2026-11-21)
+
+### 11.1 Closure
+
+Batch 1 is accepted within the limits recorded with it. Evidence is the run already
+recorded for the batch, not a new one: commit `7391e39`, suite 795/795 tests with
+8,126 assertions across 61 scripts, `--validate-campaigns` PASS, and
+`--validate-diagnostics` PASS with `CLASS PROGRESSION PASS | 13 accepted authored
+inconsistencies`. Nothing was rebuilt and no check was repeated for this closure.
+
+What it does not cover, unchanged: the table is data only and no play path reads
+it; the validator's refusal cases are unit-level table mutations rather than
+corrupted content files; the thirteen authored differences below are reported, not
+repaired by that batch; and GUT 9.6.1 exits 0 when a test file fails to parse, so a
+parse failure has to be read from the log (section 12.8 makes that a rule for
+batch 2).
+
+### 11.2 Decision for each accepted inconsistency
+
+| # | Finding (batch 1) | Decision | Effect on level-up |
+| ---: | --- | --- | --- |
+| 1 | kaelen feats 2 of 4 | Carry forward unchanged | Grants only the one 4th-level fighter slot; no back-fill |
+| 2 | aldric feats 1 of 2 | Carry forward unchanged | No feat at 4 (non-fighter); stays 1 |
+| 3 | ysolde feats 1 of 2 | Carry forward unchanged | No feat at 4; stays 1 |
+| 4 | mira feats 1 of 2 | Carry forward unchanged | No feat at 4; stays 1 |
+| 5 | aldric sense motive 4, cap 3 | Repair in the separate content commit | Batch 2 never audits or clamps existing ranks |
+| 6 | aldric skill points 26 of 12 | Repair in the same content commit | Budget is spent only on new ranks from level-up |
+| 7 | ysolde search 4, cap 3 | Repair in the same content commit | Same rule |
+| 8 | mira diplomacy 4, cap 3 | Repair in the same content commit | Same rule |
+| 9 | mira skill points 20 of 12 | Repair in the same content commit | Same rule |
+| 10 | ysolde 1st slots 3, printed 2 | Carry forward; +1 is the Int 17 bonus slot | Adds the printed +1, reaching 4 |
+| 11 | ysolde 2nd slots 2, printed 1 | Carry forward; +1 is the Int 17 bonus slot | Adds the printed +1, reaching 3 |
+| 12 | mira 1st slots 6, printed 5 | Carry forward; her row already equals the printed 4th-level count | Adds no 1st-level slot; adds the 2nd-level row |
+| 13 | mira known 2 of 8 | Carry forward | Adds exactly one 2nd-level spell; no 0-level, no 1st-level back-fill |
+
+The reasoning, so none of this is silent:
+
+- **Feat counts (1-4) stay.** The authored feat lists are the builds the encounters
+  were tuned around; adding feats changes attack, AC, saves or skill numbers, and
+  that is a balance change, not a data correction. Level-up adds only what the new
+  level grants (one slot, fighter only), matching section 2.3's "no retroactive
+  slot audit". A later build-audit batch may revisit the builds deliberately.
+- **The five skill findings (5-9) are repaired in one separate content commit.** A
+  rank above the printed cap and a spend above the class budget are sheet
+  errors, not adaptations, and they can be fixed without touching HP, base attack,
+  saves, AC or spells; only the affected skill modifiers change. The commit is
+  scheduled after batch 2 is accepted and before batch 3, so the feat/skill/spell
+  choice rules and the UI never ship against an illegal sheet. It is not part of
+  batch 2 and must not ride along with engine work.
+  - aldric: rebuild the block inside 12 points at level 3 (2 + Int 0 per level,
+    x4 at 1st), keeping heal 6 as the class anchor; class skills before cross-class.
+  - mira: rebuild inside 12 points, using at least one sorcerer class skill
+    (bluff, concentration, spellcraft or knowledge arcana); her current four skills
+    are all cross-class.
+  - ysolde: lower search from 4 to 3 (cap 3); her spend already fits the 30-point
+    budget, so nothing else moves.
+  - The repair commit updates the expected 13-entry list in
+    `tests/test_class_progression.gd` to the 8 that remain (four feat counts, three
+    slot/known readings, and the reading for Mira's known list), runs the suite and
+    both validators, and records the new accepted set. Existing saves keep the
+    ranks they stored: no migration rewrites a character mid-campaign.
+- **Bonus-slot readings (10-12) stay.** The engine stores authored rows and has no
+  bonus-spell model, so a row above the printed base is the authored
+  representation of the Int or Cha bonus. Level-up adds the printed 3rd-to-4th
+  increment rather than re-deriving the row.
+- **Mira's known list (13) stays**, with the one addition the level calls for. See
+  11.3.
+
+### 11.3 The two named cases
+
+**Mira's missing spells.** Level-up adds exactly the spell the new level grants: one
+2nd-level spell, chosen from the implemented arcane 2nd-level list (`scorching_ray`
+is currently the only entry), appended to `spells.known`. It does not add 0-level
+spells (the engine has no 0-level model), does not back-fill the 1st-level spell
+her printed 3rd-level row would have, and does not block the level-up because the
+known list is short. Her slots become 6 at 1st and 3 at 2nd; that 1st-level value is
+the printed 4th-level count, so the slot row ends up matching the book exactly.
+The class-progression validator keeps reporting the known-list difference as
+accepted so the gap stays visible.
+
+**Ranks above the level cap.** Level-up never audits, clamps or deletes an existing
+rank. It computes the new caps (class skill 7, cross-class 3 at level 4), applies
+them to ranks added during the level-up only, and lets an existing over-cap rank
+stand until the separate content repair lands. Concretely, aldric's sense motive 4
+does not refuse his level-up and does not consume his new points; the preview shows
+a notice naming the rank, the cap and the deferred repair. Spending new points on
+that same skill is still refused (`skill_rank_above_cap`) because the new rank
+would also be over the cap.
+
+### 11.4 The separate content repair commit
+
+- **Scope:** only `content/shared/characters.json`, the three characters named
+  above, and the expected-inconsistency list in the class-progression test.
+- **Acceptance:** suite green, both validators green, `authored_inconsistencies`
+  down to the eight that stay, and a diff that touches skill ranks only.
+- **Not included:** no engine, schema, UI or class-table change; no save migration;
+  no feat or spell change.
+- **Order:** after batch 2 is accepted, before batch 3 starts.
+
+## 12. Batch 2 plan: `level_up_core` (planned 2026-11-21, not implemented)
+
+### 12.1 Scope
+
+Add one pure engine module, `src/core/level_up.gd` (`class_name LevelUp`,
+`RefCounted`), that answers three questions for the single supported step, level 3
+to level 4: is this character eligible, what would the step change, and apply it
+atomically. No scene, no button, no save-schema change, no content edit, no XP
+award change, no change to any rule outside the step. Batch 3 owns choice rules
+(eligible feat list, allocation policy, known-spell list); batch 4 owns the UI.
+
+Deviation recorded: the batch list in section 5 names `Rules.xp_threshold` and
+`Character.apply_level`. The threshold lives in `LevelUp.XP_THRESHOLD` (6,000, the
+single supported step; Table 3-2 p. 22) and the step lives in `LevelUp.apply`,
+because `Rules` is the combat-math module and `Character` is the serialized data
+model. Both names stay available for a later refactor if a second step appears.
+
+### 12.2 Surface
+
+```gdscript
+class_name LevelUp
+extends RefCounted
+
+const XP_THRESHOLD := 6000
+const TARGET_LEVEL := 4
+const ABILITIES := ["str", "dex", "con", "int", "wis", "cha"]
+const SPELL_SLOT_DELTAS := {
+    "cleric": {1: 1, 2: 1},
+    "wizard": {1: 1, 2: 1},
+    "sorcerer": {2: 3},
+}
+
+static func eligibility(ch: Character) -> Dictionary
+static func preview(ch: Character, choices: Dictionary = {}) -> Dictionary
+static func apply(ch: Character, choices: Dictionary) -> Dictionary
+```
+
+`choices` is:
+
+```gdscript
+{
+    "ability": "con",                     # one of ABILITIES, required at 4th
+    "skills": {"listen": 1},              # ranks ADDED this level, integer >= 0
+    "feat": "Power Attack",               # authored feat text, fighter only
+    "spell": "scorching_ray",             # sorcerer known-spell choice only
+}
+```
+
+Missing keys default to empty. Skill points may be left unspent (they do not
+carry); over-budget is refused. Feat text uses the authored format
+(`"Weapon Focus (longsword)"`) and is parsed by `Feats.parse`.
+
+### 12.3 Eligibility and refusal reasons
+
+Order of evaluation is fixed so the message is deterministic: character present,
+class tabled, level, XP. `xp >= 6000` is inclusive; 5,999 is refused.
+
+| Code | When | Message intent |
+| --- | --- | --- |
+| `eligible` | level 3, tabled class, xp >= 6000 | ready |
+| `no_character` | null or empty id | no character |
+| `class_not_tabled` | `char_class` not in `ClassProgression.CLASSES` | class has no table |
+| `not_level_3` | level < 3 (level 2 with 6,000 XP is still refused) | only the 3-to-4 step exists |
+| `already_level_4` | level >= 4 | already at the highest supported level |
+| `xp_below_threshold` | level 3, xp < 6000 | needs 6,000 XP, has N |
+
+Choice refusals, checked in this order, all after eligibility:
+
+| Code | When |
+| --- | --- |
+| `missing_ability_increase` | no ability chosen |
+| `unknown_ability` | key not in `ABILITIES` |
+| `unknown_skill` | key not in `Skills.CATALOG` |
+| `negative_rank` | a skill entry below 0 or not an integer |
+| `skill_points_over_budget` | spent > class points + Int modifier (min 1) |
+| `skill_rank_above_cap` | new total above class cap 7 or cross-class cap 3 |
+| `feat_slot_unavailable` | a feat chosen by a non-fighter |
+| `feat_required` | fighter with no feat chosen |
+| `feat_not_implemented` | parsed key absent from `Feats.CATALOG` |
+| `feat_already_owned` | same key and parameter already in `ch.feats` |
+| `feat_prerequisites_unmet` | `Feats.prereqs` fails on the staged level-4 character |
+| `spell_choice_unavailable` | a spell chosen by a class without a known list |
+| `spell_required` | sorcerer with no spell chosen |
+| `spell_not_implemented` | id absent from `ContentDB.spells` |
+| `spell_level_not_new` | chosen spell's level is not the new spell level (2) |
+| `spell_already_known` | id already in `spells.known` |
+
+`eligibility` returns `{eligible, code, message, level, xp, threshold}`.
+`preview` and `apply` return the preview shape below plus `ok` and, on refusal,
+`code`/`message`; `apply` additionally returns `applied: true`.
+
+### 12.4 Preview data
+
+`preview` is read-only: it works on a staged copy and must leave `ch.to_dict()`
+deep-equal before and after. It is callable with no choices so the UI can show the
+numbers first; `required` then lists what is still missing.
+
+```gdscript
+{
+    "ok": true,
+    "code": "eligible",
+    "message": "",
+    "eligible": true,
+    "from_level": 3,
+    "to_level": 4,
+    "xp": 3000,
+    "threshold": 6000,
+    "hit_points": {"max_before": 21, "max_after": 27, "hp_before": 21, "hp_after": 27, "delta": 6},
+    "base_attack": {"before": 2, "after": 3},
+    "base_saves": {"fort": {"before": 3, "after": 4}, "ref": {"before": 1, "after": 1}, "will": {"before": 3, "after": 4}},
+    "ability": {"key": "con", "before": 13, "after": 14, "modifier_before": 1, "modifier_after": 2},
+    "skills": {"budget": 2, "spent": 2, "remaining": 0, "class_cap": 7, "cross_cap": 3, "ranks": {"heal": 1}},
+    "feat": {"slots_before": 2, "slots_after": 2, "granted": ""},
+    "spells": {"slots_before": {"1": 3, "2": 2}, "slots_after": {"1": 4, "2": 3}, "known_before": [], "known_after": []},
+    "required": ["ability"],
+    "notices": ["sense motive 4 exceeds the cross-class cap 3; the content repair is deferred"],
+}
+```
+
+`notices` is where the accepted authored facts surface (section 11.3); they never
+refuse the step. No total attack bonus, AC or skill modifiers are stored in the
+preview; the UI reads them through the existing `Rules`/`Skills` helpers on the
+staged character so there is one source of truth.
+
+### 12.5 The applied step
+
+All numbers come from `ClassProgression` rows at level 4 and the staged character,
+never from increments of the character's current values:
+
+| Part | Rule |
+| --- | --- |
+| Level | set to 4 |
+| XP | untouched (the threshold is a gate, never a cost) |
+| HP | `ClassProgression.expected_hp(class, 4, con modifier after the ability increase)`; current HP keeps the same damage: `hp_after = new_max - (old_max - hp_before)`, clamped to `[0, new_max]` |
+| Base attack | row at 4 (fighter 4, rogue 3, cleric 3, wizard 2, sorcerer 2) |
+| Base saves | row at 4 (fighter 4/1/1, rogue 1/4/1, cleric 4/1/4, wizard 1/1/4, sorcerer 1/1/4) |
+| Ability increase | +1 to one score, applied before HP, saves and skills are computed |
+| Skill points | budget = class points + Int modifier after the increase (min 1); each added rank checked against the caps at level 4 (class 7, cross 3); unspent points are discarded |
+| Feat | fighter only, exactly one; prerequisites evaluated on the staged level-4 character; the authored list is otherwise untouched |
+| Slots before | authored level-3 rows: cleric 3/2, wizard 3/2, sorcerer 6 (no 2nd-level row) |
+| Slots after | cleric +1/+1 = 4/3; wizard +1/+1 = 4/3; sorcerer 1st unchanged at 6, new 2nd-level row 3 |
+| Sorcerer known | one 2nd-level spell appended (section 11.3) |
+| Everything else | untouched: equipment, effects, conditions, nonlethal, temp HP, proficiencies, prepared lists, tags |
+
+Constitution increase is retroactive because HP and every Con-based number are
+recomputed from the new score across all four levels: aldric 13 -> 14 raises his
+maximum from 21 to 31 and his Fort save by 1.
+
+The level-4 slot readings are the plan's decision, not the printed bonus-spell
+math: the engine's authored rows already fold in the Int bonus (`ysolde`) or sit at
+the printed 4th-level count (`mira`), so the deltas are explicit and tested per
+class rather than derived from Table 1-1.
+
+### 12.6 Atomicity, idempotence, XP
+
+- `apply` validates everything on a staged copy first. The original character is
+  mutated only in a final commit block that assigns the staged fields; a refusal
+  leaves `ch.to_dict()` deep-equal to its before value, including `hp`, `spells`
+  and `feats`.
+- Applying twice refuses the second call with `already_level_4`; the serialization
+  does not change and HP does not grow again.
+- No partial level exists in memory or on disk: callers persist after `ok`, as they
+  do for any other change.
+- XP is never deducted, reset or awarded. A character at 6,000 XP who levels stays
+  at 6,000 XP and is not offered another step.
+
+### 12.7 Old saves
+
+- No schema change, no version bump and no migration. The step writes fields that
+  `Character.from_dict`/`to_dict` already carry.
+- Level 3 with 3,000 XP: loads unchanged, not eligible.
+- Level 3 with 6,000 XP or more (for example after the next content update): loads
+  unchanged, `eligibility` returns `eligible`, and nothing is applied until the
+  caller asks. A load never levels a character by itself.
+- Level 4 with 6,000 XP: loads unchanged, `already_level_4`, no recomputation.
+- Missing or malformed `base_attack`, `base_saves` or `spells.slots`: the step
+  writes the level-4 row from the table and the class's authored slot values, so
+  the applied character is well formed. Missing `char_class` refuses with
+  `class_not_tabled` instead of guessing.
+- A `hp` value above the new maximum is clamped only by the damage-preserving
+  formula; max HP always comes from the table and Con.
+
+### 12.8 Failing-first tests
+
+`tests/test_level_up_core.gd`, written before `src/core/level_up.gd` exists. Red
+protocol: run the suite, keep the log under `builds/qa/runs/2026-11-21_level_up_core/`,
+and accept the red state only from the logged failure text (the parse error naming
+`LevelUp` and the `[Failed]` assertion blocks), quoted in the batch record. The exit
+code alone is not evidence: GUT 9.6.1 exited 0 on batch 1's unparseable test file.
+
+Engine and eligibility:
+
+1. `test_eligibility_is_inclusive_at_six_thousand_xp` (5,999 vs 6,000 vs 6,001)
+2. `test_a_level_four_character_is_not_eligible`
+3. `test_a_level_two_character_is_not_eligible_even_with_six_thousand_xp`
+4. `test_an_untabled_class_is_refused_without_crashing`
+5. `test_the_threshold_is_six_thousand_and_xp_is_never_changed`
+6. `test_preview_does_not_mutate_the_character`
+7. `test_preview_lists_required_choices_without_choices`
+8. `test_preview_matches_the_printed_level_four_rows` (five classes: HP, BAB, saves)
+9. `test_redirected_slot_readings_are_per_class` (cleric 4/3, wizard 4/3, sorcerer 6/3)
+
+Apply:
+
+10. `test_apply_fighter_sets_level_bab_saves_hp_and_feat`
+11. `test_apply_cleric_adds_the_domain_inclusive_slots`
+12. `test_apply_wizard_keeps_the_intelligence_bonus_slots`
+13. `test_apply_sorcerer_adds_one_second_level_spell_and_no_first_level_slot`
+14. `test_constitution_increase_is_retroactive`
+15. `test_hp_after_preserves_damage_taken`
+16. `test_skill_points_use_the_budget_at_level_four`
+17. `test_intelligence_increase_raises_the_skill_budget`
+18. `test_class_and_cross_class_caps_are_enforced_on_new_ranks`
+19. `test_existing_over_cap_ranks_do_not_block_level_up` (aldric, before the repair)
+20. `test_unspent_skill_points_are_discarded`
+
+Refusals (each asserts the code and an unchanged `to_dict()`):
+
+21. `test_over_budget_skill_allocation_is_refused_atomically`
+22. `test_a_new_rank_above_the_cap_is_refused`
+23. `test_unknown_skill_and_negative_rank_are_refused`
+24. `test_missing_ability_increase_is_refused`
+25. `test_non_fighter_feat_choice_is_refused`
+26. `test_fighter_without_a_feat_is_refused`
+27. `test_feat_prerequisites_are_evaluated_on_the_staged_character`
+28. `test_an_already_owned_feat_is_refused`
+29. `test_sorcerer_requires_a_level_two_known_spell`
+30. `test_an_unknown_or_already_known_spell_is_refused`
+31. `test_second_apply_is_refused_and_changes_nothing`
+32. `test_refusal_codes_and_messages_are_stable`
+
+Save round-trip:
+
+33. `test_a_level_three_save_with_six_thousand_xp_is_eligible_after_load`
+34. `test_a_level_four_save_loads_without_migration`
+35. `test_a_levelled_character_round_trips_through_to_dict_and_from_dict`
+
+The last three build characters with `Character.from_dict` and the shared item
+dictionary; none touches `user://` saves, so the probe-only save-cleanup guard is
+respected.
+
+### 12.9 Verification and records
+
+After implementation: full suite, both validators, a diff limited to
+`src/core/level_up.gd` and its test, and the batch record in `TEST_REPORT.md` with
+the quoted red lines and the green totals. No export (nothing player-visible), no
+manual testing request, no backup changes. The class-progression test keeps its
+current 13-entry expectation until the separate repair commit.
+
+### 12.10 State after this planning step, kept separate
+
+- **Confirmed defects:** none in batch 1. The batch 2 work is a feature, not a
+  repair.
+- **Deferred features:** the level-up UI and probe (batch 4), eligible-feat picker
+  and allocation policy (batch 3), exported acceptance (batch 5), levels 5 and
+  above, multi-level steps, NPC/monster advancement, and the content repair commit
+  for the five skill findings.
+- **Maintenance debt:** GUT's misleading exit status on parse errors; `Skills.max_ranks`
+  reading `ch.level` (batch 2 needs staged caps, and a later refactor should take a
+  level argument); the plan's two stage names now mapping to `LevelUp`; the
+  class-progression report's generic bonus-slot note now that section 11.2 explains
+  each case.
+- **Evidence gaps:** no level-up probe, no exported run, no UI, no manual playtest,
+  no save file produced by this step, and no shipped feat with a level prerequisite
+  (so the staged-level prerequisite path is implemented and unit-covered only
+  indirectly).
+
+### 12.11 Risks
+
+- **Staged versus current level.** Feat prerequisites, skill caps and skill budget
+  read the character's level and ability scores. Validating against the current
+  character instead of the staged level-4 copy would refuse legal choices or admit
+  illegal ones; test 27 and tests 16-18 pin the staged read.
+- **HP double counting.** Adding a fixed average to the authored HP *and*
+  recomputing from the class table would double the Con change; only the
+  `expected_hp` recomputation is authoritative (test 14).
+- **Partially written state.** Any mutation before the last check fails the
+  atomicity tests (21, 31). Staging every field, including deep copies of
+  `spells`, is required.
+- **Slot drift.** The per-class deltas are explicit because the printed bonus-spell
+  math would over- or under-count the authored rows; tests 9, 11-13 pin the values.
+- **Save equality.** `to_dict()` includes equipment ids and nested dictionaries;
+  tests compare deep copies, not references.

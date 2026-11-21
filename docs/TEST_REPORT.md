@@ -5112,3 +5112,27 @@ unchanged. Nothing player-visible changed, so no candidate was exported, no manu
 testing was performed or requested, and no backups were touched. A one-time
 `--import` refresh was run so the new `class_name` entered the global class cache;
 it changed no source.
+
+### Batch 1 closure and batch 2 plan (2026-11-21)
+
+Batch 1 (`level_tables`) is accepted within its limits without any check being
+rebuilt or repeated. The closure uses the run already recorded with the batch:
+commit `7391e39`, 795/795 tests, 8,126 assertions, 61 scripts,
+`--validate-campaigns` PASS and `--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 13 accepted authored inconsistencies`. The table remains
+data only; no play path reads it.
+
+The thirteen accepted inconsistencies now each have a recorded decision in
+`LEVEL_UP_PLAN.md` 11.2: the four feat counts, the three bonus-slot readings and
+Mira's known list are carried forward; the five skill findings (three ranks above
+the level-3 cap and two point totals over the class budget) are repaired in one
+separate content commit after batch 2, never silently. Level-up does not back-fill
+feats or spells, adds exactly one 2nd-level spell to Mira, and never audits an
+existing rank above the cap - it enforces the new caps only on points spent during
+the step.
+
+Batch 2 is planned in `LEVEL_UP_PLAN.md` 12: a pure `LevelUp` module with
+`eligibility` at 6,000 XP, a read-only `preview`, and an atomic `apply` whose
+refusals leave the character byte-identical; 35 failing-first tests with the red
+evidence taken from the logged failure output, not the exit code, because GUT
+9.6.1 exits 0 on an unparseable test file. Nothing was implemented.

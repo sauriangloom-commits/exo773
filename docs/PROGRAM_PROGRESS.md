@@ -2841,3 +2841,23 @@ editing a character: four feat counts, three cross-class ranks above the cap wit
 their point totals, Ysolde's bonus slots, Mira's slots and known list, and the
 missing 0-level row. XP, level, saves, UI and rules are untouched, no derived
 number changed, so no candidate was exported.
+
+### Batch 1 closed, inconsistencies decided, batch 2 planned (2026-11-21)
+
+Batch 1 is closed as accepted within its limits with no new build or check: the
+recorded run stands at 795/795 tests, 8,126 assertions, 61 scripts, both validators
+green, commit `7391e39`. Each of the thirteen accepted authored inconsistencies now
+has a decision in `docs/LEVEL_UP_PLAN.md`: the four feat counts, Ysolde's bonus
+slots and Mira's missing spells are carried forward, while the five skill findings
+(three over-cap cross-class ranks, two skill-point overspends) are repaired in one
+separate content commit after batch 2 that touches only those three characters and
+the expected-inconsistency list. Level-up adds exactly one 2nd-level spell for
+Mira with no 0-level or 1st-level back-fill, and never audits an existing rank above
+the cap; it applies the new caps only to points spent during the step.
+
+Batch 2, `level_up_core`, is planned but not implemented: a pure `LevelUp` module
+(eligibility at 6,000 XP inclusive, preview, atomic apply for the 3-to-4 step), the
+level-4 numbers per class, the explicit per-class slot deltas, old-save and
+idempotence rules, stable refusal codes, and 35 failing-first tests. Red evidence
+must be the logged failure output rather than the exit code, since GUT exits 0 on a
+test file that fails to parse.

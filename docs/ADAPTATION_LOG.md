@@ -645,3 +645,25 @@ presentation choices are omitted; nothing here changes a rule silently.
     `authored_inconsistencies()` and `--validate-diagnostics` print them on every
     run so they stay visible instead of being silently blessed; a later
     content-audit batch may fix them.
+
+50. **Level-up treats authored gaps as authored, and the thirteen level-3
+    differences are decided one by one.** Section 11.2 of `LEVEL_UP_PLAN.md`
+    records the decision for each batch-1 finding. Carried forward: the four feat
+    lists below their printed slots (adding feats would change attack, AC, saves or
+    skills, which is a balance change, not a correction; level-up grants only the
+    new fighter slot), Ysolde's +1 1st and +1 2nd slots (the authored
+    representation of her Int 17 bonus, since the engine has no bonus-spell model),
+    Mira's six 1st-level slots (her row already equals the printed 4th-level
+    count), and her short known list. Repaired later in one separate content commit
+    that touches no engine code: the three cross-class ranks above the level-3 cap
+    (sense motive, search, diplomacy) and the two skill-point overspends, by
+    rebuilding aldric's and mira's rank blocks inside their 12-point budgets and
+    lowering ysolde's search to 3. Existing saves keep their stored ranks; there is
+    no migration. Level-up itself never audits or clamps an existing rank: it adds
+    exactly one 2nd-level spell to Mira (no 0-level, no 1st-level back-fill), adds
+    the level-4 slot deltas cleric +1/+1, wizard +1/+1 and sorcerer 2nd-level 3 with
+    the 1st level unchanged at 6, and applies the caps at level 4 (class 7,
+    cross-class 3) only to points spent during the step. The level-4 sorcerer row
+    therefore ends at 6/3, matching the book, while the wizard row keeps its
+    authored Int bonus. A raising of Constitution recomputes HP from all four levels
+    rather than adding an average twice.
