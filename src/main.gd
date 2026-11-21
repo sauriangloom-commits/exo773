@@ -6945,6 +6945,9 @@ func _can_take_focus(control: Control) -> bool:
 		and control.is_inside_tree()
 		and control.is_visible_in_tree()
 		and control.focus_mode != Control.FOCUS_NONE
+		# Screen-reader-only controls accept focus from accessibility tools, not
+		# from Tab or a manual grab_focus; including them made the ring vanish.
+		and control.focus_mode != Control.FOCUS_ACCESSIBILITY
 		and not control is ScrollContainer
 	)
 
@@ -6981,6 +6984,7 @@ func _collect_focusables(node: Node, out: Array[Control]) -> void:
 			var control := child as Control
 			if (
 				control.focus_mode != Control.FOCUS_NONE
+				and control.focus_mode != Control.FOCUS_ACCESSIBILITY
 				and control.is_visible_in_tree()
 				and not control is ScrollContainer
 			):
@@ -7363,6 +7367,30 @@ func _input(event: InputEvent) -> void:
 					talk_panel.cycle_focus(-1 if talk_backward else 1)
 					get_viewport().set_input_as_handled()
 					return
+				# HUD panels stay available during a conversation. This runs after
+				# rebind capture and after modal priority above, and only when no
+				# modal is open, so a HUD panel never stacks on another modal.
+				# Page, arrow and Tab navigation already returned above; Enter and
+				# Escape keep their existing activation/dismissal paths even if a
+				# shortcut was rebound to one of them.
+				if (
+					modal == null
+					and not event.is_action_pressed("ui_accept")
+					and not event.is_action_pressed("pause_menu")
+					and not event.is_action_pressed("ui_cancel")
+				):
+					if event.is_action_pressed("open_sheet"):
+						(current_screen as ExplorationScreen)._open_party(0)
+						get_viewport().set_input_as_handled()
+						return
+					if event.is_action_pressed("open_inventory"):
+						(current_screen as ExplorationScreen)._open_inventory()
+						get_viewport().set_input_as_handled()
+						return
+					if event.is_action_pressed("open_journal"):
+						(current_screen as ExplorationScreen)._open_journal()
+						get_viewport().set_input_as_handled()
+						return
 		if event.is_action_pressed("pause_menu"):
 			if modal != null:
 				close_modal()

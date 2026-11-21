@@ -7,6 +7,11 @@ extends GutTest
 const ASHWICK := "ashwick_ferry"
 const PARTY := ["kaelen", "sera", "aldric", "ysolde"]
 const EPILOGUE := "Tell me what the silence means for the ferry."
+const HUD_SHORTCUTS := [
+	[KEY_C, "open_sheet", "Party & Character Sheet"],
+	[KEY_I, "open_inventory", "Inventory & Equipment"],
+	[KEY_J, "open_journal", "Journal"],
+]
 
 var main: Control = null
 var original_scale := 1.0
@@ -488,13 +493,85 @@ func test_exploration_panel_close_returns_to_its_opener() -> void:
 	)
 
 
-func test_shortcuts_do_not_open_hud_panels_during_dialogue() -> void:
+func test_each_hud_shortcut_opens_its_panel_with_focus_contained_and_returns_to_the_choice() -> void:
 	var panel: DialoguePanel = await _open_silence()
-	for code in [KEY_C, KEY_I, KEY_J]:
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var expected := panel.get_viewport().gui_get_focus_owner() as Button
+	assert_true(expected != null and panel.choice_buttons.has(expected), "a dialogue choice holds the ring")
+	for shortcut in HUD_SHORTCUTS:
+		var code: int = shortcut[0]
+		var title: String = shortcut[2]
 		_send_key(code)
+		await wait_frames(4)
+		var modal: Control = main.get("modal")
+		assert_not_null(modal, "%s opens a panel during dialogue" % OS.get_keycode_string(code))
+		assert_eq(String(main.get("modal_title")), title, "%s opens the right panel" % OS.get_keycode_string(code))
+		assert_eq(Game.mode, "dialogue", "the conversation stays open behind the panel")
+		var owner_control := panel.get_viewport().gui_get_focus_owner()
+		assert_true(owner_control != null and modal.is_ancestor_of(owner_control), "focus starts inside the panel")
+		_send_key(KEY_TAB)
 		await wait_frames(2)
-		assert_null(main.get("modal"), "%s opens no panel during dialogue" % OS.get_keycode_string(code))
-		assert_eq(Game.mode, "dialogue", "the conversation stays open for %s" % OS.get_keycode_string(code))
+		owner_control = panel.get_viewport().gui_get_focus_owner()
+		assert_true(owner_control != null and modal.is_ancestor_of(owner_control), "Tab stays inside the panel")
+		main.call("close_modal")
+		await wait_frames(3)
+		assert_null(main.get("modal"), "the panel closes")
+		assert_eq(
+			panel.get_viewport().gui_get_focus_owner(), expected,
+			"closing the %s panel returns to the prior dialogue choice" % title,
+		)
+
+
+func test_escape_closes_a_hud_panel_before_ending_the_conversation() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var expected := panel.get_viewport().gui_get_focus_owner() as Button
+	for shortcut in HUD_SHORTCUTS:
+		_send_key(int(shortcut[0]))
+		await wait_frames(4)
+		assert_not_null(main.get("modal"), "the panel is open before Escape")
+		_send_key(KEY_ESCAPE)
+		await wait_frames(3)
+		assert_null(main.get("modal"), "Escape closes the panel")
+		assert_eq(Game.mode, "dialogue", "Escape does not end the conversation while a panel is open")
+		assert_eq(panel.get_viewport().gui_get_focus_owner(), expected, "Escape returns to the prior choice")
+	_send_key(KEY_ESCAPE)
+	await wait_frames(3)
+	assert_ne(Game.mode, "dialogue", "Escape with no panel still ends the conversation")
+
+
+func test_rebind_capture_precedes_hud_shortcuts() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	for shortcut in HUD_SHORTCUTS:
+		main.set("awaiting_rebind", "not_a_real_action")
+		_send_key(int(shortcut[0]))
+		await wait_frames(2)
+		assert_eq(String(main.get("awaiting_rebind")), "", "the capture consumed the shortcut key")
+		assert_null(main.get("modal"), "the shortcut opens no panel while capturing a rebind")
+		assert_eq(Game.mode, "dialogue", "the conversation stays open during rebind capture")
+
+
+func test_an_open_modal_keeps_priority_over_hud_shortcuts() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	main.call("open_modal", "QA priority", func() -> Control:
+		var box := VBoxContainer.new()
+		box.add_child(ThemeBuilder.body("The open modal keeps priority.", false, 14))
+		return box
+	, 600, 300)
+	await wait_frames(3)
+	var modal: Control = main.get("modal")
+	assert_not_null(modal, "the QA modal opened")
+	for shortcut in HUD_SHORTCUTS:
+		_send_key(int(shortcut[0]))
+		await wait_frames(2)
+		assert_eq(main.get("modal"), modal, "%s does not replace an open modal" % OS.get_keycode_string(int(shortcut[0])))
+		assert_eq(String(main.get("modal_title")), "QA priority", "the open modal keeps its title")
+
+
+func test_tab_still_cycles_dialogue_choices_with_hud_shortcuts_enabled() -> void:
+	var panel: DialoguePanel = await _open_silence()
 	_send_key(KEY_TAB)
 	await wait_frames(2)
 	var owner_control := panel.get_viewport().gui_get_focus_owner()
@@ -503,3 +580,29 @@ func test_shortcuts_do_not_open_hud_panels_during_dialogue() -> void:
 		"Tab stays on the dialogue choices",
 	)
 	assert_ne(owner_control, _find_button(main, "Party (Tab)"), "Tab never focuses the Party button")
+	assert_null(main.get("modal"), "Tab opens no HUD panel")
+
+
+func test_hud_shortcuts_do_not_open_in_combat() -> void:
+	Game.new_game(PARTY, 4242)
+	var started := Game.start_encounter("ashwick_tack_room_dead")
+	assert_true(bool(started.get("ok", false)), String(started.get("message", "")))
+	await wait_frames(4)
+	assert_eq(Game.mode, "combat", "the QA encounter starts")
+	for shortcut in HUD_SHORTCUTS:
+		_send_key(int(shortcut[0]))
+		await wait_frames(2)
+		assert_null(main.get("modal"), "%s opens no HUD panel in combat" % OS.get_keycode_string(int(shortcut[0])))
+	assert_eq(Game.mode, "combat", "combat mode is unchanged")
+
+
+func test_hud_shortcuts_do_not_open_in_the_campaign_creator() -> void:
+	Game.reset_to_menu()
+	main.call("_show_creator_draft", CampaignStore.make_draft("QA Shortcuts", "qa_dialogue_shortcuts"))
+	await wait_frames(4)
+	assert_true(main.get("current_screen") is CampaignCreator, "the campaign creator is the current screen")
+	for shortcut in HUD_SHORTCUTS:
+		_send_key(int(shortcut[0]))
+		await wait_frames(2)
+		assert_null(main.get("modal"), "%s opens no HUD panel in the creator" % OS.get_keycode_string(int(shortcut[0])))
+	assert_true(main.get("current_screen") is CampaignCreator, "the creator stays open")

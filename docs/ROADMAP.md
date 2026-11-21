@@ -1,9 +1,11 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-20).** 586/586 tests, 6,640 assertions, 48 scripts,
+> **Current boundary (2026-11-21).** 705/705 tests, 7,619 assertions, 56 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
-> exported `modal_focus_2026-11-20` candidate repeats them. (The 2026-11-14
-> boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
+> `--demo-silence` / `--demo-dialogue` layout probes pass at 1280×720 at 100 %
+> and 160 %. Keyboard access to the Sheet, Inventory and Journal panels is now
+> available during dialogue. (The 2026-11-14 boundary was 538/538, 6,263
+> assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue
 > holds **41** entries. Items marked **Done** are complete and are kept for the
@@ -30,10 +32,11 @@ turning feats, Power Attack's committed attack/damage trade and Combat Expertise
 committed attack/dodge trade.
 The full PHB feat table and the dependency blocking each deferred feat are in
 [FEATS_SKILLS_COVERAGE.md](FEATS_SKILLS_COVERAGE.md). The repaired-barricade flag
-was not present in the loaded autosave, so this persistence gap remains open.
-Mage Armor targeting and
-Restore Default Controls were fixed. A fresh Windows build launches outside the
-source tree.
+is preserved: the 2026-11-03 miss was an autosave-ordering defect in the repair
+path, now fixed and pinned by interaction-path, manual-save and reload tests (see
+[PHASE3_VERIFICATION.md](PHASE3_VERIFICATION.md)). It is not an open persistence
+gap. Mage Armor targeting and Restore Default Controls were fixed. A fresh
+Windows build launches outside the source tree.
 
 ## Adventure assessment — The Ashwick Ferry: The Second Ring (2026-11-14)
 
@@ -113,8 +116,9 @@ are not claimed as proof.
 1. **Finish the manual UI interaction pass.** **Done:** Restore Default Controls
    ships in the Settings panel behind a confirmation dialog and is covered by the
    persistence test; E3 victory/return-state persistence is recorded in
-   [PHASE3_VERIFICATION.md](PHASE3_VERIFICATION.md). Remaining: the high-DPI and
-   mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
+   [PHASE3_VERIFICATION.md](PHASE3_VERIFICATION.md). Remaining: OS-level high-DPI
+   and display-scaling checks. The mouse-wheel, Tab/Enter and focus-return checks
+   were verified natively on 2026-11-20 (see [TEST_REPORT.md](TEST_REPORT.md)).
 2. **Audio review.** Listen to all 14 placeholders in a windowed run; confirm loops,
    volume sliders and ducking behavior. Replace only after the hooks are proven.
 3. **Resolution/DPI pass.** **Corrected 2026-11-20.** The client area is the
@@ -122,8 +126,9 @@ are not claimed as proof.
    now gives the UI more room instead of magnifying a fixed 1280×720 canvas.
    1280×720, 1600×900, 1920×1017 maximized and 1920×1080 fullscreen are verified
    at 100 % and 160 % text by `--layout-probe`; 1024×600 was never a supported
-   size (the window minimum is 1280×720). Remaining: high-DPI and
-   mouse-wheel/focus checks in [PHASE2_VERIFICATION.md](PHASE2_VERIFICATION.md).
+   size (the window minimum is 1280×720). Remaining: OS-level high-DPI/display
+   scaling; the mouse-wheel and focus checks are native-verified (see
+   [TEST_REPORT.md](TEST_REPORT.md)).
 4. **Save migration policy.** **Foundation landed 2026-11-20; no production step
    ships and `SAVE_VERSION` stays 1.** `src/core/save_migrations.gd` holds the
    ordered table (empty in production), `SUPPORTED_MIN_VERSION = 1`, a test-only
@@ -196,8 +201,10 @@ Ranked next work:
    must not be scripted.
 3. Data-driven passive feats (move `Feats.CATALOG` rows to JSON, keep compiled
    defaults for compatibility).
-4. Save schema migration hook before the first public content update (design and
-   tests listed under P0 item 4).
+4. Save schema migration: the read-only hook, version floor, settings versioning
+   and recovery landed on 2026-11-20, but **no production step ships** (`steps`
+   is empty and `SAVE_VERSION` stays 1). The first real schema change is still
+   open; the design is under P0 item 4.
 5. Spell resolution handler table, matching the effect-registry pattern.
 
 ## P1 — Campaign content pipeline
@@ -230,11 +237,13 @@ and Combat Expertise) are done; continue in dependency order with the special
 attacks, with spell-school feats waiting on a saving-throw spell.
 
 1. **Full attack / iterative attacks** and two-weapon fighting.
-2. **Grapple, trip, disarm, sunder, bull rush** as explicit combat actions with
-   contested checks and provoked attacks. Power Attack and Combat Expertise are
-   implemented, so Improved Trip/Disarm/Bull Rush/Overrun/Sunder become candidates
-   once those actions exist; fighting defensively and total defense are still
-   unimplemented.
+2. **Grapple, disarm, sunder, bull rush** as explicit combat actions with
+   contested checks and provoked attacks. Trip is implemented for the
+   player-initiated path (PHB pp. 158-159), including prone, counter-trip, weapon
+   drop/pickup and Improved Trip; NPC-initiated and mounted trip remain out of
+   scope. Power Attack and Combat Expertise are implemented, so Improved
+   Disarm/Bull Rush/Overrun/Sunder become candidates once those actions exist;
+   fighting defensively and total defense are still unimplemented.
 3. **Cover and concealment** for ranged combat and spells (basic Bresenham LOS already exists).
 4. **AoE spell templates** (e.g. *burning hands*, *sleep*) on the battle grid.
 5. **Character creation and level advancement** with bounded options, including
@@ -263,8 +272,10 @@ ruleset.
 3. **Animation.** Idle/attack/hit/death frames for billboards and tokens, with
    gameplay events driving animation only.
 4. **Accessibility.** Scalable UI/text, high-contrast themes, colorblind-safe
-   tokens (already letter/HP coded), keyboard-only flows, screen-reader-friendly
-   labels where feasible.
+   tokens (already letter/HP coded), keyboard-only flows (**partly landed:**
+   Sheet/Inventory/Journal open during dialogue via C/I/J; a Save shortcut and
+   full keyboard-only coverage remain open), screen-reader-friendly labels where
+   feasible.
 5. **Localization.** Externalize strings only after the content schema stabilizes;
    keep ids stable.
 6. **Controller support** and a gamepad-friendly combat cursor.
