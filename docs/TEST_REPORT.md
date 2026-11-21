@@ -4103,20 +4103,36 @@ single-column choice list as the account rows, seven unavailable rows down, and
 was reached by scrolling at 160 % in the silence playthrough
 (`account_decision_2026-11-14`, captures `s10`-`s12`). `15329d3` then capped the
 dialogue panel to the client and kept one vertical ScrollContainer (horizontal
-disabled), so the row stays reachable by wheel or scrollbar. Nothing was captured
-after that change at 160 %, and the dialogue scroller has no `follow_focus`, so
-Tab can focus the row without scrolling it into view. That is the recorded
-discoverability refinement, not a reachability failure.
+disabled), so the row stays reachable by wheel or scrollbar. At the time nothing
+was captured after that change at 160 %, and the scroller had no `follow_focus`,
+so Tab could focus the row without revealing it. That gap is now closed:
+`2026-11-21` adds focus-follow and contained Tab traversal, and the row is shown
+above the fold at 100 % and 160 % (see below).
 
-### Next highest-priority unresolved item
+### Dialogue choice focus reveal (closed, 2026-11-21)
 
-**Reveal the focused dialogue choice (kept separate).** The silence epilogue row
-is reachable by wheel or scrollbar but, at 160 %, sits below the fold, and the
-dialogue scroller has no `follow_focus`, so Tab can focus it without bringing it
-into view. The bounded task is to make the dialogue ScrollContainer follow focus
-the way the modal bodies already do (`follow_focus = true`), then capture the
-silence page at 100 % and 160 % with Tab and Shift+Tab reaching the last row. It
-is deliberately not part of the label change above.
+The conversation body keeps its ScrollContainer and sets `follow_focus`; while a
+conversation is open, Tab and Shift+Tab cycle its available choices in content
+order instead of wandering into the HUD, and the body scrolls the new owner into
+view. Unavailable rows stay visible and are skipped, and mouse wheel and click
+activation are untouched. A QA-only `--demo-silence` entry seeds the broken-token
+state so the gated row can be driven with ordinary input.
+
+Verified on candidate `dialogue_focus_2026-11-21b` (source `01d1cfc`, SHA-256
+`cd00d38988ab1f721cc19b52c19f669e0c86e4a5f3be666543781de5ea4c5330`, 110,686,136
+bytes) with a 1280x720 client at 100 % and 160 %: four Tabs put a visible ring on
+*Tell me what the silence means for the ferry.* and scrolled the row above the
+fold from below it; one Shift+Tab moved back to an earlier choice with the body
+scrolled up; Enter opened `epilogue_silent` ("The token is broken..."); the wheel
+still scrolled the body. Captures are in
+`builds/qa/runs/2026-11-21_dialogue_focus/`.
+
+Regression: `tests/test_dialogue_focus.gd` (4 tests) pins content order,
+availability, the overflow, Tab reaching the row, Shift+Tab walking back visible,
+and Enter opening the epilogue. Suite **686/686 tests, 7,395 assertions, 56
+scripts, exit 0**; both validators PASS; `--demo-dialogue` and `--demo-silence`
+dialogue layout probes PASS at 1280x720 at both scales; `--creator-story-probe`
+exit 0. Remaining limits are listed in the run report.
 
 ### Corrections to this refresh
 

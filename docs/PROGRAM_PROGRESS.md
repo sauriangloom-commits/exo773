@@ -2273,9 +2273,12 @@ from a dirty tree and carries no acceptance.
 The two bell-page content warnings are applied as label-only clauses: the token
 cost on *Ring once* and *Break the token*, and combat on *Ring twice for the
 dead.* Conditions, effects, flags and rewards are untouched, and a focused test
-pins the exact wording plus the unchanged ring-once outcome; the full suite is
-682/682 and both validators PASS. Oversized-control clipping is a conditional
-limit - no shipped modal reproduces it - and the silence epilogue row remains
-reachable at 160 % by wheel or scrollbar. Its keyboard reveal (the dialogue
-scroller has no `follow_focus`) is the next item, kept separate from the wording
-change.
+pins the exact wording plus the unchanged ring-once outcome.
+
+Dialogue choice focus is fixed and hash-bound: the body follows focus, and Tab
+and Shift+Tab cycle the available choices in content order while a conversation
+is open. Candidate `dialogue_focus_2026-11-21b` (source `01d1cfc`, SHA-256
+`cd00d389`) shows the silence epilogue row revealed at 100 % and 160 % on a
+1280x720 client, with Enter opening the epilogue. Suite 686/686, both validators
+and the dialogue layout probes PASS. Oversized-control clipping remains a
+conditional limit - no shipped modal reproduces it.
