@@ -550,7 +550,8 @@ The class-progression validator keeps reporting the known-list difference as
 accepted so the gap stays visible.
 
 **Ranks above the level cap.** Level-up never audits, clamps or deletes an existing
-rank. It computes the new caps (class skill 7, cross-class 3 at level 4), applies
+rank. It computes the new caps (class skill 7; cross-class printed 3.5, enforced as
+3 whole ranks, section 12.5), applies
 them to ranks added during the level-up only, and lets an existing over-cap rank
 stand until the separate content repair lands. Concretely, aldric's sense motive 4
 does not refuse his level-up and does not consume his new points; the preview shows
