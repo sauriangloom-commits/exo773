@@ -7320,6 +7320,13 @@ func _input(event: InputEvent) -> void:
 		if Game.mode == "dialogue" and current_screen is ExplorationScreen:
 			var talk_panel := (current_screen as ExplorationScreen).dialogue_panel
 			if talk_panel != null and is_instance_valid(talk_panel):
+				# Page keys move the body only: the focus ring, the Tab order and
+				# activation stay where they were, and arrows keep their Godot
+				# focus traversal.
+				if event.is_action_pressed("ui_page_down") or event.is_action_pressed("ui_page_up"):
+					talk_panel.scroll_page(-1 if event.is_action_pressed("ui_page_up") else 1)
+					get_viewport().set_input_as_handled()
+					return
 				if event.is_action_pressed("ui_focus_next") or event.is_action_pressed("ui_focus_prev"):
 					var talk_backward := (event as InputEventWithModifiers).shift_pressed
 					talk_panel.cycle_focus(-1 if talk_backward else 1)

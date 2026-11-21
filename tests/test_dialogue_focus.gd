@@ -154,3 +154,119 @@ func test_enter_activates_the_focused_epilogue_row() -> void:
 	await wait_frames(4)
 	assert_eq(Game.dialogue.node_id, "epilogue_silent", "Enter opens the silence epilogue")
 	assert_true(Game.dialogue.text().contains("The token is broken"), "the silence text is shown")
+
+
+func test_shift_tab_walks_back_through_earlier_choices() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	var epilogue := _epilogue_button(panel)
+	assert_true(epilogue != null, "the silence epilogue row is present")
+	assert_true(await _tab_until(panel, epilogue), "Tab reaches the epilogue row")
+	var available: Array[Button] = []
+	for button in panel.choice_buttons:
+		if not button.disabled:
+			available.append(button)
+	var index := available.find(epilogue)
+	assert_gt(index, 0, "earlier available choices exist above the epilogue")
+	for step in range(1, index + 1):
+		_send_key(KEY_TAB, true)
+		await wait_frames(2)
+		var owner_control := panel.get_viewport().gui_get_focus_owner()
+		assert_eq(owner_control, available[index - step], "Shift+Tab walks back in content order")
+		assert_true(_visible_in_body(panel, owner_control), "the earlier choice is visible")
+	_send_key(KEY_TAB, true)
+	await wait_frames(2)
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(),
+		available[available.size() - 1],
+		"Shift+Tab wraps from the first choice to the last",
+	)
+
+
+func test_page_keys_scroll_without_moving_focus() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	var owner_control := panel.get_viewport().gui_get_focus_owner()
+	assert_not_null(owner_control, "a choice holds focus")
+	var bar := panel.scroll.get_v_scroll_bar()
+	var travel := maxi(0, int(bar.max_value - bar.page))
+	assert_gt(travel, 0, "the body overflows and can travel")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(2)
+	assert_gt(panel.scroll.scroll_vertical, 0, "PageDown moves the body down")
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(),
+		owner_control,
+		"the focus ring stays on the same choice",
+	)
+	assert_lte(
+		absi(panel.scroll.scroll_vertical - int(round(bar.page * 0.9))),
+		2,
+		"one page is 90 % of the visible height",
+	)
+	for i in 8:
+		_send_key(KEY_PAGEDOWN)
+	await wait_frames(2)
+	assert_eq(panel.scroll.scroll_vertical, travel, "PageDown clamps at the bottom")
+	assert_eq(panel.get_viewport().gui_get_focus_owner(), owner_control, "focus never moves while paging")
+	for i in 8:
+		_send_key(KEY_PAGEUP)
+	await wait_frames(2)
+	assert_eq(panel.scroll.scroll_vertical, 0, "PageUp clamps at the top")
+
+
+func test_page_scroll_keeps_tab_and_enter_working() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	_send_key(KEY_PAGEDOWN)
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(2)
+	var epilogue := _epilogue_button(panel)
+	assert_true(epilogue != null, "the silence epilogue row is present")
+	assert_true(await _tab_until(panel, epilogue), "Tab still reaches the epilogue after paging")
+	assert_true(_visible_in_body(panel, epilogue), "the row is revealed again")
+	await _press_enter()
+	await wait_frames(4)
+	assert_eq(Game.dialogue.node_id, "epilogue_silent", "Enter still activates the row")
+
+
+func test_manual_scroll_persists_until_focus_moves() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	var epilogue := _epilogue_button(panel)
+	assert_true(epilogue != null, "the silence epilogue row is present")
+	assert_true(await _tab_until(panel, epilogue), "Tab reaches the epilogue row")
+	panel.scroll.scroll_vertical = 0
+	await wait_frames(4)
+	assert_eq(panel.scroll.scroll_vertical, 0, "follow_focus does not undo a manual offset")
+	_send_key(KEY_TAB)
+	await wait_frames(2)
+	assert_gt(panel.scroll.scroll_vertical, 0, "the next focus change reveals its owner")
+
+
+func test_modal_page_scroll_keeps_priority() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	var before := panel.scroll.scroll_vertical
+	main.call("open_modal", "QA tall", func() -> Control:
+		var box := VBoxContainer.new()
+		box.custom_minimum_size = Vector2(600, 0)
+		for i in 60:
+			var label := Label.new()
+			label.text = "Line %d of the QA body." % i
+			box.add_child(label)
+		return box
+	, 660, 380)
+	await wait_frames(3)
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(2)
+	var body: ScrollContainer = main.get("modal_scroll")
+	assert_not_null(body, "the modal exposes its scrolling body")
+	assert_gt(body.scroll_vertical, 0, "PageDown scrolls the modal body")
+	assert_eq(panel.scroll.scroll_vertical, before, "the conversation body did not scroll")
+
+
+func test_rebind_capture_consumes_the_page_key() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	main.set("awaiting_rebind", "not_a_real_action")
+	_send_key(KEY_PAGEDOWN)
+	await wait_frames(2)
+	assert_eq(String(main.get("awaiting_rebind")), "", "the capture consumed the page key")
+	assert_eq(panel.scroll.scroll_vertical, 0, "the body did not scroll while capturing a rebind")

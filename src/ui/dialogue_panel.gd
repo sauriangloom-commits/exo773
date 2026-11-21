@@ -225,6 +225,17 @@ func cycle_focus(direction: int) -> void:
 		scroll.ensure_control_visible(targets[next])
 
 
+## Scroll one visible page (90 %) without touching the focus ring. Clamped to the
+## body's real travel, so PageUp at the top and PageDown at the bottom do nothing.
+func scroll_page(direction: int) -> void:
+	if scroll == null or not is_instance_valid(scroll):
+		return
+	var bar := scroll.get_v_scroll_bar()
+	var step := maxi(1, int(round(bar.page * 0.9)))
+	var travel := maxi(0, int(bar.max_value - bar.page))
+	scroll.scroll_vertical = clampi(scroll.scroll_vertical + step * direction, 0, travel)
+
+
 func _leave() -> void:
 	if Game.dialogue != null:
 		Game.dialogue.finish_now()
