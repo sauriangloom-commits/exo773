@@ -305,6 +305,9 @@ ruleset.
 - Every rules change needs a traceability row and a test.
 - Keep seeded determinism; never use unseeded randomness in resolution.
 - Keep saves versioned; never load incompatible data silently.
+- Bind acceptance logs: record the exported executable's SHA-256 before and
+  after every acceptance run and require the two values to match; a `BUILD.txt`
+  hash alone does not bind the run.
 - Keep missing optional assets non-fatal.
 - Update `SUPPORTED_FEATURES.md` and the README scope whenever a mechanic moves
   from deferred to supported.

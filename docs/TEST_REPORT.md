@@ -4002,29 +4002,57 @@ and the places where that record is weaker than a result are named as gaps.
 - Both focus defects found by the native pass (Tab escaping a modal, no focus
   after close) are closed by `e9a5086` and `b5dfd9b`.
 
-### Remaining defects (known, not fixed)
+### Remaining defects, and items that are not defects
 
-1. Reveal runs only while a modal is open; the campaign creator keeps its own path.
-2. **Conditional:** a control taller than its pane aligns to the pane's top, so
-   its bottom can clip. No shipped modal reaches that condition at 100 % or
-   160 %; it guards future layouts rather than describing a reproduced defect.
-3. One pane follows the focus per key press; with two scrolling panes only one moves.
-4. `follow_focus` remains on the shared body beside the reveal walk (redundant half).
-5. No key repeat; gamepad page keys unhandled; no reveal after a silent relayout.
+Reclassified 2026-11-21. Only a reproduced, reachable failure counts as a
+defect. A guard for an unreachable layout, outstanding maintenance and an
+unsupported input device are recorded in their own sections; calling them
+defects overstated them. The audit's original five items are unchanged in
+substance, only in classification.
 
-None of these regressed during the batch; they are the audit's own remaining
-limits, unchanged.
+**Confirmed defects (not fixed)**
 
-Correction (2026-11-21): the key-repeat half of item 5 is implemented and
-automated-verified; physical held-key acceptance is pending (see the modal
-held-key entry at the end of this file). Gamepad page keys remain open.
-Reveal after a silent relayout is
-unreproduced: `open_modal` fixes the panel's minimum size once (base size
-times text scale, capped to the client at open time), so a window resize
-re-centres the panel without reflowing its body, and a refresh rebuilds and
-refocuses through `gui_focus_changed`. It stays a guard for a future
-responsive modal, not a reproduced defect. The rest of this list is
-unchanged.
+1. Reveal runs only while a modal is open; the campaign creator keeps its own
+   path. The creator has its own keyboard path, so this is a narrow scope
+   limitation, but the result is still an inconsistent reveal and it is recorded
+   as a defect rather than as debt.
+
+**Conditional layouts (not confirmed defects)**
+
+- A control taller than its pane aligns to the pane's top, so its bottom can
+  clip. No shipped modal reaches that condition at 100 % or 160 %; it guards
+  future layouts and is not a reproduced defect.
+
+**Maintenance debt (not defects)**
+
+- `follow_focus` remains on the shared body beside the reveal walk; one of the
+  two is now redundant.
+- One pane follows the focus per key press, so with two scrolling panes only one
+  moves. That is a designed property of the single-focus walk, not a failure.
+
+**Unsupported features (not defects)**
+
+- Gamepad page keys are not handled. A gamepad is not a shipped input path, so
+  this is an unsupported feature rather than a defect.
+- No reveal after a silent relayout: silent relayouts are unreproduced.
+  `open_modal` fixes the panel's minimum size once (base size times text scale,
+  capped to the client at open time), so a window resize re-centres the panel
+  without reflowing its body, and a refresh rebuilds and refocuses through
+  `gui_focus_changed`. Kept as a guard for a future responsive modal.
+
+Correction (2026-11-21): key repeat is implemented and automated-verified.
+Physical held-key acceptance is pending (see the modal held-key entry at the end
+of this file) and is an **evidence gap**, not a defect.
+
+### Acceptance log binding (policy from 2026-11-21)
+
+Every future acceptance run must record the exported executable's SHA-256 before
+the first check and again after the last check, in the run log itself, and the
+two values must match. A run whose hash appears only in `BUILD.txt` is bound by
+that file but not by the run, so it stays "no" in the candidate table's bound
+column. This applies to probes, validators, suite runs against an export and any
+native pass. The two creature-cover candidates remain explicitly unbound: their
+logs recorded no start/end hash, although each `BUILD.txt` pins the hash.
 
 ### Verification gaps (distinct from defects)
 

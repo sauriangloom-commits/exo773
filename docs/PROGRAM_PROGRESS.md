@@ -2515,3 +2515,15 @@ walls, reach-melee cover, big-creature cover, Improved Precise Shot. See
 ADAPTATION_LOG 19d-19f and TRACEABILITY row 25b. Limits: 1280x720 at
 100 %/160 %; the clause was verified by wrapped-label geometry, not by reading
 captures; the QA fixture is not campaign content; no manual testing.
+
+
+### Ledger classification and acceptance binding (2026-11-21)
+
+Corrected the defect ledger: only a reproduced, reachable failure is a defect.
+The conditional tall-control clip moved to conditional layouts; `follow_focus`
+redundancy and the single-pane focus walk moved to maintenance debt; gamepad
+page keys and the unreproduced silent-relayout reveal moved to unsupported
+features. Key-repeat acceptance stays an evidence gap. Added a policy: every
+future acceptance run records the executable's SHA-256 before and after the
+checks and the two must match; the two creature-cover candidates remain
+explicitly unbound (their `BUILD.txt` hashes are recorded).
