@@ -4017,9 +4017,12 @@ limits, unchanged.
 
 ### Verification gaps (distinct from defects)
 
-- Shift+Tab was never injected as a real OS chord (the synthetic modifier never
-  reached Godot); the backward cycle rests on two unit tests. Enter activation is
-  native-only, because headless GUI key activation does not fire in the harness.
+- Enter activation of a focused modal button is native-verified only; headless GUI
+  key activation does not fire in the harness, so no unit test covers that half.
+  Shift+Tab is not a gap: it was verified natively at 100 % and 160 %
+  (`2026-11-20_scrollkeys/assessment.md`), and the earlier "cannot inject Shift"
+  note was withdrawn because that failure was the action-matching bug fixed in
+  `b5dfd9b`.
 - No OS-level crash injection for save writes; interruption states are built
   directly and failure paths simulated.
 - Case-sensitive filesystems: two slot names differing only by case are asserted
@@ -4068,24 +4071,28 @@ acceptance. Source head `c23f96c` is documentation only and has no binary. The
 older `modal_scroll` (`0c2f982e`), `modal_pane` (`6217fe39`) and `modal_focus`
 (`42b003c9`) candidates remain as recorded in the audit; nothing was rebuilt.
 
-### Open priority list and the next item
+### Applied bell-page warnings (label-only, 2026-11-21)
 
-The two unresolved **content** warnings from the silent-bell assessment are back
-on the list. Both are wording gaps on the bell page; neither changes a condition,
-effect, destination, flag or reward.
+Both gaps are closed by appending one clause to three choice labels in
+`content/campaigns/ashwick_ferry/dialogue/ferry_bell.json`; the content diff
+touches only `"text"` lines, so no condition, effect, destination, flag or reward
+changed.
 
-1. **The token is spent for good with no warning.** *Break the token and leave the
-   bell silent.* removes `ivo_token` immediately (`ferry_bell.json`); *Ring once
-   for passage.* removes it too. The narration says so only after the choice.
-   Proposed one-line label, not applied:
-   `Break the token and leave the bell silent. — The token is gone for good.`
-   Applying the same clause to *Ring once* would make the pair consistent, but
-   that is a third edit and needs its own approval.
-2. **A fight starts from a dialogue row with no hint.** *Ring twice for the dead.*
-   sets `bell_called`, narrates "Something answers the second ring." and runs
-   `start_combat` on `ashwick_bell_answer` (a ghoul and a zombie). Proposed
-   one-line label, not applied:
-   `Ring twice for the dead. — Something answers, and it fights.`
+- `Ring once for passage. — The token is spent permanently.`
+- `Ring twice for the dead. — This starts combat.`
+- `Break the token and leave the bell silent. — The token is spent permanently.`
+
+`test_bell_rows_warn_about_the_permanent_cost_and_combat` asserts the three exact
+labels, that the bare ring-once label is gone, that all three rows stay available
+before the choice, and that ringing once still spends `ivo_token` and sets
+`ferry_bell_rung`/`bell_resolved`. The existing second-ring tests still cover the
+ring-twice fight, the break path, the refused/kept account rows and the epilogue
+destinations.
+
+Verified on this change: full suite **682/682 tests, 7,334 assertions, 55
+scripts, exit 0**; `--validate-campaigns` PASS (ravenloft_demo, hollow_lantern,
+ashwick_ferry) and `--validate-diagnostics` PASS (`[]`), both exit 0. The content
+diff has three changed lines, every one a `"text"` value.
 
 ### Epilogue row reachability at 160 % (checked, no change)
 
@@ -4103,14 +4110,13 @@ discoverability refinement, not a reachability failure.
 
 ### Next highest-priority unresolved item
 
-**Apply the two bell-page warnings** (content only). Oversized-control clipping is
-now a **conditional limit** - no shipped modal has a single control taller than
-its pane at 100 % or 160 %, so nothing reproduces it. The bounded task is to
-append the two one-line clauses above to
-`content/campaigns/ashwick_ferry/dialogue/ferry_bell.json`, add a text assertion
-in `test_ashwick_second_ring.gd` that both rows carry their warning, and rerun the
-suite plus both validators. No condition, effect, flag or outcome changes. Not
-started: no content file was edited in this pass.
+**Reveal the focused dialogue choice (kept separate).** The silence epilogue row
+is reachable by wheel or scrollbar but, at 160 %, sits below the fold, and the
+dialogue scroller has no `follow_focus`, so Tab can focus it without bringing it
+into view. The bounded task is to make the dialogue ScrollContainer follow focus
+the way the modal bodies already do (`follow_focus = true`), then capture the
+silence page at 100 % and 160 % with Tab and Shift+Tab reaching the last row. It
+is deliberately not part of the label change above.
 
 ### Corrections to this refresh
 
@@ -4124,5 +4130,8 @@ started: no content file was edited in this pass.
   shipped example exists at either supported scale.
 - **The two content warnings are restored** above, with proposed wording; neither
   is implemented.
-- The removed Journal gap is replaced by the genuinely open input gap: Shift+Tab
-  was never injected as a real OS chord.
+- The removed Journal gap is replaced by the genuinely open input gap: Enter
+  activation of a focused modal button is native-only, with no unit test. This
+  refresh had also carried a withdrawn Shift+Tab note; `2026-11-20_scrollkeys/
+  assessment.md` records Shift+Tab wrapping Close -> Return to main menu ->
+  Settings natively at 100 % and 160 %, so that item is closed too.

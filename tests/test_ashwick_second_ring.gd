@@ -181,6 +181,34 @@ func _commit_account(truth := true, with_page := false) -> void:
 	assert_eq(Game.mode, "explore")
 
 
+func test_bell_rows_warn_about_the_permanent_cost_and_combat() -> void:
+	_reach_bell()
+	assert_true(bool(Game.interact().get("ok", false)), "the bell dialogue starts")
+	var texts: Array[String] = []
+	for entry in Game.dialogue_choices():
+		texts.append(String(Dictionary(entry).get("text", "")))
+	assert_true(
+		texts.has("Ring once for passage. — The token is spent permanently."),
+		"the ring-once row states the token cost",
+	)
+	assert_true(
+		texts.has("Ring twice for the dead. — This starts combat."),
+		"the ring-twice row warns that it starts combat",
+	)
+	assert_true(
+		texts.has("Break the token and leave the bell silent. — The token is spent permanently."),
+		"the break row states the token cost",
+	)
+	assert_false(texts.has("Ring once for passage."), "the bare ring-once label is gone")
+	for needle in ["Ring once", "Ring twice", "Break the token"]:
+		assert_gte(_choose_available(needle), 0, "%s stays available" % needle)
+	var ring := _choose_available("Ring once")
+	Game.dialogue_choose(ring)
+	assert_eq(_item_count("ivo_token"), 0, "ringing once still spends the token")
+	assert_true(bool(Game.flags.get("ferry_bell_rung", false)), "ringing once still sets its flag")
+	assert_true(bool(Game.flags.get("bell_resolved", false)), "ringing once still resolves the bell")
+
+
 func _approach_bell() -> void:
 	_go(BELL_POS, Dungeon.WEST)
 

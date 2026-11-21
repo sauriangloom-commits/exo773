@@ -9,7 +9,7 @@
 			"text": "(ORIGINAL PLACEHOLDER) The bell waits with its empty socket. The notice gives three answers, and none of them is free.",
 			"choices": [
 				{
-					"text": "Ring once for passage.",
+					"text": "Ring once for passage. — The token is spent permanently.",
 					"conditions": [
 						{
 							"type": "flag",
@@ -57,7 +57,7 @@
 					"next": "once"
 				},
 				{
-					"text": "Ring twice for the dead.",
+					"text": "Ring twice for the dead. — This starts combat.",
 					"conditions": [
 						{
 							"type": "flag",
@@ -94,7 +94,7 @@
 					"next": ""
 				},
 				{
-					"text": "Break the token and leave the bell silent.",
+					"text": "Break the token and leave the bell silent. — The token is spent permanently.",
 					"conditions": [
 						{
 							"type": "flag",

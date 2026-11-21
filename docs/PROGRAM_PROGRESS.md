@@ -2270,9 +2270,12 @@ Latest hash-bound candidates: `pattern_2026-11-20` `dc2d1b5e` (13/13) and
 `creator_probe_2026-11-20` `4196d978` (9/9); `probe_2026-11-20` is the same bytes
 from a dirty tree and carries no acceptance.
 
-Two unresolved content warnings are back on the priority list: the bell token is
-spent for good with no warning, and *Ring twice for the dead.* starts a fight from
-a dialogue row with no hint. One-line labels are proposed in TEST_REPORT and not
-applied. Oversized-control clipping is a conditional limit - no shipped modal
-reproduces it - and the silence epilogue row remains reachable at 160 % by wheel
-or scrollbar (it sits seven unavailable rows down and has no keyboard reveal).
+The two bell-page content warnings are applied as label-only clauses: the token
+cost on *Ring once* and *Break the token*, and combat on *Ring twice for the
+dead.* Conditions, effects, flags and rewards are untouched, and a focused test
+pins the exact wording plus the unchanged ring-once outcome; the full suite is
+682/682 and both validators PASS. Oversized-control clipping is a conditional
+limit - no shipped modal reproduces it - and the silence epilogue row remains
+reachable at 160 % by wheel or scrollbar. Its keyboard reveal (the dialogue
+scroller has no `follow_focus`) is the next item, kept separate from the wording
+change.
