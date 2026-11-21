@@ -8,7 +8,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	SaveSystem.delete_save("slot3")
+	SaveSystem.delete_save_everywhere("slot3")
 
 
 func _find_choice(needle: String) -> int:

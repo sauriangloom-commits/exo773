@@ -931,7 +931,7 @@ func _creator_interaction_ui_probe() -> void:
 	creator_probe_failures = 0
 	var campaign_id := "probe_interaction_campaign"
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	var screen := CampaignCreator.new()
 	_set_screen(screen)
 	screen.setup(self, CampaignStore.make_draft("Interaction Probe", campaign_id))
@@ -1051,7 +1051,7 @@ func _creator_interaction_ui_probe() -> void:
 	_creator_probe_check(continue_latest != null, "the authored campaign card enables Continue latest")
 	_creator_probe_check(load_slot != null, "the authored campaign card enables Load slot")
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 	Game.load_campaign("ravenloft_demo")
 	print("CREATOR INTERACTION PROBE %s campaign=%s" % ["PASS" if creator_probe_failures == 0 else "FAIL", campaign_id])
@@ -1069,7 +1069,7 @@ func _creator_story_probe() -> void:
 	var other_id := "probe_story_other"
 	CampaignStore.delete_user_campaign(campaign_id)
 	CampaignStore.delete_user_campaign(other_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	var created := CampaignStore.create("Story Probe", campaign_id)
 	_creator_probe_check(bool(created.get("ok", false)), "authored campaign created")
 	var draft: Dictionary = Dictionary(CampaignStore.load_package(campaign_id).get("draft", {}))
@@ -1192,7 +1192,7 @@ func _creator_story_probe() -> void:
 	_creator_probe_check(not bool(Game.flags.get("beacon_lit", false)), "flags do not leak across campaigns")
 	CampaignStore.delete_user_campaign(campaign_id)
 	CampaignStore.delete_user_campaign(other_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 	Game.load_campaign("ravenloft_demo")
 	print("CREATOR STORY PROBE %s campaign=%s" % ["PASS" if creator_probe_failures == 0 else "FAIL", campaign_id])
@@ -1369,7 +1369,7 @@ func _creator_combat_probe() -> void:
 	probe_started_ms = Time.get_ticks_msec()
 	var campaign_id := "probe_combat_campaign"
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	var fixture := _creator_combat_fixture(campaign_id)
 	var quest_id := String(fixture.get("quest_id", ""))
 	Game.refresh_campaigns()
@@ -1457,7 +1457,7 @@ func _creator_combat_reload_probe() -> void:
 			changed_available = true
 	_creator_probe_check(changed_available, "the changed NPC response survives the relaunch")
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(COMBAT_PROBE_STATE))
 	Game.refresh_campaigns()
 	Game.load_campaign("ravenloft_demo")
@@ -1555,7 +1555,7 @@ func _creator_acceptance_probe() -> void:
 	creator_probe_failures = 0
 	var campaign_id := "probe_acceptance"
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 	_show_campaign_select()
 	await get_tree().process_frame
@@ -1816,7 +1816,7 @@ func _creator_acceptance_probe() -> void:
 	_creator_probe_check(bool(Game.load_game("slot1").get("ok", false)), "saved progress loads again")
 
 	CampaignStore.delete_user_campaign(campaign_id)
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 	Game.load_campaign("ravenloft_demo")
 	print("CREATOR ACCEPTANCE PROBE %s campaign=%s" % ["PASS" if creator_probe_failures == 0 else "FAIL", campaign_id])
@@ -2385,7 +2385,7 @@ func _save_compat_probe() -> void:
 	var id := "qa_compat_probe"
 	CampaignStore.delete_user_campaign(id)
 	Game.refresh_campaigns()
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	var made := CampaignStore.create("Compatibility Probe", id)
 	_probe_check(bool(made.get("ok", false)), "disposable campaign is created")
 	if not bool(made.get("ok", false)):
@@ -2488,7 +2488,7 @@ func _save_compat_probe() -> void:
 
 	Game.load_campaign("ravenloft_demo")
 	CampaignStore.delete_user_campaign(id)
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	_probe_finish("save_compat")
 
 
@@ -2806,7 +2806,7 @@ func _campaign_list_probe() -> void:
 func _compat_ui_fixture() -> Dictionary:
 	var id := "qa_compat_ui"
 	CampaignStore.delete_user_campaign(id)
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	Game.refresh_campaigns()
 	var made := CampaignStore.create("Compatibility UI", id)
 	if not bool(made.get("ok", false)):
@@ -3016,7 +3016,7 @@ func _save_compat_ui_probe() -> void:
 		await _capture_viewport("save_compat_refusal")
 		return
 	CampaignStore.delete_user_campaign(id)
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	Game.load_campaign("ravenloft_demo")
 	_probe_finish("save_compat_ui")
 

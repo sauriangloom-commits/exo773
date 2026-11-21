@@ -11,7 +11,7 @@ var main: Control = null
 
 
 func before_each() -> void:
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	Game.load_campaign(CAMPAIGN)
 	Game.new_game(["kaelen", "sera", "aldric", "ysolde"], 4242)
 	main = load("res://scenes/Main.tscn").instantiate()
@@ -22,7 +22,7 @@ func before_each() -> void:
 func after_each() -> void:
 	Game.settings_newer = false
 	main = null
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	Game.reset_to_menu()
 	Game.load_campaign(CAMPAIGN)
 

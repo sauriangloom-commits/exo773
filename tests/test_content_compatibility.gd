@@ -21,7 +21,7 @@ var draft: Dictionary
 func before_each() -> void:
 	CampaignStore.delete_user_campaign(ID)
 	Game.refresh_campaigns()
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	var made := CampaignStore.create("Content compatibility", ID)
 	assert_true(bool(made.get("ok", false)), String(made.get("message", "")))
 	Game.refresh_campaigns()
@@ -54,7 +54,7 @@ func before_each() -> void:
 func after_each() -> void:
 	CampaignStore.delete_user_campaign(ID)
 	Game.refresh_campaigns()
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 	Game.load_campaign("ravenloft_demo")
 
 

@@ -16,8 +16,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	SaveSystem.delete_save("slot2")
-	SaveSystem.delete_save("qa_turn")
+	SaveSystem.delete_save_everywhere("slot2")
+	SaveSystem.delete_save_everywhere("qa_turn")
 
 
 func _cleric(id := "aldric") -> Character:

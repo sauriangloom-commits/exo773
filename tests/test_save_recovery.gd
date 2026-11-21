@@ -22,7 +22,7 @@ func after_each() -> void:
 
 
 func _clean() -> void:
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	var directory := SaveSystem.path_for(SLOT, CAMPAIGN)
 	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(directory)):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(directory))
@@ -56,7 +56,7 @@ func _payload(gold: int, campaign := CAMPAIGN) -> Dictionary:
 	payload["gold"] = gold
 	if campaign != CAMPAIGN:
 		payload["campaign_id"] = campaign
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	return payload
 
 
@@ -170,7 +170,7 @@ func test_legacy_fallback_still_serves_an_empty_campaign_slot() -> void:
 	assert_true(bool(loaded.get("ok", false)), String(loaded.get("message", "")))
 	assert_eq(String(loaded.get("recovered_from", "")), "", "a legacy load is not a recovery")
 	assert_eq(Game.gold, 999)
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 
 
 func test_a_successful_save_keeps_the_recovery_artifacts() -> void:

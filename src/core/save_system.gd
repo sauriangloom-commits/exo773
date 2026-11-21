@@ -365,12 +365,23 @@ static func any_legacy_save() -> bool:
 	return has_saves("")
 
 
-## Deletes a slot wherever it exists: the legacy directory and every campaign
-## directory. Used by tests and by explicit player deletion.
-static func delete_save(slot: String) -> bool:
-	var removed := false
-	# Every file of the slot, including working copies, so a deleted slot cannot
-	# leave a recoverable copy behind. That is what the player asked for.
+## Deletes one slot **everywhere** it exists: the legacy pre-campaign directory
+## and every directory under `user://saves`, including every recovery copy
+## (`.bak`, `.tmp`, numbered copies and the legacy `.w` names). Other files are
+## not touched, because [method slot_files] only yields accepted slot names.
+##
+## QA and test cleanup only. No screen, button, menu or key calls this: the game
+## has no in-game save deletion, and this helper is deliberately not wired to
+## UI. Anything player-facing would need its own confirmation first.
+##
+## Returns `{"ok": bool, "removed": Array[String], "failed": Array}`. Each
+## `failed` entry is `{"path": String, "error": Error}` naming a file that is
+## still present afterwards, so a locked or permission-denied copy is reported
+## per file instead of the call claiming success. `ok` is true only when no
+## accepted file remains; a slot with no files is a successful no-op.
+static func delete_save_everywhere(slot: String) -> Dictionary:
+	var removed: Array = []
+	var failed: Array = []
 	var campaign_ids: Array = [""]
 	if DirAccess.dir_exists_absolute(save_dir):
 		for campaign_id in DirAccess.get_directories_at(save_dir):
@@ -378,7 +389,19 @@ static func delete_save(slot: String) -> bool:
 	for campaign_id in campaign_ids:
 		for entry in slot_files(slot, String(campaign_id)):
 			var path := String(entry["path"])
+			if not FileAccess.file_exists(path):
+				continue
+			var error := DirAccess.remove_absolute(_global(path))
+			# A successful error code is not proof of removal; check the file.
 			if FileAccess.file_exists(path):
-				_remove_file(path)
-				removed = true
-	return removed
+				failed.append({
+					"path": path,
+					"error": error if error != OK else ERR_FILE_CANT_WRITE,
+				})
+			else:
+				removed.append(path)
+	return {
+		"ok": failed.is_empty(),
+		"removed": removed,
+		"failed": failed,
+	}

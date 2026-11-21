@@ -27,7 +27,7 @@ func after_each() -> void:
 
 
 func _clean() -> void:
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	var directory := ProjectSettings.globalize_path(SaveSystem.path_for(SLOT, CAMPAIGN))
 	if DirAccess.dir_exists_absolute(directory):
 		DirAccess.remove_absolute(directory)
@@ -67,7 +67,7 @@ func _payload(gold: int, unix := 1000, campaign := CAMPAIGN, content := 1, versi
 		payload["content_version"] = content
 	if version > 0:
 		payload["save_version"] = version
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	return payload
 
 
@@ -249,10 +249,22 @@ func test_the_campaign_guard_still_refuses_a_foreign_working_copy() -> void:
 
 
 func test_delete_removes_working_copies_too() -> void:
-	_write(_path(), _payload(10, 100))
-	_write(_path(".bak"), _payload(20, 200))
-	_write(_path(".bak.2"), _payload(30, 300))
-	_write(_path(".tmp.w"), _payload(40, 400))
-	assert_true(SaveSystem.delete_save(SLOT))
+	# Payloads are built first: _payload() saves and deletes the slot, which
+	# would otherwise wipe the working copies written before it.
+	var primary := _payload(10, 100)
+	var backup := _payload(20, 200)
+	var second := _payload(30, 300)
+	var legacy := _payload(40, 400)
+	_write(_path(), primary)
+	_write(_path(".bak"), backup)
+	_write(_path(".bak.2"), second)
+	_write(_path(".tmp.w"), legacy)
+	var cleared := SaveSystem.delete_save_everywhere(SLOT)
+	assert_true(bool(cleared["ok"]))
+	assert_eq(int(cleared["removed"].size()), 4, "every working copy is reported removed")
+	assert_false(FileAccess.file_exists(_path()), "the primary is gone")
+	assert_false(FileAccess.file_exists(_path(".bak")), "the canonical backup is gone")
+	assert_false(FileAccess.file_exists(_path(".bak.2")), "the numbered backup is gone")
+	assert_false(FileAccess.file_exists(_path(".tmp.w")), "the legacy temp name is gone")
 	assert_false(SaveSystem.has_artifacts(SLOT, CAMPAIGN), "no recoverable copy is left behind")
 	assert_eq(_snapshot(), {})

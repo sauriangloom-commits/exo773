@@ -29,8 +29,8 @@ func after_each() -> void:
 	Game.load_campaign("ravenloft_demo")
 
 
-## delete_save() only covers the pre-campaign directory, so a campaign save is
-## removed here together with anything a failed write could have left beside it.
+## This test writes raw bytes at the campaign path, so it removes that save and
+## anything a failed write could have left beside it itself.
 func _remove_slot() -> void:
 	var path := SaveSystem.path_for(SLOT, CAMPAIGN)
 	for suffix in ["", ".bak", ".tmp"]:

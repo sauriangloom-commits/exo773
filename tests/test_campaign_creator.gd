@@ -23,7 +23,7 @@ func after_each() -> void:
 func _cleanup() -> void:
 	for id in [CREATOR_ID, OTHER_ID, "probe_campaign"]:
 		CampaignStore.delete_user_campaign(String(id))
-		SaveSystem.delete_save("slot1")
+		SaveSystem.delete_save_everywhere("slot1")
 	Game.refresh_campaigns()
 
 

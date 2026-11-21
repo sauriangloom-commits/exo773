@@ -15,7 +15,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	SaveSystem.delete_save("slot2")
+	SaveSystem.delete_save_everywhere("slot2")
 
 
 func _char(id: String) -> Character:

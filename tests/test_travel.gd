@@ -8,7 +8,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 
 
 func test_gatehouse_road_travels_to_the_village() -> void:

@@ -9,7 +9,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	for slot in ["slot1", "slot2"]:
-		SaveSystem.delete_save(slot)
+		SaveSystem.delete_save_everywhere(slot)
 
 
 func _force_victory() -> void:
@@ -264,7 +264,7 @@ func test_barricade_repair_survives_a_manual_save_from_the_save_panel() -> void:
 	assert_true(bool(Game.flags.get("barricade_repaired", false)))
 
 	# Save through the real Save Game panel rather than the save API.
-	SaveSystem.delete_save("slot1")
+	SaveSystem.delete_save_everywhere("slot1")
 	var panel := Panels.saves("save", func() -> void: pass)
 	add_child_autofree(panel)
 	await wait_frames(2)

@@ -17,16 +17,16 @@ var main: Control
 
 func before_each() -> void:
 	Game.playtest_mode = false
-	SaveSystem.delete_save(SLOT)
-	SaveSystem.delete_save("auto")
+	SaveSystem.delete_save_everywhere(SLOT)
+	SaveSystem.delete_save_everywhere("auto")
 
 
 func after_each() -> void:
 	if main != null:
 		main.queue_free()
 		main = null
-	SaveSystem.delete_save(SLOT)
-	SaveSystem.delete_save("auto")
+	SaveSystem.delete_save_everywhere(SLOT)
+	SaveSystem.delete_save_everywhere("auto")
 	Game.load_campaign(DEMO)
 
 

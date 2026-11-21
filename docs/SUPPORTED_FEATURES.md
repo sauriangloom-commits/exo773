@@ -242,7 +242,8 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   deleted with the slot. A slot holding only unusable copies says why instead of
   reading as empty. Loading never renames, deletes or rewrites a file, and a
   later save beside a crash's leftovers leaves them intact - even when that save
-  fails.
+  fails. There is no in-game save deletion: the all-campaign cleanup helper is
+  QA/test only and is not wired to any screen, button or key.
 - Settings written by a newer build are read-only: the Settings panel says so in
   a line above its controls, this session's changes still apply, and the file is
   never written back.

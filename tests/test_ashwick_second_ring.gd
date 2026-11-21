@@ -12,15 +12,15 @@ const BELL_POS := Vector2i(3, 7)
 
 func before_each() -> void:
 	Game.playtest_mode = false
-	SaveSystem.delete_save(SLOT)
-	SaveSystem.delete_save("auto")
+	SaveSystem.delete_save_everywhere(SLOT)
+	SaveSystem.delete_save_everywhere("auto")
 	var loaded := Game.load_campaign(ASHWICK)
 	assert_true(bool(loaded.get("ok", false)), String(loaded.get("message", "")))
 
 
 func after_each() -> void:
-	SaveSystem.delete_save(SLOT)
-	SaveSystem.delete_save("auto")
+	SaveSystem.delete_save_everywhere(SLOT)
+	SaveSystem.delete_save_everywhere("auto")
 	Game.playtest_mode = false
 
 

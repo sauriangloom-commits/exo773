@@ -3605,7 +3605,8 @@ deterministic preference, not proof of newest - see the tie rules below.
 - `SaveSystem.slot_files` discovers every file whose name starts with
   `<slot>.json`, classifying `.bak*` as backup and `.tmp*` as temp, so `.bak.2`,
   `.tmp.2`, `.bak.w` and `.tmp.w` are all visible. `has_artifacts`,
-  `list_saves`, `first_readable` (list rows, overwrite guard) and `delete_save`
+  `list_saves`, `first_readable` (list rows, overwrite guard) and
+  `delete_save_everywhere` (QA/test cleanup only)
   use it; `Game.has_save` counts artifacts, so Continue is offered for a crashed
   slot.
 - Working names are reserved with `_free_working_name`; at 100 existing copies of
@@ -3697,7 +3698,8 @@ Rejected: `.bakup`, `.bak.1`, `.bak.0`, `.bak.01`, `.bak.+2`, `.bak.-2`,
 `.json.2026-11-20`, `slot2.jsonx`, and any other suffix. Consequences: a
 hand-made archive is never loaded as recovery, never lists the slot, never blocks
 the pre-campaign fallback and is not deleted with the slot; only the files the
-game wrote are `delete_save`'s to remove.
+game wrote are `delete_save_everywhere`'s to remove; that helper is QA/test
+cleanup, not a player action (see "Cleanup helper honesty and scope").
 
 Case handling: parsing is case-insensitive because Windows and macOS are, and
 `path_for` already resolves a differently cased primary there. Entries keep the
@@ -3797,3 +3799,57 @@ clock-derived and player-editable, so tie order is deterministic but not a
 recency proof. (8) No OS-level crash injection; filesystem rename ordering and
 the absence of fsync are unchanged. (9) Layout evidence is 1280x720 only; GUT
 runs in the source tree and the exported binary is verified by the probes.
+
+## Cleanup helper honesty and scope (2026-11-20)
+
+`SaveSystem.delete_save` is now `delete_save_everywhere`, and it no longer claims
+success while a file is still there.
+
+**Scope, stated in the comment.** It deletes one slot from the legacy
+pre-campaign directory and from every directory under `user://saves` - all
+campaigns, and every recovery copy (`.bak`, `.tmp`, `.bak.N`, `.tmp.N`, `.bak.w`,
+`.tmp.w`). Only names accepted by `parse_slot_file` are attempted, so unrelated
+files (archives, notes, `other.txt`) are never touched. The comment also says
+what the old one got wrong: this is **QA and test cleanup**, there is no in-game
+delete, and nothing in `src/ui` calls it. The 12 QA probe call sites and 42 test
+call sites were renamed mechanically; no player-facing path exists.
+
+**Per-file failure report.** The return value is
+`{"ok": bool, "removed": Array[String], "failed": Array}`, where each failure is
+`{"path": String, "error": Error}`. Removal is confirmed by re-checking the file,
+so an `OK` error code that leaves the file behind is still a failure, and `ok` is
+true only when no accepted file remains. A slot with nothing to remove is a
+successful no-op; a partial deletion reports the files that survived and still
+removes the rest.
+
+**Tests.** `tests/test_save_cleanup.gd` (6 tests) pins:
+- removal from two campaign directories and the legacy directory, with all six
+  files reported in `removed`;
+- preservation of an archive, a `.notes` file and an unrelated file, unchanged;
+- a no-op slot reporting `ok` with empty `removed`/`failed`;
+- a locked copy: on this Windows host an open handle makes
+  `DirAccess.remove_absolute` fail (`err=1`, file present), so the test asserts
+  `ok == false`, exactly one `failed` entry naming that path with a non-`OK`
+  error, the other two copies still removed and not listed as removed, and a
+  retry after closing the handle succeeding; hosts that allow unlinking an open
+  file take a documented success-only branch;
+- a source guard that no `res://src/ui/*.gd` mentions `delete_save`, and that
+  every `src/main.gd` call sits in a probe function (or the `_compat_ui_fixture`
+  those probes share).
+
+`test_delete_removes_working_copies_too` was also repaired: its payload helper
+saves and deletes the slot, so building payloads inline wiped the copies written
+before them and the test only ever deleted one file. It now builds all four
+payloads first and asserts four removals with each name gone.
+
+**Checks.** Suite **680/680, 7,284 assertions, 55 scripts, exit 0**. Both
+validators PASS. Affected probes: `--creator-interaction-probe`,
+`--creator-story-probe`, `--creator-combat-probe`,
+`--creator-combat-reload-probe`, `--save-compat-probe` and
+`--save-compat-ui-probe` all exit 0. `--creator-acceptance-probe` (which calls
+the helper at its start) fails at "Validate draft accepts the authored campaign"
+after 22 passing checks and then hangs until the timeout; the same probe at
+`87e64bf` (before this change) also fails and hangs, earlier, at "creating a
+campaign opens the creator" (3 passing checks). It is a pre-existing,
+environment-dependent probe failure, not a regression from the rename, and it is
+not counted as a passing check.

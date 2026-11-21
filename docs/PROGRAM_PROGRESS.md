@@ -2207,3 +2207,16 @@ with `worktree_entries=0` and no untracked files - 110,683,464 bytes, SHA-256
 acceptance log records that hash at both ends
 (`builds/qa/runs/2026-11-20_pattern/acceptance.log`). Platform limits are listed
 at the end of [TEST_REPORT.md](TEST_REPORT.md).
+**Cleanup helper honesty.** `SaveSystem.delete_save` is now
+`delete_save_everywhere`, with a comment that states its real scope (the legacy
+directory plus every campaign directory, all recovery copies, accepted names
+only) and its QA/test-only purpose: the game has no in-game delete and no UI file
+calls it. It returns `{"ok", "removed", "failed"}` with one
+`{"path", "error"}` per file that is still present afterwards, so a locked or
+permission-denied copy is reported instead of the call claiming success, while
+the rest are still removed. 6 new tests cover the report, a real locked-file
+failure and its retry, unrelated-file preservation, the no-op case, and source
+guards that no `src/ui` file and no non-probe `main.gd` function reaches it.
+Suite **680/680, 7,284 assertions, 55 scripts**; six affected probes pass and
+`--creator-acceptance-probe` is a pre-existing failure (it fails at `87e64bf`
+too). Details in [TEST_REPORT.md](TEST_REPORT.md).

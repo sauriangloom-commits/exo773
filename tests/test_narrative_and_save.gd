@@ -12,7 +12,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	for slot in ["slot1", "slot2"]:
-		SaveSystem.delete_save(slot)
+		SaveSystem.delete_save_everywhere(slot)
 
 
 func _find_choice(choices: Array, needle: String) -> int:

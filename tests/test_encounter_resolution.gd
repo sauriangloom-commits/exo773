@@ -18,8 +18,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	SaveSystem.delete_save("slot1")
-	SaveSystem.delete_save("auto")
+	SaveSystem.delete_save_everywhere("slot1")
+	SaveSystem.delete_save_everywhere("auto")
 
 
 func _monster(id: String) -> Character:

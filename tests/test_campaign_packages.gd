@@ -21,7 +21,7 @@ func after_each() -> void:
 
 func _clear_saves() -> void:
 	for slot in ["slot1", "slot2", "slot3", "auto", "campaign_probe"]:
-		SaveSystem.delete_save(slot)
+		SaveSystem.delete_save_everywhere(slot)
 
 
 func _find_choice(choices: Array, needle: String) -> int:

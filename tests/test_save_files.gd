@@ -26,7 +26,7 @@ func after_each() -> void:
 
 
 func _clean() -> void:
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	for path in _prefixed_files():
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
@@ -78,7 +78,7 @@ func _payload(gold: int, unix := 1000, campaign := CAMPAIGN, content := -1, vers
 		payload["content_version"] = content
 	if version > 0:
 		payload["save_version"] = version
-	SaveSystem.delete_save(SLOT)
+	SaveSystem.delete_save_everywhere(SLOT)
 	return payload
 
 
@@ -160,7 +160,8 @@ func test_deleting_a_slot_keeps_stray_files() -> void:
 	_write(_path(".bak.2"), backup)
 	var stray := _path(".2026-11-20")
 	_write(stray, archive)
-	assert_true(SaveSystem.delete_save(SLOT))
+	var cleared := SaveSystem.delete_save_everywhere(SLOT)
+	assert_true(bool(cleared["ok"]))
 	assert_false(FileAccess.file_exists(_path()))
 	assert_false(FileAccess.file_exists(_path(".bak.2")))
 	assert_true(FileAccess.file_exists(stray), "a hand-made archive is not the slot's to delete")
@@ -170,7 +171,8 @@ func test_a_case_variant_primary_is_discovered() -> void:
 	var variant := SaveSystem.campaign_dir(CAMPAIGN).path_join("SLOT2.JSON")
 	_write(variant, _payload(10, 100))
 	assert_eq(_load_gold(), 10)
-	assert_true(SaveSystem.delete_save(SLOT))
+	var cleared_variant := SaveSystem.delete_save_everywhere(SLOT)
+	assert_true(bool(cleared_variant["ok"]))
 	assert_false(FileAccess.file_exists(variant), "deletion removes the entry it found")
 
 
