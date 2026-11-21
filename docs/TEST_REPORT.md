@@ -4075,6 +4075,8 @@ the acceptance log records the exe hash at its start and end.
 | `pattern_2026-11-20` | `437fa40` | `dc2d1b5e97d3400917f60acbc7381b9ffacf28c12d14b140add4848521f10963` | 110,683,464 | 13/13, including the incompatible-only and stray-file compat cases | yes |
 | `probe_2026-11-20` | `161ceb2` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | none recorded; exported with one untracked uid | no |
 | `creator_probe_2026-11-20` | `2dc61e1` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | 9/9 (both validators + seven creator probes) | yes |
+| `creature_cover_2026-11-21` | `4e56d1e` | `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39` | 110,693,592 | Both validators from the exe, Inspect probe, inspect and dialogue layouts at 100 %/160 %; the panel clause was not rendered yet | no |
+| `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
 
 `probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
 executable bytes, re-exported from a clean tree, and only the clean one carries
@@ -4534,3 +4536,32 @@ performed or requested; native input was not exercised because no binding or
 focus behaviour changed. The earlier candidate `creature_cover_2026-11-21`
 (SHA-256 `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39`) is
 preserved unchanged.
+
+
+### Acceptance: creature soft cover and its inspector follow-up (2026-11-21)
+
+**Status: accepted within the recorded scope.** Nothing was rebuilt and no check
+was repeated for this entry; the evidence is what the two batches recorded.
+
+Accepted behaviour: a creature whose square lies on the line gives the target +4
+AC against ranged, thrown and ranged touch attacks, on normal and touch AC, using
+the printed corner method (best attacker corner, interior crossings only). The
+roll, the combat log and the enemy inspect panel read one value; the panel names
+the shooter and states both ACs. Precise Shot removes only the into-melee -4.
+`creature_cover_2026-11-21` (source `4e56d1e`, SHA-256 `30455961...`) is the rules
+build; `creature_cover_inspector_2026-11-21` (source `e64a6c9`,
+`b5b1f674...`) adds the deterministic `--demo-cover` fixture and `--cover-probe`
+and supersedes it for judgment.
+
+Not part of the accepted scope and still recorded as unmodelled: concealment,
+hard cover from walls, low walls, reach-melee cover (PHB p.151 applies the ranged
+method there), big-creature cover (no Large creature ships) and Improved Precise
+Shot (BAB +11). Grid adaptations 19d-19f in ADAPTATION_LOG.md define the edge,
+wall and reach boundaries.
+
+Carried-forward limits: layout evidence is 1280x720 at 100 %/160 % on this
+desktop; the cover clause was checked as wrapped-label geometry plus the panel's
+own text, not by reading the PNGs; the QA fixture is not campaign content; native
+input was not exercised; no manual test was performed. The two candidates' logs do
+not record a start/end exe hash, so they read "no" in the table's bound column
+even though each BUILD.txt pins the hash.

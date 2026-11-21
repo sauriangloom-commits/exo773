@@ -2497,3 +2497,21 @@ its own exe. Rules code unchanged; no test exposed a defect.
 Limits: 1280x720 at 100 %/160 % only; labels are checked for wrapped geometry,
 not for line-break placement; captures were not read by a human and no manual
 testing was requested; `creature_cover_2026-11-21` is preserved unchanged.
+
+
+### Creature soft cover accepted (2026-11-21)
+
+Closed within the recorded scope. Creature soft cover on ranged, thrown and
+ranged touch attacks (+4 to normal and touch AC, printed corner method) and its
+attacker-dependent inspector clause are accepted. Evidence is the two batches'
+own runs: source `4e56d1e` and `e64a6c9`, suite 731/731, both validators, the
+inspect layout probes, `--cover-probe` and the cover layout scenario at 100 % and
+160 %, in source and in `creature_cover_inspector_2026-11-21`
+(`b5b1f674...24c81c89`, 110,698,344 bytes, clean tree). Nothing was rebuilt and
+no check was repeated for this closure.
+
+Not accepted because not implemented: concealment, wall and hard cover, low
+walls, reach-melee cover, big-creature cover, Improved Precise Shot. See
+ADAPTATION_LOG 19d-19f and TRACEABILITY row 25b. Limits: 1280x720 at
+100 %/160 %; the clause was verified by wrapped-label geometry, not by reading
+captures; the QA fixture is not campaign content; no manual testing.

@@ -1,12 +1,12 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-21).** 705/705 tests, 7,619 assertions, 56 scripts,
+> **Current boundary (2026-11-21).** 731/731 tests, 7,704 assertions, 57 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
-> `--demo-silence` / `--demo-dialogue` layout probes pass at 1280×720 at 100 %
-> and 160 %. Keyboard access to the Sheet, Inventory and Journal panels is now
-> available during dialogue; candidate `dialogue_hud_2026-11-21` (`fa3ff024`)
-> passes 19/19 hash-bound native checks. (The 2026-11-14 boundary was 538/538,
-> 6,263 assertions, 44 scripts.) Earlier
+> layout probes run at 1280×720 at 100 % and 160 %. Creature soft cover on ranged
+> attacks (and its inspector clause) is accepted within its recorded scope;
+> candidate `creature_cover_inspector_2026-11-21` (`e64a6c9`) passes its cover
+> probe and layout scenario in source and in the exported exe. (The 2026-11-14
+> boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue
 > holds **41** entries. Items marked **Done** are complete and are kept for the
@@ -245,7 +245,12 @@ attacks, with spell-school feats waiting on a saving-throw spell.
    scope. Power Attack and Combat Expertise are implemented, so Improved
    Disarm/Bull Rush/Overrun/Sunder become candidates once those actions exist;
    fighting defensively and total defense are still unimplemented.
-3. **Cover and concealment** for ranged combat and spells (basic Bresenham LOS already exists).
+3. **Cover and concealment.** **Creature soft cover on ranged attacks is done and
+   accepted (2026-11-21):** +4 AC on normal and touch AC for ranged, thrown and
+   ranged touch attacks, read with the printed corner method, with the inspector's
+   attacker-dependent clause. Still open: concealment (miss chance, needs terrain
+   tags), hard cover from walls and low walls, reach-melee cover and
+   big-creature cover (ADAPTATION_LOG 19d-19f).
 4. **AoE spell templates** (e.g. *burning hands*, *sleep*) on the battle grid.
 5. **Character creation and level advancement** with bounded options, including
    ability increases, skill points, feats and spell selection.
