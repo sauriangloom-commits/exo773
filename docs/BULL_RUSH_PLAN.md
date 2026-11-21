@@ -1,8 +1,13 @@
 # Player-initiated bull rush — implementation plan
 
-**Status: plan only.** Nothing in this document is implemented. It is the bounded
-scope proposed by the 2026-11-21 roadmap review, written so the batch can be
-started, reviewed or rejected without another exploration pass.
+**Status: implemented 2026-11-21** for the player-initiated path. Tests were
+written and run failing first, then the engine, the `Game` wrappers and the
+sidebar control were added. Two plan details changed during implementation and
+are noted here rather than in the code alone: the defender's stability bonus uses
+the existing authored `Character.stability_bonus` (as trip does) instead of a new
+`stable` content flag, and the push chain is built from the square the first 5-ft
+push reaches so that `5 + 5 * floor(excess / 5)` is the total distance. The rest
+of the plan, including the exclusions and the decision shape, is what shipped.
 
 Scope: player-initiated bull rush against a single defender, as a standard action.
 No charge integration, no AI use, no mounts, no multi-creature pushes.

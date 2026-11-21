@@ -193,3 +193,23 @@ nonlethal recovery remain outside this slice.
  The undead-immunity probe applies
 damage through the same engine call the attack uses; the living-target path is
 exercised through the ordinary UI.
+
+
+## Bull rush (player-initiated, 2026-11-21)
+
+| Behaviour | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| Bull rush is a standard action; the charge form is not implemented | PHB p. 154 | `Encounter.bull_rush_active` spends `turn_state["standard_used"]` on declaration; `Game.combat_bull_rush` and the `Bull rush` control call it | `tests/test_bull_rush.gd` |
+| The entry into the defender's space provokes from threatening opponents, including the defender; Improved Bull Rush is deferred | PHB p. 154 | `_provoke_single_opportunity(target, ch)` after the entry log, before the opposed check | `test_the_defender_makes_an_opportunity_attack_on_entry`, `test_an_opportunity_attack_that_drops_the_rusher_ends_the_push` |
+| An opponent up to one size category larger can be rushed | PHB p. 154 | `Rules.size_category_steps` gate with a named refusal | `test_a_defender_two_size_categories_larger_is_refused` |
+| Opposed Strength checks, ±4 per size step from Medium, defender +4 when exceptionally stable | PHB p. 154 | `Rules.opposed_ability_check` with `4 * steps` bonuses and `Character.stability_bonus` | `test_size_modifiers_are_four_per_category_from_medium`, `test_a_stable_defender_adds_four` |
+| A win pushes 5 ft plus 5 ft per full 5 points of excess, capped by the rusher's movement | PHB p. 154 | `Encounter.bull_rush_active` push chain plus budget cap | `test_extra_push_is_five_feet_per_five_points`, `test_the_follow_is_capped_by_remaining_movement` |
+| Moving with the defender is the rusher's choice and pauses resolution | PHB p. 154 | `pending_bull_rush` (`type: follow`) with `resolve_bull_rush_decision(follow)` and the Push 5 ft / Follow buttons | `test_declining_the_follow_pushes_only_five_feet`, `test_following_pushes_the_full_distance_and_moves_the_rusher` |
+| The two participants never provoke from each other for this movement | PHB p. 154 | `_provoke_attacks_of_opportunity(..., except_index)` excludes the other participant | `test_a_won_check_pushes_five_feet_and_takes_the_square` (log), engine guard |
+| A lost check sends the rusher 5 ft back, prone there if the square is occupied | PHB p. 154 | `bull_rush_active` loss branch | `test_a_lost_check_costs_the_action_and_leaves_the_rusher_where_he_stood`, `test_a_lost_check_falls_prone_when_the_starting_square_is_occupied` |
+
+Adaptations: the blocked-square stop, the no-space refusal, the entry costing
+movement and the grid-diagonal direction are recorded in `ADAPTATION_LOG.md`
+19i-19j, not presented as printed rules. Excluded: the charge form, Improved Bull
+Rush, the 25 % redirect for third-party reactions, mounted bull rush, AI use,
+multi-square creatures and terrain effects.

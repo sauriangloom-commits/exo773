@@ -1,6 +1,6 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-21).** 754/754 tests, 7,886 assertions, 59 scripts,
+> **Current boundary (2026-11-21).** 778/778 tests, 7,976 assertions, 60 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
 > windowed probes run at 1280×720 at 100 % and 160 %. Creature soft cover on
 > ranged attacks (and its inspector clause) is accepted within its recorded
@@ -8,8 +8,9 @@
 > stances; candidate `defensive_actions_2026-11-21c` (`58cb1a7`) passes its probe,
 > both validators and a matching before/after exe hash, and carries the
 > source-tested combat-scope cleanup. `-b` is preserved and superseded. Both that
-> batch and its cleanup are closed as accepted within the recorded limits; the
-> recommended next batch is player-initiated bull rush (review below). Earlier candidates
+> batch and its cleanup are closed as accepted within the recorded limits.
+> Player-initiated bull rush is done and accepted (778/778, both validators); the
+> right-side panel gained a `Bull rush` control. Earlier candidates
 > `creature_cover_inspector_2026-11-21` (`e64a6c9`) and `creature_cover_2026-11-21`
 > (`4e56d1e`) remain preserved and are still unbound. (The 2026-11-14
 > boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
@@ -120,7 +121,8 @@ are not claimed as proof.
 
 ## Next bounded task — roadmap review after the defensive closure (2026-11-21)
 
-Review only. Nothing was implemented, rebuilt or re-checked for this section, and
+Review only; the recommendation was then implemented as its own batch (see P2 and
+`BULL_RUSH_PLAN.md`). Nothing was rebuilt or re-checked for the review itself, and
 no manual testing was requested.
 
 **Recommendation: player-initiated bull rush**, as the next single bounded batch.
@@ -337,7 +339,13 @@ attacks, with spell-school feats waiting on a saving-throw spell.
    and both interact with Combat Expertise and normal/touch AC as printed.
    **Closed 2026-11-21** as accepted within the recorded limits, together with the
    encounter-resolution cleanup that removed their leaked bonus. Grapple, disarm,
-   sunder and bull rush remain open; bull rush is the recommended next batch.
+   sunder and bull rush remain open until the bull rush batch below.
+   **Bull rush is done and accepted (2026-11-21) for the player-initiated path:**
+   standard action, provoking entry, opposed Strength checks with size and
+   stability, 5 ft plus 5 ft per 5 points of excess while the rusher follows, and
+   a lost check returning the rusher with a prone fall if the square is occupied.
+   The charge form, Improved Bull Rush, the 25 % redirect, mounted and AI use, and
+   terrain remain out of scope. Grapple, disarm and sunder remain open.
 3. **Cover and concealment.** **Creature soft cover on ranged attacks is done and
    accepted (2026-11-21):** +4 AC on normal and touch AC for ranged, thrown and
    ranged touch attacks, read with the printed corner method, with the inspector's

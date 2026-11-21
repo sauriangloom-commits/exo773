@@ -50,6 +50,9 @@ var ground_items: Array = []  # [{id, item, cell}]
 var pending_trip: Dictionary = {}
 # Cleave's granted attack is a separate decision, not a Trip state (PHB p.92).
 var pending_cleave: Dictionary = {}
+# A Bull rush paused so the rusher can choose whether to move with the defender.
+# Every roll is already final; resuming never rerolls or spends another action.
+var pending_bull_rush: Dictionary = {}
 # Cleave is usable once per round; keyed by combatant index and cleared when a
 # new round begins. The use is consumed by making the extra attack, not by
 # being offered it.
@@ -218,9 +221,10 @@ func _begin_turn(entry: Dictionary) -> void:
 	last_message = ""
 	_log("")
 	_log("— %s's turn (round %d) —" % [ch.display_name, round_number])
-	if not pending_trip.is_empty() or not pending_cleave.is_empty():
+	if has_pending_decision():
 		pending_trip.clear()
 		pending_cleave.clear()
+		pending_bull_rush.clear()
 		_log("  An unresolved combat decision is discarded at the start of the turn.")
 	var index := int(entry["index"])
 	# PHB p.133: the state lasts until the combatant's first turn, so it is
@@ -1401,6 +1405,333 @@ func _drop_weapon(ch: Character) -> bool:
 
 ## Resumes the paused Trip resolution. All rolls were made before the pause, so
 ## this only applies the player's choice and never rerolls or respends.
+# ---------------------------------------------------------------- bull rush
+
+## Player-initiated bull rush (PHB p.154; SRD Combat, Special Attacks).
+##
+## Printed sequence: the standard action moves the rusher into the defender's
+## space, which provokes from every threatening opponent including the defender;
+## both sides then make opposed Strength checks; a win pushes the defender 5 ft
+## plus 5 ft per full 5 points of excess, but only as far as the rusher's own
+## movement carries him, and the two never provoke from each other for that
+## movement. A loss sends the rusher back 5 ft to his own square, prone there if
+## that square is occupied.
+##
+## Not implemented: the charge form, Improved Bull Rush, and the 25 % redirect
+## for third-party reactions. The blocked-square stop, the entry costing 5 ft and
+## diagonal pushes are adaptations noted in docs/ADAPTATION_LOG.md.
+func bull_rush_active(target_index: int, opts: Dictionary = {}) -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot bull rush." % ch.display_name)
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	var staggered := _staggered_blocks_standard(ch)
+	if staggered != "":
+		return _fail(staggered)
+	if target_index < 0 or target_index >= combatants.size():
+		return _fail("Invalid target.")
+	var target_entry: Dictionary = combatants[target_index]
+	var target: Character = target_entry["char"]
+	if int(target_entry["team"]) == int(entry["team"]):
+		return _fail("You cannot bull rush an ally.")
+	if target.has_condition("dead"):
+		return _fail("%s is already dead." % target.display_name)
+	var reach := maxi(ch.reach_ft, BattleMap.CELL_FT)
+	var distance := map.distance_ft(entry["cell"], target_entry["cell"])
+	if distance > reach:
+		return _fail(
+			"%s is %d ft. away; melee reach is %d ft. Move closer first."
+			% [target.display_name, distance, reach]
+		)
+	var attacker_steps := Rules.size_category_steps(ch.size_category)
+	var defender_steps := Rules.size_category_steps(target.size_category)
+	if defender_steps > attacker_steps + 1:
+		return _fail(
+			"%s is too large to bull rush; you can oppose a creature at most one size category larger."
+			% target.display_name
+		)
+	# Adaptation (19i): moving into the defender's space is movement, so the entry
+	# step must fit in the rusher's remaining budget.
+	var budget := maxi(0, ch.speed_ft - int(turn_state["moved_ft"]))
+	if budget < BattleMap.CELL_FT:
+		return _fail(
+			"%s has only %d feet of movement left; a bull rush needs %d feet."
+			% [ch.display_name, budget, BattleMap.CELL_FT]
+		)
+	var direction := _push_direction(entry["cell"], target_entry["cell"])
+	if direction == Vector2i.ZERO:
+		return _fail("You cannot bull rush a creature in your own square.")
+	var index := int(entry["index"])
+	var occupied := _occupancy_for(index)
+	# Adaptation (19j): the engine cannot model two creatures sharing a square, so
+	# an attempt with no legal square directly behind the defender is refused
+	# before any reaction or roll. The printed text has no such refusal.
+	if _push_step(target_entry["cell"], direction, occupied) == Vector2i(-1, -1):
+		return _fail("There is no space behind %s to push into." % target.display_name)
+	# Declared before any reaction: an interrupted rush still spends the action.
+	turn_state["standard_used"] = true
+	_log("%s lowers a shoulder and bull rushes %s." % [ch.display_name, target.display_name])
+	_log("  %s moves into %s's space." % [ch.display_name, target.display_name])
+	# Improved Bull Rush is deferred, so the defender always gets its reaction.
+	# PHB p.154: the entry provokes from every opponent that threatens you.
+	if target.can_act():
+		_provoke_single_opportunity(target, ch)
+	if finished:
+		_changed()
+		return {
+			"ok": true,
+			"interrupted": true,
+			"message": "%s was interrupted before the bull rush resolved." % ch.display_name,
+		}
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		_after_action(ch)
+		_changed()
+		return {
+			"ok": false,
+			"interrupted": true,
+			"message": "%s loses the bull rush to an opportunity attack." % ch.display_name,
+		}
+	var attacker_bonus := 4 * attacker_steps
+	# PHB p.154: the defender adds +4 when it has more than two legs or is
+	# otherwise exceptionally stable. Stability is authored per creature.
+	var defender_bonus := 4 * defender_steps + target.stability_bonus
+	var opposed := Rules.opposed_ability_check(
+		rng,
+		ch,
+		["str"],
+		target,
+		["str"],
+		{"attacker_bonus": attacker_bonus, "defender_bonus": defender_bonus, "label": "bull rush"}
+	)
+	if not bool(opposed.get("ok", false)):
+		return _fail(String(opposed.get("reason", "The bull rush could not be resolved.")))
+	_log(
+		"  Bull rush: %s %s d20(%d)%+d = %d vs %s %s d20(%d)%+d = %d"
+		% [
+			ch.display_name,
+			String(opposed["attacker_ability"]),
+			int(opposed["attacker_roll"]),
+			int(opposed["attacker_modifier"]),
+			int(opposed["attacker_total"]),
+			target.display_name,
+			String(opposed["defender_ability"]),
+			int(opposed["defender_roll"]),
+			int(opposed["defender_modifier"]),
+			int(opposed["defender_total"]),
+		]
+	)
+	var excess := int(opposed["attacker_total"]) - int(opposed["defender_total"])
+	var state := {
+		"type": "follow",
+		"actor_index": index,
+		"target_index": target_index,
+		"direction": direction,
+		"start_cell": entry["cell"],
+		"target_cell": target_entry["cell"],
+		"excess": excess,
+		"opposed": opposed,
+		"push_ft": 0,
+		"stopped_by": "",
+	}
+	if excess <= 0:
+		# PHB p.154: a lost check sends the rusher 5 ft straight back; if that
+		# square is occupied he falls prone in it.
+		_log("  The bull rush fails; %s staggers back 5 feet." % ch.display_name)
+		if occupied.has(entry["cell"]):
+			ch.set_prone(true)
+			_log(
+				"  %s's square is occupied, so %s falls prone."
+				% [ch.display_name, ch.display_name]
+			)
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"pushed_ft": 0,
+			"push_ft": 0,
+			"excess": excess,
+			"stopped_by": "",
+			"opposed": opposed,
+			"pending": "",
+			"message": "The bull rush fails; %s stays where they stood." % ch.display_name,
+		}
+	# The first 5 ft is the push itself; the chain only covers the extra steps
+	# that moving with the defender buys.
+	var first_cell: Vector2i = target_entry["cell"] + direction
+	# PHB p.154: one additional 5 ft for each full 5 points of excess, counted
+	# from the square the first push already reaches.
+	var chain := _push_chain(
+		first_cell, direction, maxi(0, excess / BattleMap.CELL_FT), occupied
+	)
+	var extra_legal := Array(chain["cells"]).size()
+	# The entry step is already paid for; every further 5 ft comes out of the same
+	# budget, so the push cannot exceed the rusher's normal movement limit.
+	var extra_budget := maxi(0, (budget - BattleMap.CELL_FT) / BattleMap.CELL_FT)
+	var extra := mini(extra_legal, extra_budget)
+	var push_ft := BattleMap.CELL_FT + extra * BattleMap.CELL_FT
+	var stopped_by := String(chain["stopped_by"])
+	if extra < extra_legal:
+		stopped_by = "budget"
+	state["push_ft"] = push_ft
+	state["stopped_by"] = stopped_by
+	if push_ft <= BattleMap.CELL_FT:
+		if stopped_by == "budget" and extra_legal > 0:
+			_log(
+				"  %s has only %d feet of movement left; the extra push is lost."
+				% [ch.display_name, budget]
+			)
+		elif stopped_by == "wall":
+			_log("  %s is stopped by the wall after %d feet." % [target.display_name, push_ft])
+		elif stopped_by == "occupied":
+			_log(
+				"  %s is stopped by an occupied square after %d feet."
+				% [target.display_name, push_ft]
+			)
+		elif stopped_by == "edge":
+			_log(
+				"  %s is stopped at the edge of the area after %d feet."
+				% [target.display_name, push_ft]
+			)
+		return _commit_bull_rush(state, false)
+	# A further push requires moving with the defender, which is the player's
+	# choice; pause with every roll already final.
+	if opts.has("follow"):
+		return _commit_bull_rush(state, bool(opts["follow"]))
+	pending_bull_rush = state.duplicate(true)
+	changed.emit()
+	return {
+		"ok": true,
+		"pending": "follow",
+		"push_ft": push_ft,
+		"pushed_ft": 0,
+		"excess": excess,
+		"stopped_by": stopped_by,
+		"opposed": opposed,
+		"message": (
+			"%s can push %s %d feet by moving with them, or 5 feet without."
+			% [ch.display_name, target.display_name, push_ft]
+		),
+	}
+
+
+func resolve_bull_rush_decision(follow: bool) -> Dictionary:
+	if pending_bull_rush.is_empty():
+		return _fail("There is no pending Bull rush decision.")
+	if String(pending_bull_rush.get("type", "")) != "follow":
+		return _fail("That pending decision is not a bull-rush follow choice.")
+	var state := pending_bull_rush
+	pending_bull_rush = {}
+	var actor_index := int(state.get("actor_index", -1))
+	if actor_index < 0 or actor_index >= combatants.size():
+		return _fail("The pending Bull rush actor is no longer in this encounter.")
+	var ch: Character = combatants[actor_index]["char"]
+	var current := active_entry()
+	if not current.is_empty() and int(current.get("index", -1)) != actor_index:
+		_log("  The turn moved to another combatant; the Bull rush decision is void.")
+		changed.emit()
+		return _fail("That Bull rush decision no longer belongs to the active combatant.")
+	if ch.has_condition("dead") or not ch.can_act():
+		_log("  %s can no longer act; the Bull rush decision is void." % ch.display_name)
+		changed.emit()
+		return _fail("%s can no longer act; the Bull rush decision is void." % ch.display_name)
+	return _commit_bull_rush(state, follow)
+
+
+func _commit_bull_rush(state: Dictionary, follow: bool) -> Dictionary:
+	var actor_index := int(state["actor_index"])
+	var target_index := int(state["target_index"])
+	var actor_entry: Dictionary = combatants[actor_index]
+	var target_entry: Dictionary = combatants[target_index]
+	var ch: Character = actor_entry["char"]
+	var target: Character = target_entry["char"]
+	var direction: Vector2i = state["direction"]
+	var target_from: Vector2i = state["target_cell"]
+	var push_ft := int(state["push_ft"]) if follow else BattleMap.CELL_FT
+	var steps := maxi(1, push_ft / BattleMap.CELL_FT)
+	target_entry["cell"] = target_from + direction * steps
+	# The rusher ends in the square the defender vacated, one step behind.
+	_advance_cell(actor_entry, target_from + direction * (steps - 1), push_ft)
+	_log("  %s is pushed back %d feet." % [target.display_name, push_ft])
+	if steps > 1:
+		_log(
+			"  %s follows %d feet, ending just behind %s."
+			% [ch.display_name, push_ft - BattleMap.CELL_FT, target.display_name]
+		)
+	# PHB p.154: the moved defender and the following rusher provoke from others,
+	# but never from each other. Resolved after both cells are committed.
+	_provoke_attacks_of_opportunity(target_index, target_from, actor_index)
+	_provoke_attacks_of_opportunity(actor_index, state["start_cell"], target_index)
+	_after_action(ch)
+	_check_end()
+	changed.emit()
+	return {
+		"ok": true,
+		"pushed_ft": push_ft,
+		"push_ft": push_ft,
+		"excess": int(state["excess"]),
+		"stopped_by": String(state["stopped_by"]),
+		"opposed": state["opposed"],
+		"pending": "",
+		"message": "%s is pushed back %d feet." % [target.display_name, push_ft],
+	}
+
+
+## One axis step from the rusher through the defender. Diagonals are legal on
+## this grid, so "straight back" follows the same axis (adaptation, 19j).
+func _push_direction(from: Vector2i, to: Vector2i) -> Vector2i:
+	return Vector2i(signi(to.x - from.x), signi(to.y - from.y))
+
+
+## The next legal cell in a push chain, or Vector2i(-1, -1) when the step leaves
+## the map, hits a wall or lands on an occupied square.
+func _push_step(origin: Vector2i, direction: Vector2i, occupied: Dictionary) -> Vector2i:
+	var dest := origin + direction
+	if map.is_blocked(dest):
+		return Vector2i(-1, -1)
+	if occupied.has(dest):
+		return Vector2i(-1, -1)
+	return dest
+
+
+## Legal cells behind `origin` up to `max_steps`, plus the reason the chain
+## stopped: "wall", "occupied", "edge" or "" when the full distance is free.
+func _push_chain(
+	origin: Vector2i, direction: Vector2i, max_steps: int, occupied: Dictionary
+) -> Dictionary:
+	var cells: Array = []
+	var cell := origin
+	for i in range(maxi(0, max_steps)):
+		var next := cell + direction
+		if map.is_blocked(next):
+			var off_map := (
+				next.x < 0 or next.y < 0 or next.x >= map.width or next.y >= map.height
+			)
+			return {"cells": cells, "stopped_by": "edge" if off_map else "wall"}
+		if occupied.has(next):
+			return {"cells": cells, "stopped_by": "occupied"}
+		cells.append(next)
+		cell = next
+	return {"cells": cells, "stopped_by": ""}
+
+
+func _occupancy_for(index: int) -> Dictionary:
+	return occupied_except(index)
+
+
+## The single movement-accounting site for forced movement that draws on the
+## actor's own budget.
+func _advance_cell(entry: Dictionary, cell: Vector2i, cost_ft := BattleMap.CELL_FT) -> void:
+	entry["cell"] = cell
+	turn_state["moved_ft"] = int(turn_state["moved_ft"]) + cost_ft
+
+
 func resolve_trip_decision(release_weapon: bool) -> Dictionary:
 	if pending_trip.is_empty():
 		return _fail("There is no pending Trip decision.")
@@ -1674,7 +2005,11 @@ func decline_cleave() -> Dictionary:
 
 
 func has_pending_decision() -> bool:
-	return not pending_trip.is_empty() or not pending_cleave.is_empty()
+	return (
+		not pending_trip.is_empty()
+		or not pending_cleave.is_empty()
+		or not pending_bull_rush.is_empty()
+	)
 
 
 ## Pick up an item from the ground: move action that provokes (PHB Table 8-2,
@@ -2409,10 +2744,16 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> void
 	_check_end()
 
 
-func _provoke_attacks_of_opportunity(mover_index: int, from_cell: Vector2i) -> void:
+func _provoke_attacks_of_opportunity(
+	mover_index: int, from_cell: Vector2i, except_index := -1
+) -> void:
 	var mover: Character = combatants[mover_index]["char"]
 	for entry in combatants:
 		if int(entry["index"]) == mover_index:
+			continue
+		# Bull rush: the defender and the rusher never provoke from each other for
+		# this movement (PHB p.154).
+		if int(entry["index"]) == except_index:
 			continue
 		if int(entry["team"]) == int(combatants[mover_index]["team"]):
 			continue
@@ -3488,9 +3829,10 @@ func finish(result: String) -> void:
 	outcome = result
 	# Encounter termination is a legitimate cancellation: the paused choice can
 	# no longer happen, so it is void. It is logged rather than silently cleared.
-	if not pending_trip.is_empty() or not pending_cleave.is_empty():
+	if has_pending_decision():
 		pending_trip.clear()
 		pending_cleave.clear()
+		pending_bull_rush.clear()
 		_log("The encounter ends; any pending combat decision is void and has no effect.")
 	off_turn_resume.clear()
 	_clear_combat_scope_states()

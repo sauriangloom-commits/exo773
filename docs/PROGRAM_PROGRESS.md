@@ -2641,3 +2641,28 @@ Roadmap review (recorded in `ROADMAP.md`): no new regression, so the recommendat
 is player-initiated bull rush as the next bounded batch, with the exported
 resolution smoke ranked second because it adds evidence rather than play. Limits
 unchanged: 1280x720 at 100 %/160 %; no manual testing; backups untouched.
+
+
+### Bull rush, player-initiated (2026-11-21)
+
+Implemented the bull rush special attack for the player path only, following the
+verified SRD text (PHB p. 154) and the plan committed the day before. A standard
+action: the entry provokes the defender's opportunity attack, opposed Strength
+checks apply ±4 per size category with the defender's stability bonus, a win
+pushes 5 ft plus 5 ft per full 5 points of excess while the rusher moves with the
+defender, and the fight pauses for the follow choice. A loss returns the rusher to
+his square, prone if it is occupied. The push stops at walls, occupied squares and
+map edges; an attempt with no space behind the defender is refused before the
+roll. Adaptations 19i-19j record every rule the print does not contain.
+
+Evidence: tests written and failing first (21 failures on the missing entry
+point), then `tests/test_bull_rush.gd` at 24 tests / 90 assertions, the full suite
+at 778/778 tests, 7,976 assertions, 60 scripts, exit 0, and both validators PASS.
+The sidebar gained a `Bull rush` control and a two-button follow decision; the
+exported candidate is accepted for layout and validators only, and the rules
+behaviour remains source-tree evidence.
+
+Not implemented and not claimed: the charge form, Improved Bull Rush (unblocked
+but still deferred), the 25 % redirect, mounted and AI bull rushes, creatures
+larger than one square, terrain, and any change to trip, grapple, disarm or
+sunder. No manual testing was performed or requested; backups were not touched.

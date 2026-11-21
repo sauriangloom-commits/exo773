@@ -181,6 +181,30 @@ presentation choices are omitted; nothing here changes a rule silently.
     only the three combat-scope ids are cleared. A defeat exit clears them too
     and writes no autosave.
 
+19i. **A bull rush push stops at a wall or an occupied square, and a rush with
+    no space behind the defender is refused outright.** PHB p. 154 says how far a
+    won bull rush pushes but says nothing about what happens when the defender
+    cannot move that far. The engine applies the ordinary movement restriction
+    ("you can't move into a blocked or occupied square") to the forced movement:
+    the push stops in the last legal square, the rusher follows only as far as he
+    can legally stand, and the log names the wall, the occupied square or the map
+    edge. Because the grid cannot represent two creatures in one square, a rush
+    whose first 5-ft push has no legal destination is refused before the reaction
+    and the roll, which is an engine limitation rather than a printed refusal. The
+    printed distance cap ("you can't exceed your normal movement limit") is kept.
+
+19j. **The entry step costs movement, and bull-rush movement is resolved atomically.**
+    PHB p. 154 opens with "First, you move into the defender's space", so the
+    engine treats that step as 5 ft of the rusher's own movement: a character with
+    less than 5 ft left cannot bull rush, and each extra 5 ft of push is paid from
+    the same budget. The defender's reaction resolves against the pre-move cells
+    and before the opposed check, matching the printed order, but the engine never
+    stores the transient overlap of two creatures in one square: on a win the
+    rusher is committed to the vacated square, on a loss he stays where he stood
+    (equivalent to stepping in and back out, and never charged twice). Grid
+    adjacency includes diagonals, so "straight back" follows the rusher-defender
+    axis whether it is orthogonal or diagonal.
+
 ## Narrative and content
 
 20. **Dialogue checks default to the best conscious party member.** Content can

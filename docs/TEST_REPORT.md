@@ -4787,3 +4787,32 @@ is fixed and recorded above, `-b` stays superseded, and the deferred features,
 maintenance debt and evidence gaps in the ledgers earlier in this file are
 unchanged. No manual testing was performed or requested, and backups were not
 touched.
+
+
+### Bull rush — player-initiated (2026-11-21)
+
+Implemented the standard-action bull rush from `BULL_RUSH_PLAN.md` and the SRD
+text it quotes (PHB p. 154), using the printed sequence: the entry into the
+defender's space provokes from every threatening opponent including the defender,
+both sides make opposed Strength checks with ±4 per size step and the defender's
+stability bonus, a win pushes 5 ft plus 5 ft per full 5 points of excess while
+moving with the defender, and a loss sends the rusher back with a prone fall when
+that square is occupied. The user-visible entry points are the `Bull rush` action
+button, its enemy-target mode and a Push 5 ft / Follow decision.
+
+Tests were written and run failing first: 21 failures on the absent
+`bull_rush_active` entry point (`builds/qa/runs/2026-11-21_bull_rush/red_failing_first.log`).
+The finished `tests/test_bull_rush.gd` holds 24 tests and 90 assertions, including
+geometry tests for the push chain (corridor, wall, occupied square, map edge),
+seeded-outcome tests for the check, push distance, movement cap and reactions,
+failure and prone handling, the follow decision and its void guard, and a
+cross-batch guard that a bull rush neither activates a stance nor commits Combat
+Expertise. Full suite 778/778 tests, 7,976 assertions, 60 scripts, exit 0; both
+validators PASS (`builds/qa/runs/2026-11-21_bull_rush/`).
+
+Adaptations are recorded as 19i (blocked push and the no-space refusal) and 19j
+(entry costs movement, atomic placement, grid diagonals). Limits: player-initiated
+only, no charge form, no Improved Bull Rush, no 25 % redirect, no mounted or AI use,
+no multi-square creatures, no terrain. The rules evidence here is source-tree only;
+the exported candidate is checked for layout and validators, not for rules
+outcomes, and no manual testing was performed or requested.

@@ -269,6 +269,7 @@ func _build() -> void:
 	_add_action_button("First aid", _open_first_aid)
 	_add_action_button("Turn undead", _turn_undead)
 	_add_action_button("Trip", _trip)
+	_add_action_button("Bull rush", _bull_rush)
 	_add_action_button("Stand up", func() -> void: Game.combat_stand_up())
 	_add_action_button("Pick up", _pick_up_here)
 	_add_action_button("End turn", _end_turn)
@@ -640,6 +641,7 @@ func _update_button_states() -> void:
 		"First aid": standard,
 		"Turn undead": bool(turn_status.get("ok", false)),
 		"Trip": standard,
+		"Bull rush": standard,
 		"Stand up": player_turn and prone and not moved,
 		"Pick up":
 		player_turn
@@ -700,6 +702,14 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 			refresh_screen()
 			return
 		Game.combat_trip(int(entry["index"]), trip_weapon_check.button_pressed)
+		refresh_screen()
+		return
+	if mode == "bull_rush":
+		if entry.is_empty() or int(entry["team"]) != Encounter.TEAM_ENEMY:
+			Game.last_ui_message = "Choose an enemy to bull rush."
+			refresh_screen()
+			return
+		Game.combat_bull_rush(int(entry["index"]))
 		refresh_screen()
 		return
 	if mode == "step":
@@ -776,6 +786,14 @@ func _trip() -> void:
 	Game.last_ui_message = (
 		"Click an enemy within reach to Trip. Check 'Use equipped trip weapon' for a weapon trip."
 	)
+	refresh_screen()
+
+
+func _bull_rush() -> void:
+	if _refuse_while_pending():
+		return
+	mode = "bull_rush"
+	Game.last_ui_message = "Click an enemy within reach to Bull rush (PHB p.154)."
 	refresh_screen()
 
 
@@ -858,6 +876,9 @@ func _rebuild_decision() -> void:
 		pass_up.pressed.connect(func() -> void: Game.combat_decline_cleave())
 		decision_box.add_child(pass_up)
 		return
+	if not e.pending_bull_rush.is_empty():
+		_rebuild_bull_rush_decision(e)
+		return
 	var actor_index := int(e.pending_trip.get("actor_index", -1))
 	if actor_index < 0 or actor_index >= e.combatants.size():
 		return
@@ -926,6 +947,42 @@ func _rebuild_decision() -> void:
 	keep.text = "Keep weapon"
 	keep.pressed.connect(func() -> void: Game.combat_resolve_trip(false))
 	buttons.add_child(keep)
+
+
+## PHB p.154: after a won check the rusher chooses whether to move with the
+## defender. Every roll is already final, so this only offers the two distances.
+func _rebuild_bull_rush_decision(e: Encounter) -> void:
+	var actor_index := int(e.pending_bull_rush.get("actor_index", -1))
+	var target_index := int(e.pending_bull_rush.get("target_index", -1))
+	if actor_index < 0 or actor_index >= e.combatants.size():
+		return
+	var ch: Character = e.combatants[actor_index]["char"]
+	var target_name := "the defender"
+	if target_index >= 0 and target_index < e.combatants.size():
+		target_name = String((e.combatants[target_index]["char"] as Character).display_name)
+	var push_ft := int(e.pending_bull_rush.get("push_ft", 5))
+	var label := ThemeBuilder.body(
+		(
+			"Bull rush: %s won the check. Push %s 5 feet, or move with them and push %d feet (PHB p.154)."
+			% [ch.display_name, target_name, push_ft]
+		),
+		false,
+		10
+	)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	decision_box.add_child(label)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 6)
+	decision_box.add_child(buttons)
+	var stay := Button.new()
+	stay.text = "Push 5 ft"
+	stay.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(false))
+	buttons.add_child(stay)
+	var follow := Button.new()
+	follow.text = "Follow"
+	follow.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(true))
+	buttons.add_child(follow)
 
 
 ## PHB p.97: Improved Unarmed Strike lets the character deal lethal or nonlethal

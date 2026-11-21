@@ -280,6 +280,24 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Volume controls for music, SFX and ambience; persisted settings.
 - Missing audio files are ignored without crashing.
 
+## Bull rush (player-initiated, 2026-11-21)
+
+- Bull rush (PHB p. 154) is a standard action in the combat screen: the rusher
+  moves into the defender's space, which provokes an opportunity attack from
+  every opponent that threatens him, then both make opposed Strength checks with
+  the size modifiers and the defender's stability bonus.
+- A won check pushes the defender 5 feet, plus 5 feet for each full 5 points of
+  excess, but only as far as the rusher's remaining movement carries him. The
+  rusher chooses whether to move with the defender; the fight pauses with every
+  roll final until that choice is made.
+- A lost check sends the rusher back to his own square and leaves him prone there
+  if that square is occupied. The standard action is spent either way.
+- A push stops at a wall, an occupied square or the map edge, and a rush with no
+  legal square behind the defender is refused before the roll (adaptations 19i).
+- Not supported: the charge form, Improved Bull Rush, the 25 % redirect for
+  third-party reactions, mounted bull rush, AI-initiated bull rush, creatures
+  that occupy more than one square, and terrain effects.
+
 ## Trip and prone (player-initiated)
 
 - Trip (PHB pp. 158-159) is a standard action in the combat screen: unarmed or
