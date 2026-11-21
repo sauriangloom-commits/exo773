@@ -7327,6 +7327,19 @@ func _input(event: InputEvent) -> void:
 					talk_panel.scroll_page(-1 if event.is_action_pressed("ui_page_up") else 1)
 					get_viewport().set_input_as_handled()
 					return
+				# Arrow keys stay on the available choices. Godot's geometric
+				# traversal would otherwise land on unavailable rows or leave the
+				# conversation for the HUD behind it.
+				if (
+					event.is_action_pressed("ui_up")
+					or event.is_action_pressed("ui_down")
+					or event.is_action_pressed("ui_left")
+					or event.is_action_pressed("ui_right")
+				):
+					var focus_back := event.is_action_pressed("ui_up") or event.is_action_pressed("ui_left")
+					talk_panel.cycle_focus(-1 if focus_back else 1)
+					get_viewport().set_input_as_handled()
+					return
 				if event.is_action_pressed("ui_focus_next") or event.is_action_pressed("ui_focus_prev"):
 					var talk_backward := (event as InputEventWithModifiers).shift_pressed
 					talk_panel.cycle_focus(-1 if talk_backward else 1)

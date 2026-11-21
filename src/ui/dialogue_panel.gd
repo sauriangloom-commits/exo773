@@ -14,11 +14,17 @@ var panel: PanelContainer
 var scroll: ScrollContainer
 ## Choice buttons in content order, including unavailable ones (skipped by focus).
 var choice_buttons: Array[Button] = []
+## Full-viewport backdrop. It only dims: clicks pass through to the HUD panels
+## that stay readable during a conversation.
+var dim: ColorRect
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The overlay itself must not swallow clicks outside the framed panel: the
+	# read-only HUD panels and Pause stay usable while a conversation is open.
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	get_viewport().size_changed.connect(_clamp_panel)
 	resized.connect(_clamp_panel)
 	_rebuild()
 
@@ -39,6 +45,7 @@ func _panel_minimum() -> Vector2:
 func _clamp_panel() -> void:
 	if panel != null and is_instance_valid(panel):
 		panel.custom_minimum_size = _panel_minimum()
+		panel.position = Vector2(16, 16)
 
 
 func refresh() -> void:
@@ -49,20 +56,25 @@ func _rebuild() -> void:
 	for child in get_children():
 		child.queue_free()
 	scroll = null
+	dim = null
 	choice_buttons.clear()
 	if Game.dialogue == null:
 		return
-	var dim := ColorRect.new()
+	dim = ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+	var layer := Control.new()
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(layer)
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = _panel_minimum()
-	center.add_child(panel)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.position = Vector2(16, 16)
+	layer.add_child(panel)
+	_clamp_panel.call_deferred()
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)

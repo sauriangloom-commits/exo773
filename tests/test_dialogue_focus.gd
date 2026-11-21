@@ -270,3 +270,80 @@ func test_rebind_capture_consumes_the_page_key() -> void:
 	await wait_frames(2)
 	assert_eq(String(main.get("awaiting_rebind")), "", "the capture consumed the page key")
 	assert_eq(panel.scroll.scroll_vertical, 0, "the body did not scroll while capturing a rebind")
+
+
+func test_root_and_dim_cover_the_viewport_without_covering_the_hud() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	var area := panel.get_viewport_rect().size
+	assert_eq(panel.size, area, "the overlay root fills the viewport")
+	assert_not_null(panel.dim, "the dim exists")
+	assert_eq(panel.dim.size, area, "the dim fills the viewport")
+	assert_eq(
+		panel.dim.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"the dim never blocks the HUD panels behind it",
+	)
+	var party := _find_button(main, "Party (Tab)")
+	assert_not_null(party, "the read-only HUD panel button exists")
+	if party != null:
+		assert_lte(
+			panel.panel.get_global_rect().end.x,
+			party.get_global_rect().position.x,
+			"the framed panel leaves the HUD column exposed",
+		)
+
+
+func test_arrows_cycle_only_available_choices() -> void:
+	var panel: DialoguePanel = await _open_silence()
+	var epilogue := _epilogue_button(panel)
+	assert_true(epilogue != null, "the silence epilogue row is present")
+	assert_true(await _tab_until(panel, epilogue), "Tab reaches the epilogue row")
+	var available: Array[Button] = []
+	for button in panel.choice_buttons:
+		if not button.disabled:
+			available.append(button)
+	var index := available.find(epilogue)
+	assert_gt(index, 0, "an earlier available choice exists")
+	_send_key(KEY_UP)
+	await wait_frames(2)
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(),
+		available[index - 1],
+		"Up moves to the previous available choice",
+	)
+	_send_key(KEY_DOWN)
+	await wait_frames(2)
+	assert_eq(panel.get_viewport().gui_get_focus_owner(), epilogue, "Down moves forward again")
+	_send_key(KEY_LEFT)
+	await wait_frames(2)
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(),
+		available[index - 1],
+		"Left moves back through the list",
+	)
+	_send_key(KEY_RIGHT)
+	await wait_frames(2)
+	assert_eq(panel.get_viewport().gui_get_focus_owner(), epilogue, "Right moves forward")
+	_send_key(KEY_DOWN)
+	await wait_frames(2)
+	assert_eq(
+		panel.get_viewport().gui_get_focus_owner(),
+		available[available.size() - 1],
+		"Down reaches the next available choice",
+	)
+	for i in available.size() * 2:
+		_send_key(KEY_DOWN)
+		await wait_frames(1)
+		var owner_control := panel.get_viewport().gui_get_focus_owner()
+		assert_true(panel.is_ancestor_of(owner_control), "directional focus stays in the conversation")
+		assert_false((owner_control as Button).disabled, "directional focus skips unavailable rows")
+
+
+func _find_button(node: Node, label: String) -> Button:
+	for child in node.get_children():
+		if child is Button and (child as Button).text == label:
+			return child as Button
+		var found := _find_button(child, label)
+		if found != null:
+			return found
+	return null
