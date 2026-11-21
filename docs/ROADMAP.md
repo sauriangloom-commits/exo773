@@ -275,7 +275,8 @@ ruleset.
 4. **Accessibility.** Scalable UI/text, high-contrast themes, colorblind-safe
    tokens (already letter/HP coded), keyboard-only flows (**partly landed:**
    Sheet/Inventory/Journal open during dialogue via C/I/J; modal bodies scroll
-   with PageUp/PageDown and the arrows, and keep scrolling while a key is held;
+   with PageUp/PageDown and the arrows, and keep scrolling while a key is held
+   (implemented and automated-verified; physical held-key acceptance pending);
    a Save shortcut and full keyboard-only coverage remain open),
    screen-reader-friendly labels where feasible.
 5. **Localization.** Externalize strings only after the content schema stabilizes;

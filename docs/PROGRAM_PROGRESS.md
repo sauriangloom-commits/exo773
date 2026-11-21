@@ -2419,6 +2419,12 @@ pixel equality plus unit-tested ownership. Save still has no shortcut.
 
 ## Modal held-key repeat (2026-11-21)
 
+Status: implemented and automated-verified. Physical held-key acceptance in the
+exported candidate is **pending** — injected Windows input produced no OS key
+repeats — so this task is **not fully accepted**. The short manual procedure and
+environment are in [TEST_REPORT.md](TEST_REPORT.md) under "Pending manual
+held-key acceptance".
+
 A held PageUp/PageDown or arrow moved a modal body once and then stopped:
 `Main._input` dropped every repeat at its first gate, and `_scroll_modal_body()`
 asked for the non-echo form of `is_action_pressed()`. Repeats now take one route:

@@ -4345,6 +4345,11 @@ unchanged.
 
 ## Modal held-key repeat — candidate `modal_held_repeat_2026-11-21` (2026-11-21)
 
+Status: implemented and automated-verified. Native held-repeat acceptance is
+**pending** (procedure at the end of this entry), so the task is **not fully
+accepted**. The 32-check result below stands as recorded and is limited to
+single presses, hold/release and clamping.
+
 Modal body scroll keys now repeat while held. Eight new synthetic `echo` tests in
 `tests/test_modal_focus.gd` (42 tests total) cover PageUp/PageDown and both
 arrows repeating, clamping at top and bottom, and never moving the ring; a
@@ -4385,3 +4390,41 @@ demo journal does not overflow, so the Journal check uses the Ashwick silence
 seed; `tests/test_modal_focus.gd` alone is 40/42 with two isolation failures that
 also fail at `014f3b8` and pass in suite order; no human playtest; held Tab's
 repeated traversal is Godot's existing behavior and was left alone.
+
+### Pending manual held-key acceptance
+
+Implemented and automated-verified is not the same as accepted. The 32 native
+checks above show a single press, hold/release and clamping only, because injected
+`keybd_event` input does not auto-repeat on Windows; no frame shows several
+movements during one hold. Injected repeated presses and synthetic echo events are
+**not** accepted in place of that evidence.
+
+Run this against candidate `modal_held_repeat_2026-11-21` only:
+`RavenloftFoundationEdit.exe`, SHA-256
+`dfc62dc84a2750330bb28af81fe12ca9123f8802bfa17f7eaacd1e5ec92f5878`, built from
+source `fa349e4`. Do not rebuild or export it: a new executable invalidates the
+hash binding.
+
+Environment: Windows 10 (10.0.19045.6466), 1280x720 client, physical keyboard.
+
+1. Settings: `RavenloftFoundationEdit.exe -- --demo --text-scale=1.0`, then
+   Escape and the Settings row (or Tab four times, then Enter). Journal:
+   `-- --campaign=ashwick_ferry --demo-silence --text-scale=1.0`, then J. Repeat
+   both launches with `--text-scale=1.6` - four runs in total.
+2. Click the window header once so it holds the foreground, and confirm the panel
+   opens with the ring on "Close (Esc)".
+3. Hold PageDown for about two seconds: the list must move several times during
+   one hold and stop at the end while the key is still held.
+4. Hold PageUp the same way: several movements back, stopping at the top.
+5. Hold Down, then Up, about two seconds each: continuous line-by-line movement,
+   clamped at both ends.
+6. Release each key and wait about two seconds: no further movement.
+7. Confirm the focus ring stays on "Close (Esc)" before, during and after each
+   hold; a photo of each state is enough.
+8. Record the panel, text scale, what moved, where it stopped, and whether
+   anything moved after release. One movement per hold means the physical repeat
+   path is still unproven.
+
+The status stays pending until a human operator has recorded all four runs; no
+operator has run it, and the automated session could not produce physical key
+repeats.
