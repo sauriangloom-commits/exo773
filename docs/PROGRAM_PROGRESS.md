@@ -2545,10 +2545,10 @@ The sidebar gained a state checkbox with a persistent status line and a `Defend`
 button, both gated on the standard action and the lock.
 
 Evidence: `tests/test_defensive_actions.gd` (17 tests, 71 assertions inside the
-suite), full suite 748/748 with 7,779 assertions across 58 scripts, both
+suite), full suite 748/748 with 7,780 assertions across 58 scripts, both
 validators in source and from the exe, and the windowed `--demo-defensive
 --defensive-probe` at 1280x720 at 100 %/160 % in source and in candidate
-`defensive_actions_2026-11-21` (`a8c8189`, `f6bb00f2...d5de6b`, 110,708,264
+`defensive_actions_2026-11-21b` (`e72a18a`, `e53a6265...11fb25`, 110,708,296
 bytes). The exe hash matched before and after the acceptance runs, so this
 candidate is bound.
 

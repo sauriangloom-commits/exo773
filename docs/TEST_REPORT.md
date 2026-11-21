@@ -4105,7 +4105,8 @@ the acceptance log records the exe hash at its start and end.
 | `creator_probe_2026-11-20` | `2dc61e1` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | 9/9 (both validators + seven creator probes) | yes |
 | `creature_cover_2026-11-21` | `4e56d1e` | `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39` | 110,693,592 | Both validators from the exe, Inspect probe, inspect and dialogue layouts at 100 %/160 %; the panel clause was not rendered yet | no |
 | `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
-| `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Both validators from the exe, defensive probe at 100 %/160 % in source and in the exe (45 checks each), exe hash matched before/after, source suite 748/748 | yes |
+| `defensive_actions_2026-11-21b` | `e72a18a` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Both validators from the exe, defensive probe at 100 %/160 % in source and in the exe (45 checks each), exe hash matched before/after, source suite 748/748 | yes |
+| `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Superseded by `-b`; same scope, before the stance-specific attack refusal | no |
 
 `probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
 executable bytes, re-exported from a clean tree, and only the clean one carries
@@ -4598,9 +4599,9 @@ even though each BUILD.txt pins the hash.
 
 ## Fighting defensively and total defense — candidate `defensive_actions_2026-11-21` (2026-11-21)
 
-**Status: accepted within the recorded scope.** Source `a8c8189`, candidate
-`defensive_actions_2026-11-21` (clean tree, 110,708,264 bytes, SHA-256
-`f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b`).
+**Status: accepted within the recorded scope.** Source `e72a18a`, candidate
+`defensive_actions_2026-11-21b` (clean tree, 110,708,296 bytes, SHA-256
+`e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25`).
 
 Implemented: fighting defensively as a selected-then-committed stance and total
 defense as its own standard action (PHB pp. 140, 143). A selection grants no
@@ -4617,7 +4618,7 @@ and an active fighting-defensively stance. The sidebar shows a checkbox with a
 persistent status line plus a `Defend` action button, both gated on the standard
 action, the lock and the standard-action cost.
 
-Test evidence (`tests/test_defensive_actions.gd`, 17 tests, 71 assertions inside
+Test evidence (`tests/test_defensive_actions.gd`, 17 tests, 72 assertions inside
 the suite):
 
 | Area | Covered by |
@@ -4631,14 +4632,18 @@ the suite):
 | Stacking with Combat Expertise, Tumble 5/4 ranks, dodge denial | `test_fighting_defensively_stacks_with_combat_expertise`, `test_tumble_ranks_replace_the_defensive_bonus`, `test_four_tumble_ranks_keep_the_base_bonus`, `test_the_dodge_bonus_is_denied_while_dexterity_is_denied` |
 | Normal/touch/cover parity with the inspector | `test_normal_and_touch_ac_parity_and_cover_stacking` |
 
-Runs at `a8c8189`: source suite 748 tests / 7,779 assertions / 58 scripts, exit
+Runs at `a8c8189`: source suite 748 tests / 7,780 assertions / 58 scripts, exit
 0; `--validate-campaigns` and `--validate-diagnostics` PASS in source and from
 the candidate exe. Windowed `--demo-defensive --defensive-probe` at 1280x720 and
 100 %/160 %: PASS (45 checks each) in source and in the candidate exe; captures in
-`builds/qa/runs/2026-11-21_defensive/shots_100` and `shots_160`, plus the
+`builds/qa/runs/2026-11-21_defensive_b/shots_100` and `shots_160`, plus the
 source-run captures in `builds/qa/defensive_shots/`. The exe SHA-256 was
-`f6bb00f2...d5de6b` (110,708,264 bytes) immediately before the acceptance runs
-and byte-identical afterwards, so this candidate is bound.
+`e53a6265...11fb25` (110,708,296 bytes) immediately before the acceptance runs
+and byte-identical afterwards, so this candidate is bound. Candidate
+`defensive_actions_2026-11-21` (`a8c8189`, `f6bb00f2...d5de6b`) is preserved
+unchanged and superseded: it predates the stance-specific refusal message and
+the test that attacks the real target instead of an ally while total defense is
+active.
 
 Defect found and fixed inside the batch: the long `Total defense` label widened
 the four-column action grid past the sidebar's 340 px minimum; the scroll
