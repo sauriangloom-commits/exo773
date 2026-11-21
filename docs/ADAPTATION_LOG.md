@@ -168,6 +168,19 @@ presentation choices are omitted; nothing here changes a rule silently.
     tooltip carries the full name and the sidebar now reserves its vertical bar
     so no wrapped label can repeat that loop.
 
+19h. **Combat-scope effects end with the encounter, not only with the turn.**
+    Fighting defensively, total defense and Combat Expertise all last until the
+    start of the character's next turn, and that turn is measured inside one
+    encounter. `Encounter.finish` therefore removes them, together with the
+    encounter-only selections, before it emits `changed`; the victory autosave
+    is written from that signal, and `Character.to_dict` serializes `effects`.
+    Without the cleanup a defensive finishing blow or a total defense followed
+    by an ally's kill left the dodge bonus visible in exploration and in the
+    save, although the next fight's flat-footed round denied it. Unrelated
+    lasting effects (bless, mage armor, aid, conditions) are preserved, because
+    only the three combat-scope ids are cleared. A defeat exit clears them too
+    and writes no autosave.
+
 ## Narrative and content
 
 20. **Dialogue checks default to the best conscious party member.** Content can

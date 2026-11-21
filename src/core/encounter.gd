@@ -133,7 +133,7 @@ func begin() -> void:
 	cleave_used.clear()
 	off_turn_resume.clear()
 	power_attack_committed.clear()
-	_clear_combat_expertise_states()
+	_clear_combat_scope_states()
 	order.clear()
 	# PHB p.133: "A character who has not yet acted during a combat is
 	# flat-footed." Awareness determines surprise rounds, not this state, so an
@@ -1899,12 +1899,23 @@ func _committed_combat_expertise(attacker_index: int, weapon: Dictionary, attack
 	return mini(amount, Feats.combat_expertise_max(attacker))
 
 
-func _clear_combat_expertise_states() -> void:
+## Combat-scope cleanup. Combat Expertise lasts until the start of the
+## character's next turn (PHB p.92), and fighting defensively and total defense
+## last until the same point (pp.140, 143). None of them may outlive the
+## encounter that measured that turn: `Encounter.finish` calls this before it
+## emits `changed`, so the victory autosave, which serializes `effects`, never
+## sees a stance that the fight had already ended. The encounter-only choices go
+## with them. Unrelated lasting effects (bless, mage armor, aid, conditions) are
+## deliberately untouched.
+func _clear_combat_scope_states() -> void:
 	combat_expertise_pending.clear()
 	combat_expertise_committed.clear()
+	fight_defensively_selected.clear()
 	for entry in combatants:
 		var ch: Character = entry["char"]
 		ch.remove_effect("combat_expertise")
+		ch.remove_effect("fighting_defensively")
+		ch.remove_effect("total_defense")
 
 
 func _committed_power_attack(attacker_index: int, weapon: Dictionary, attack_mode: String) -> int:
@@ -3482,7 +3493,7 @@ func finish(result: String) -> void:
 		pending_cleave.clear()
 		_log("The encounter ends; any pending combat decision is void and has no effect.")
 	off_turn_resume.clear()
-	_clear_combat_expertise_states()
+	_clear_combat_scope_states()
 	_log("")
 	match result:
 		"victory":

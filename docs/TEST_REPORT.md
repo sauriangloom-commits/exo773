@@ -4017,6 +4017,22 @@ substance, only in classification.
    limitation, but the result is still an inconsistent reveal and it is recorded
    as a defect rather than as debt.
 
+**Defects found and fixed after the defensive-actions acceptance (2026-11-21)**
+
+2. **[Fixed 2026-11-21] A live defensive stance survived the end of its encounter and was
+   written into the victory autosave.** `Encounter.finish` already cleared Combat
+   Expertise, but not `fighting_defensively` or `total_defense`, nor the encounter-only
+   selection. A fight that ended while a stance was active — a defensive finishing blow, or
+   total defense followed by an ally's kill — left the dodge bonus on the character in
+   exploration, showed it in the party card and character sheet, and serialized it, because
+   `Character.to_dict` writes `effects`. Reproduced before the fix through the real
+   resolution and autosave path: fighting defensively AC 19 vs base 17, total defense 21 vs
+   17, both present in `auto.json` and after `load_game`. Combat math was unaffected (the
+   next fight starts flat-footed, which denies dodge bonuses) and the character's first turn
+   removed the effect, so the failure was stale display state plus a polluted save, not a
+   wrong to-hit number. Fixed in `Encounter._clear_combat_scope_states` (see the section at
+   the end of this file).
+
 **Conditional layouts (not confirmed defects)**
 
 - A control taller than its pane aligns to the pane's top, so its bottom can
@@ -4107,6 +4123,10 @@ the acceptance log records the exe hash at its start and end.
 | `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
 | `defensive_actions_2026-11-21b` | `e72a18a` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Both validators from the exe, defensive probe at 100 %/160 % in source and in the exe (45 checks each), exe hash matched before/after, source suite 748/748 | yes |
 | `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Superseded by `-b`; same scope, before the stance-specific attack refusal | no |
+
+`defensive_actions_2026-11-21b` predates the combat-scope cleanup recorded at the
+end of this file: its acceptance stands for the defensive-actions scope, but the
+stale-stance save defect is fixed in source only and is not in that binary.
 
 `probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
 executable bytes, re-exported from a clean tree, and only the clean one carries
@@ -4661,3 +4681,59 @@ content; the captures were produced but not read by a human, and no manual test
 was performed or requested; native input was not exercised because no binding or
 focus behaviour changed. Backups were not touched and the two cover candidates
 are preserved unchanged.
+
+## Combat-scope cleanup — defensive stances at encounter resolution (2026-11-21)
+
+**Status: fixed and verified in source; no candidate was rebuilt.**
+
+Reproduction (before the fix, source `73ed778`): `tests/test_combat_scope_cleanup.gd`
+drove a real campaign game, real `Game` wrappers, the real resolution signal, the
+real victory autosave and `Game.load_game`. Fighting defensively reported AC 19
+against a base of 17 in exploration, total defense 21 against 17; both effects
+were in `auto.json` and both came back after reload. The log is preserved at
+`builds/qa/runs/2026-11-21_combat_scope/repro_failing_first.log` (4 tests, 77/90
+assertions). Combat Expertise already passed: `Encounter.finish` cleared it
+before the batch, which is what made the defensive gap a regression rather than
+a pre-existing class.
+
+Cause: `Encounter.finish` called `_clear_combat_expertise_states`, which removed
+only the Combat Expertise effect and its two dictionaries. `fighting_defensively`
+and `total_defense` are `Character` effects that `Character.to_dict` serializes,
+and nothing removed them when the fight ended first. `finish` emits `changed`,
+`Game._on_encounter_changed` runs `_resolve_encounter`, and the victory branch
+autosaves — so the stale effect was written to disk.
+
+Fix: the helper is now `Encounter._clear_combat_scope_states`. It clears
+`combat_expertise_pending`, `combat_expertise_committed` and
+`fight_defensively_selected`, and removes `combat_expertise`,
+`fighting_defensively` and `total_defense` from every combatant. `finish` calls
+it before emitting `changed`, so the resolution save cannot see a combat-scope
+effect; `begin` calls it too, so a rechallenge starts clean. Unrelated lasting
+effects (bless, mage armor, aid, conditions) are untouched.
+
+Tests added:
+
+| File | Test | Covers |
+| --- | --- | --- |
+| `tests/test_combat_scope_cleanup.gd` | `test_fighting_defensively_does_not_survive_victory_or_the_autosave` | selection → committed attack → ally's kill → base AC, no effect in the saved party entry, bless preserved, reload clean |
+| same | `test_total_defense_does_not_survive_victory_or_the_autosave` | total defense active at victory, same four checks |
+| same | `test_combat_expertise_still_does_not_survive_victory_or_the_autosave` | regression pin for the cleanup that already existed |
+| same | `test_a_stance_is_cleared_on_defeat_and_no_autosave_is_written` | defeat exit: real damage plus the real end-turn `_check_end`, effect cleared, no save file |
+| `tests/test_defensive_actions.gd` | `test_total_defense_does_not_remove_flanking_or_engagement` | a total-defending ally still flanks and still creates the shooter's -4 |
+| same | `test_total_defense_refuses_a_pending_combat_expertise_choice` | pending choice refused without spending, preserved, then committed by the attack |
+
+Results at the fix: focused 23 tests / 178 assertions pass; full suite **754
+tests, 7,886 assertions, 59 scripts, exit 0**; `--validate-campaigns` and
+`--validate-diagnostics` both PASS. Logs and the pre-fix reproduction are in
+`builds/qa/runs/2026-11-21_combat_scope/`.
+
+Limits: victory and defeat are the only exits the engine produces, and both are
+covered; the defeat test applies damage through `Character.take_damage` and then
+lets a real end turn reach `_check_end`, rather than waiting for an enemy attack
+roll. The suite runs in the source tree under an isolated `APPDATA` profile and
+writes only the `auto` slot, which it deletes before and after each test; no
+player save directory was touched. No export, probe or layout run was repeated,
+because neither the UI nor the exported behaviour changed; consequently candidate
+`defensive_actions_2026-11-21b` still contains the leak and its BUILD.txt and
+acceptance record are unchanged. The suite is source-only evidence, as recorded
+elsewhere in this file, and no manual testing was performed or requested.

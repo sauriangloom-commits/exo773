@@ -2562,3 +2562,44 @@ characters, so the +3/+6 replacement is reachable only through a test fixture;
 mounted, reach-melee, concealment and the other recorded cover gaps are
 unchanged. Backups were not touched; no manual testing was performed or
 requested.
+
+### Combat-scope cleanup: stances no longer outlive their encounter (2026-11-21)
+
+Fixed a regression from the defensive-actions batch. `Encounter.finish` already
+cleared Combat Expertise, but the two new stances were not included: a fight
+that ended while fighting defensively or total defense was active left the dodge
+bonus on the character. Because `Character.to_dict` serializes `effects` and the
+victory branch of `_resolve_encounter` autosaves, the stale stance was written to
+`auto.json` and came back after a reload; exploration's party card showed AC 19
+against a base of 17 (fighting defensively) and 21 against 17 (total defense).
+
+Reproduced first, through the real path: real campaign game, real `Game`
+wrappers, the real resolution signal, the real autosave and `Game.load_game`
+(`tests/test_combat_scope_cleanup.gd`, 4 tests: fighting defensively, total
+defense, Combat Expertise, and defeat). The pre-fix run failed 3 of 4 and is kept
+at `builds/qa/runs/2026-11-21_combat_scope/repro_failing_first.log`; Combat
+Expertise passed throughout, which is what identified the cleanup as the missing
+hook rather than an absent concept.
+
+The fix renames `_clear_combat_expertise_states` to `_clear_combat_scope_states`
+and makes it clear the CE pending/committed dictionaries, the defensive selection,
+and the `combat_expertise`, `fighting_defensively` and `total_defense` effects for
+every combatant. `finish` calls it before emitting `changed`, so the resolution
+save cannot see them; `begin` calls it too. Unrelated lasting effects are
+preserved. Two evidence gaps from the batch are now pinned as well: a
+total-defending ally still flanks and still creates the shooter's into-melee -4,
+and total defense refuses a *pending* Combat Expertise choice without spending
+anything or discarding it.
+
+Results: focused 23/23 tests with 178 assertions; full suite 754/754 with 7,886
+assertions across 59 scripts, exit 0; `--validate-campaigns` and
+`--validate-diagnostics` PASS. Runs use an isolated `APPDATA` profile and only the
+`auto` slot, cleaned before and after each test.
+
+Not done and not claimed: no candidate was rebuilt, so
+`defensive_actions_2026-11-21b` still contains the leak and its acceptance record
+stands for its own scope; no probe or layout run was repeated because the UI did
+not change; defeat is covered by real damage plus a real end turn to
+`_check_end`, not by an enemy attack roll; the suite remains source-only
+evidence. Backups were not touched and no manual testing was performed or
+requested.

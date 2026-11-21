@@ -395,6 +395,60 @@ func test_the_dodge_bonus_is_denied_while_dexterity_is_denied() -> void:
 	)
 
 
+## PHB p.143 forbids opportunity attacks while using total defense; it does not
+## stop the creature from threatening its squares. Flanking and the shooter's
+## into-melee penalty therefore keep counting a total-defending ally.
+func test_total_defense_does_not_remove_flanking_or_engagement() -> void:
+	var kaelen := _char("kaelen")
+	var sera := _char("sera")
+	var ghoul := _monster("ghoul")
+	var e := _encounter(
+		[kaelen, sera], [Vector2i(2, 3), Vector2i(4, 3)], [ghoul], [Vector2i(3, 3)]
+	)
+	_force_turn(e, sera)
+	e.entry_for(kaelen)["cell"] = Vector2i(2, 3)
+	e.entry_for(sera)["cell"] = Vector2i(4, 3)
+	var ghoul_index := _index_of(e, ghoul)
+	assert_true(e._is_flanked(ghoul_index), "two party members straddle the ghoul")
+	assert_true(bool(e.total_defense().get("ok", false)), "Sera takes total defense")
+	assert_true(
+		e._is_flanked(ghoul_index),
+		"a total-defending ally still flanks (p.143 forbids reactions, not threat)",
+	)
+	var penalty := e._into_melee_penalty(
+		kaelen, ghoul, e.entry_for(kaelen), e.entry_for(ghoul)
+	)
+	assert_eq(int(penalty["penalty"]), -4, "the ghoul is still engaged with Sera")
+	assert_true(
+		String(penalty["reason"]).contains(sera.display_name),
+		"the reason names the total-defending ally: %s" % String(penalty["reason"]),
+	)
+
+
+## Total defense refuses Combat Expertise (PHB p.143). A pending choice has not
+## been committed yet, so it must be refused without spending anything or
+## disturbing the choice; the attack that follows still commits it normally.
+func test_total_defense_refuses_a_pending_combat_expertise_choice() -> void:
+	var parts := _fight()
+	var e: Encounter = parts[0]
+	var kaelen: Character = parts[1]
+	var ghoul: Character = parts[3]
+	var index := _index_of(e, kaelen)
+	kaelen.feats.append("Combat Expertise")
+	kaelen.abilities["int"] = 13
+	assert_true(bool(e.set_active_combat_expertise(2).get("ok", false)), "a choice is pending")
+	assert_true(e.combat_expertise_pending.has(index), "nothing has been committed yet")
+	var refused := e.total_defense()
+	assert_false(bool(refused["ok"]), "total defense refuses the combination")
+	assert_true(String(refused["message"]).contains("Combat Expertise"), "the reason names it")
+	assert_false(e.total_defense_active_for(index), "no defense effect is applied")
+	assert_false(bool(e.turn_state["standard_used"]), "nothing is spent")
+	assert_true(e.combat_expertise_pending.has(index), "the pending choice is preserved")
+	var shot := e.attack_active(_index_of(e, ghoul))
+	assert_true(bool(shot.get("ok", false)), String(shot.get("message", "")))
+	assert_true(kaelen.has_effect("combat_expertise"), "the attack still commits the choice")
+
+
 func test_normal_and_touch_ac_parity_and_cover_stacking() -> void:
 	var parts := _fight()
 	var e: Encounter = parts[0]

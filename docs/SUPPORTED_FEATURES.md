@@ -108,7 +108,9 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   Expertise. Total defense (PHB p. 143) is the separate `Defend` action: a
   standard action that grants +4 dodge AC (+6 with 5 Tumble ranks), forbids
   attacks and opportunity attacks, and cannot be combined with fighting
-  defensively or Combat Expertise.
+  defensively or Combat Expertise. All three are combat-scope: the end of the
+  encounter removes them and their encounter-only selections before the victory
+  autosave, so no dodge bonus survives into exploration or a saved game.
 - Proficiency is authored per character. Equipment categories are
   `simple`/`martial`/`exotic` for weapons, `light_armor`/`medium_armor`/
   `heavy_armor` for armor, and `shield` for shields; exact item names remain
