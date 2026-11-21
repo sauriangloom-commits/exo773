@@ -4121,12 +4121,16 @@ the acceptance log records the exe hash at its start and end.
 | `creator_probe_2026-11-20` | `2dc61e1` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | 9/9 (both validators + seven creator probes) | yes |
 | `creature_cover_2026-11-21` | `4e56d1e` | `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39` | 110,693,592 | Both validators from the exe, Inspect probe, inspect and dialogue layouts at 100 %/160 %; the panel clause was not rendered yet | no |
 | `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
-| `defensive_actions_2026-11-21b` | `e72a18a` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Both validators from the exe, defensive probe at 100 %/160 % in source and in the exe (45 checks each), exe hash matched before/after, source suite 748/748 | yes |
+| `defensive_actions_2026-11-21c` | `58cb1a7` | `f705ceda267440d8d1ecc73d06eaf745f0722ff9edcaced32664040e4faafd0f` | 110,708,200 | Both validators from the exe, defensive probe at 100 %/160 % in the exe (45 checks each, 0 failures), exe hash `f705ceda...4faafd0f` matched before/after; contains the source-tested combat-scope cleanup, which this probe does not exercise | yes |
+| `defensive_actions_2026-11-21b` | `e72a18a` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Superseded by `-c`. Accepted for the defensive-actions scope, but ships the stance-leak defect: a stance active when the fight ended survived into exploration and the victory autosave | no |
 | `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Superseded by `-b`; same scope, before the stance-specific attack refusal | no |
 
-`defensive_actions_2026-11-21b` predates the combat-scope cleanup recorded at the
-end of this file: its acceptance stands for the defensive-actions scope, but the
-stale-stance save defect is fixed in source only and is not in that binary.
+`defensive_actions_2026-11-21c` supersedes `-b`: it is exported from clean source
+`58cb1a7` (which contains `7fae8d1`, the combat-scope cleanup) and keeps the same
+defensive-probe scope. `-b` is preserved unchanged and its stance-leak defect is
+recorded with it; its acceptance stands only for the scope it was run for. The
+cleanup itself is verified by the source suite, not by the probe, because the
+probe never ends an encounter and never writes a save.
 
 `probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
 executable bytes, re-exported from a clean tree, and only the clean one carries
@@ -4621,7 +4625,10 @@ even though each BUILD.txt pins the hash.
 
 **Status: accepted within the recorded scope.** Source `e72a18a`, candidate
 `defensive_actions_2026-11-21b` (clean tree, 110,708,296 bytes, SHA-256
-`e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25`).
+`e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25`). That binary
+is superseded by `defensive_actions_2026-11-21c` (`58cb1a7`) because it contains
+the stance-leak defect described at the end of this file; the behaviour below is
+unchanged in `-c`.
 
 Implemented: fighting defensively as a selected-then-committed stance and total
 defense as its own standard action (PHB pp. 140, 143). A selection grants no
@@ -4732,8 +4739,37 @@ covered; the defeat test applies damage through `Character.take_damage` and then
 lets a real end turn reach `_check_end`, rather than waiting for an enemy attack
 roll. The suite runs in the source tree under an isolated `APPDATA` profile and
 writes only the `auto` slot, which it deletes before and after each test; no
-player save directory was touched. No export, probe or layout run was repeated,
-because neither the UI nor the exported behaviour changed; consequently candidate
-`defensive_actions_2026-11-21b` still contains the leak and its BUILD.txt and
-acceptance record are unchanged. The suite is source-only evidence, as recorded
-elsewhere in this file, and no manual testing was performed or requested.
+player save directory was touched. No manual testing was performed or requested.
+
+### Exported acceptance of `defensive_actions_2026-11-21c`
+
+Exported from clean source `58cb1a7` (worktree entries 0, untracked 0), preset
+`Windows Desktop`, 110,708,200 bytes, SHA-256
+`f705ceda267440d8d1ecc73d06eaf745f0722ff9edcaced32664040e4faafd0f`. The same hash
+and byte count were read immediately before the first check and again after the
+last one, so this candidate is bound. `defensive_actions_2026-11-21b` is preserved
+unchanged and marked superseded, with its stance-leak defect recorded in the
+candidate table.
+
+Exported-probe results (these are **not** cleanup evidence):
+
+| Run | 100 % | 160 % |
+| --- | --- | --- |
+| `--validate-campaigns` / `--validate-diagnostics` from the exe | PASS | PASS |
+| `--demo-defensive --defensive-probe` from the exe | PASS, 45 checks, 0 failures | PASS, 45 checks, 0 failures |
+
+Captures: `builds/qa/runs/2026-11-21_defensive_c/shots_100` and `shots_160`;
+logs sit beside them.
+
+The probe drives the stance controls, the commitment, the lock, the expiry, the
+total-defense switch and the AC numbers at both text scales. It never reaches
+encounter resolution and never writes a save, so it says nothing about the
+combat-scope cleanup. That cleanup remains **source-tested only**: the 754-test
+suite above, including the four `test_combat_scope_cleanup.gd` tests that read
+`auto.json` and reload it. The new candidate contains the fix because it was
+exported from `58cb1a7`, but no exported run has exercised it.
+
+Limits of this export: 1280x720 at 100 %/160 % on this desktop; the probe reads
+control state and label text, not the rendered pixels beyond the saved captures;
+no new probe was added for the cleanup and no manual test was run or requested;
+backups were not touched.

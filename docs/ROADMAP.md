@@ -5,8 +5,9 @@
 > windowed probes run at 1280×720 at 100 % and 160 %. Creature soft cover on
 > ranged attacks (and its inspector clause) is accepted within its recorded
 > scope. Fighting defensively and total defense are accepted as committed
-> stances; candidate `defensive_actions_2026-11-21b` (`e72a18a`) passes its probe,
-> both validators and a matching before/after exe hash. Earlier candidates
+> stances; candidate `defensive_actions_2026-11-21c` (`58cb1a7`) passes its probe,
+> both validators and a matching before/after exe hash, and carries the
+> source-tested combat-scope cleanup. `-b` is preserved and superseded. Earlier candidates
 > `creature_cover_inspector_2026-11-21` (`e64a6c9`) and `creature_cover_2026-11-21`
 > (`4e56d1e`) remain preserved and are still unbound. (The 2026-11-14
 > boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier

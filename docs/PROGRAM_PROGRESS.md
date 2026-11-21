@@ -2596,10 +2596,15 @@ assertions across 59 scripts, exit 0; `--validate-campaigns` and
 `--validate-diagnostics` PASS. Runs use an isolated `APPDATA` profile and only the
 `auto` slot, cleaned before and after each test.
 
-Not done and not claimed: no candidate was rebuilt, so
-`defensive_actions_2026-11-21b` still contains the leak and its acceptance record
-stands for its own scope; no probe or layout run was repeated because the UI did
-not change; defeat is covered by real damage plus a real end turn to
-`_check_end`, not by an enemy attack roll; the suite remains source-only
-evidence. Backups were not touched and no manual testing was performed or
-requested.
+Replacement build: `defensive_actions_2026-11-21c` was then exported from clean
+source `58cb1a7` (110,708,200 bytes, SHA-256 `f705ceda...4faafd0f`). Both
+exported validators pass, and the existing defensive probe passes at 100 % and
+160 % (45 checks, 0 failures each); the exe hash matched before and after the
+runs. `defensive_actions_2026-11-21b` is preserved unchanged, marked superseded,
+and its stance-leak defect is recorded with it. The probe exercises stances, AC,
+lock, expiry and total defense in the window; it does not end an encounter or
+write a save, so the cleanup remains source-tested only and is not claimed as
+probe-verified. Defeat is covered by real damage plus a real end turn to
+`_check_end`, not by an enemy attack roll. The suite remains source-only
+evidence; no manual testing was performed or requested and backups were not
+touched.
