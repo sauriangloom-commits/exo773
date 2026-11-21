@@ -3939,3 +3939,25 @@ exit (checked), but they have no crash watchdog either, so a new runtime error
 there would still hang. (3) The DC fix is verified through the creator UI and the
 acceptance probe; no separate end-to-end playtest of a campaign that mixes check
 and plain choices was run beyond that.
+**Exported candidate from the clean tree.** `creator_probe_2026-11-20` was built
+at 2026-11-20T20:49:30-05:00 from commit `2dc61e1` with `worktree_entries=0` and
+`untracked_files=0`.
+
+| field | value |
+| --- | --- |
+| build_id | `creator_probe_2026-11-20` |
+| source_head | `2dc61e17f5a4a0832db88bf495c29eb71eeb8d29` |
+| worktree_entries | 0 |
+| untracked_files | 0 |
+| exe_bytes | 110,684,280 |
+| exe_sha256 | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` |
+
+Acceptance against that hash: **9/9** - both validators and all seven creator
+probes (`creator-probe`, `creator-ui-probe`, `creator-interaction`,
+`creator-story`, `creator-combat`, `creator-combat-reload`, `creator-acceptance`),
+each with a fresh APPDATA profile except the reload probe, which reuses the
+combat probe's profile as its message requires. The acceptance probe passed in
+4.0 s with exit 0. `builds/qa/runs/2026-11-20_creator_probe/acceptance.log`
+records the exe hash at its start and end
+(`runs=9 failures=0`); `builds/qa/runs/creator_probe_acceptance.sh` is kept
+outside its own output directory so the run cannot delete itself.

@@ -2233,3 +2233,9 @@ and `4e1188b` with fresh profiles; forced-failure and forced-crash runs exit 1 i
 6 s and 8 s; a creator regression test fails on the old comparison and passes
 now. Suite **681/681, 7,297 assertions, 55 scripts**; all six creator probes and
 the combat-reload probe pass. Details in [TEST_REPORT.md](TEST_REPORT.md).
+**Acceptance.** `creator_probe_2026-11-20` was exported from clean tree `2dc61e1`
+(110,684,280 bytes, SHA-256
+`4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf`) and passed 9/9
+- both validators and seven creator probes, the acceptance probe in 4.0 s - with
+the hash recorded at both ends of
+`builds/qa/runs/2026-11-20_creator_probe/acceptance.log`.
