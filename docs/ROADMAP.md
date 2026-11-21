@@ -243,8 +243,12 @@ attacks, with spell-school feats waiting on a saving-throw spell.
    player-initiated path (PHB pp. 158-159), including prone, counter-trip, weapon
    drop/pickup and Improved Trip; NPC-initiated and mounted trip remain out of
    scope. Power Attack and Combat Expertise are implemented, so Improved
-   Disarm/Bull Rush/Overrun/Sunder become candidates once those actions exist;
-   fighting defensively and total defense are still unimplemented.
+   Disarm/Bull Rush/Overrun/Sunder become candidates once those actions exist.
+   **Fighting defensively and total defense are done and accepted (2026-11-21):**
+   a selection commits only on a legal attack, the active stance is locked until
+   the next turn, total defense is a standard action that replaces a selection,
+   and both interact with Combat Expertise and normal/touch AC as printed.
+   Grapple, disarm, sunder and bull rush remain open.
 3. **Cover and concealment.** **Creature soft cover on ranged attacks is done and
    accepted (2026-11-21):** +4 AC on normal and touch AC for ranged, thrown and
    ranged touch attacks, read with the printed corner method, with the inspector's

@@ -1968,6 +1968,28 @@ func combat_set_combat_expertise(amount: int) -> Dictionary:
 	return result
 
 
+func combat_set_fight_defensively(enabled: bool) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.set_fight_defensively(enabled)
+	last_ui_message = String(result.get("message", "Fighting defensively unchanged."))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
+func combat_total_defense() -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.total_defense()
+	last_ui_message = String(result.get("message", "Total defense unavailable."))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
 ## `defensive` is the player's explicit choice in the spell list: it trades the
 ## attack of opportunity for a Concentration check (PHB p. 140). It is never
 ## inferred from the situation.

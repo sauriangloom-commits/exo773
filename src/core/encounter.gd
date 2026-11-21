@@ -68,6 +68,11 @@ var power_attack_committed: Dictionary = {}
 # the character as a temporary dodge effect until the actor's next turn.
 var combat_expertise_pending: Dictionary = {}
 var combat_expertise_committed: Dictionary = {}
+## Fighting defensively has two states (selected, active), and only the active
+## one grants anything. Selection is cancelled by a legal attack commitment;
+## from then on the effect lasts until the start of the character's next turn
+## and cannot be cancelled. Total defense is a standard action of its own.
+var fight_defensively_selected: Dictionary = {}
 var turn_state: Dictionary = _fresh_turn_state()
 var last_message := ""
 var auto_skip_guard := 0
@@ -233,6 +238,15 @@ func _begin_turn(entry: Dictionary) -> void:
 		combat_expertise_committed.erase(index)
 		ch.remove_effect("combat_expertise")
 		_log("  %s's Combat Expertise ends at the start of this turn." % ch.display_name)
+	if fight_defensively_selected.has(index):
+		fight_defensively_selected.erase(index)
+		_log("  %s's defensive selection expires unused." % ch.display_name)
+	if ch.has_effect("fighting_defensively") or ch.has_effect("total_defense"):
+		# PHB p.140/143: both last until the start of the character's next turn, and
+		# an active stance cannot be cancelled early.
+		ch.remove_effect("fighting_defensively")
+		ch.remove_effect("total_defense")
+		_log("  %s's defensive stance ends at the start of this turn." % ch.display_name)
 	var expired := ch.tick_effects()
 	for effect_id in expired:
 		_log("  %s: effect '%s' expires." % [ch.display_name, effect_id])
@@ -726,6 +740,12 @@ func attack_active(target_index: int, attack_mode := "", unarmed_damage := "") -
 	if ranged and String(weapon.get("reload", "")) != "":
 		# Firing spends the shot whether it hits or misses.
 		loaded_weapons.erase(String(ch.id))
+	if fight_defensively_selected.has(int(entry["index"])):
+		# The attack is legal and about to commit, so this is the only point at
+		# which a selection becomes an active stance. A refused or cancelled
+		# attack never reaches here, so it grants no bonus.
+		fight_defensively_selected.erase(int(entry["index"]))
+		_activate_fighting_defensively(ch)
 	if not ranged:
 		_commit_pending_combat_expertise(int(entry["index"]))
 	else:
@@ -1936,8 +1956,10 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		and not target.tags.has("construct")
 	):
 		extra = ch.sneak_attack_dice
+	var fight_defensively := -4 if ch.has_effect("fighting_defensively") else 0
 	var attack_opts := {
 		"label": label,
+		"fight_defensively_penalty": fight_defensively,
 		"touch": bool(opts.get("touch", false)),
 		"flat_footed": target_flat_footed,
 		"extra_damage": extra,
@@ -1955,6 +1977,8 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 	# damage application never has to guess from the damage type alone.
 	result["nonlethal"] = bool(weapon.get("nonlethal", false))
 	_log("  " + Rules.format_attack(result))
+	if fight_defensively != 0:
+		_log("  fighting defensively -4 on the attack roll (PHB p.140).")
 	if int(into_melee["penalty"]) != 0:
 		_log(
 			"  shooting into melee %+d: %s (PHB p.140)."
@@ -2139,6 +2163,111 @@ func creature_cover(attacker_index: int, target_index: int) -> int:
 	)
 
 
+## Selection is not activation: it only records the intent to fight defensively
+## and can be cancelled, or replaced by total defense, until an attack commits.
+func set_fight_defensively(enabled: bool) -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	var ch: Character = entry["char"]
+	var index := int(entry["index"])
+	if ch.has_effect("fighting_defensively") and not enabled:
+		return _fail(
+			"%s is already fighting defensively until the start of the next turn; it cannot be cancelled."
+			% ch.display_name
+		)
+	if ch.has_effect("total_defense"):
+		return _fail(
+			"%s is using total defense; fighting defensively cannot be combined with it (PHB p.143)."
+			% ch.display_name
+		)
+	if not enabled:
+		fight_defensively_selected.erase(index)
+		changed.emit()
+		return {"ok": true, "message": "%s will not fight defensively." % ch.display_name}
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot fight defensively." % ch.display_name)
+	if bool(turn_state["standard_used"]):
+		return _fail(
+			"Your standard action is already spent; fighting defensively must accompany an attack."
+		)
+	fight_defensively_selected[index] = true
+	var bonus := 3 if int(ch.skill_ranks.get("tumble", 0)) >= 5 else 2
+	changed.emit()
+	return {
+		"ok": true,
+		"message": (
+			"%s is ready to fight defensively: -4 on attack rolls and +%d dodge AC once an attack is committed."
+			% [ch.display_name, bonus]
+		),
+	}
+
+
+func fight_defensively_selected_for(index: int) -> bool:
+	return fight_defensively_selected.has(index)
+
+
+func fight_defensively_active_for(index: int) -> bool:
+	if index < 0 or index >= combatants.size():
+		return false
+	return (combatants[index]["char"] as Character).has_effect("fighting_defensively")
+
+
+func total_defense_active_for(index: int) -> bool:
+	if index < 0 or index >= combatants.size():
+		return false
+	return (combatants[index]["char"] as Character).has_effect("total_defense")
+
+
+func _activate_fighting_defensively(ch: Character) -> void:
+	if ch.has_effect("fighting_defensively"):
+		return
+	ch.add_effect("fighting_defensively", "Fighting defensively", 1)
+	_log(
+		"%s fights defensively: -4 on attack rolls, +%d dodge AC until the start of the next turn (PHB p.140)."
+		% [ch.display_name, Rules.defensive_dodge_bonus(ch)]
+	)
+
+
+## Total defense (PHB p.143) is a standard action: +4 dodge AC (+6 with 5 Tumble
+## ranks), no attacks and no opportunity attacks, and it cannot be combined with
+## fighting defensively or Combat Expertise. A mere selection is not a
+## commitment, so it may be replaced by this action.
+func total_defense() -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	var index := int(entry["index"])
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot take total defense." % ch.display_name)
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	if ch.has_effect("combat_expertise") or combat_expertise_pending.has(index):
+		return _fail("Total defense cannot be combined with Combat Expertise (PHB p.143).")
+	if ch.has_effect("fighting_defensively"):
+		return _fail(
+			"Fighting defensively is already active this round; total defense cannot be combined with it."
+		)
+	fight_defensively_selected.erase(index)
+	ch.add_effect("total_defense", "Total defense", 1)
+	turn_state["standard_used"] = true
+	var bonus := Rules.defensive_dodge_bonus(ch)
+	_log(
+		"%s takes total defense: +%d dodge bonus to AC for 1 round, no attacks or opportunity attacks (PHB p.143)."
+		% [ch.display_name, bonus]
+	)
+	_after_action(ch)
+	_check_end()
+	changed.emit()
+	return {
+		"ok": true,
+		"message": "%s uses total defense: +%d dodge AC until the start of the next turn." % [ch.display_name, bonus],
+	}
+
+
 func _into_melee_penalty(
 	attacker: Character, target: Character, entry: Dictionary, target_entry: Dictionary
 ) -> Dictionary:
@@ -2187,6 +2316,10 @@ func _threatening_enemies(entry: Dictionary) -> Array:
 		var ch: Character = other["char"]
 		if not ch.can_act():
 			continue
+		# PHB p.143: a creature using total defense cannot make opportunity
+		# attacks, so it is not a threat for the provocation checks either.
+		if ch.has_effect("total_defense"):
+			continue
 		if threat_capability(ch).is_empty():
 			continue
 		if map.distance_ft(entry["cell"], other["cell"]) <= maxi(ch.reach_ft, BattleMap.CELL_FT):
@@ -2204,6 +2337,13 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> void
 	if attacker_entry.is_empty() or target_entry.is_empty():
 		return
 	if bool(aoo_used.get(int(attacker_entry["index"]), false)):
+		return
+	# PHB p.143: "You can't make attacks of opportunity while using total defense."
+	if attacker.has_effect("total_defense"):
+		_log(
+			"  %s is using total defense and cannot make an opportunity attack (PHB p.143)."
+			% attacker.display_name
+		)
 		return
 	# Threat requires a legal melee attack (PHB p.137): a crossbow-armed character
 	# cannot spend the reaction, and nothing is consumed when it is refused.
@@ -2263,6 +2403,14 @@ func _provoke_attacks_of_opportunity(mover_index: int, from_cell: Vector2i) -> v
 			continue
 		var ch: Character = entry["char"]
 		if not ch.can_act():
+			continue
+		# PHB p.143: total defense forbids opportunity attacks. The movement path
+		# resolves reactions directly, so the gate lives here as well.
+		if ch.has_effect("total_defense"):
+			_log(
+				"  %s is using total defense and cannot make an opportunity attack (PHB p.143)."
+				% ch.display_name
+			)
 			continue
 		if threat_capability(ch).is_empty():
 			continue
@@ -3263,6 +3411,9 @@ func _after_action(ch: Character) -> void:
 			if combat_expertise_pending.has(index):
 				combat_expertise_pending.erase(index)
 				_log("  %s's pending Combat Expertise expires without a melee attack." % ch.display_name)
+			if fight_defensively_selected.has(index):
+				fight_defensively_selected.erase(index)
+				_log("  %s's defensive selection expires without an attack." % ch.display_name)
 	if ch.has_condition("disabled"):
 		var wound := ch.take_damage(1)
 		_log("  %s is disabled and takes 1 damage after acting." % ch.display_name)

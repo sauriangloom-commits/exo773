@@ -97,6 +97,18 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   Power Attack, so both penalties can apply to one attack while Power Attack adds
   damage and Combat Expertise adds AC. The control is locked after commitment or
   once the standard action is spent.
+- Fighting defensively (PHB p. 140) has two states. The sidebar checkbox only
+  *selects* it: a selection grants nothing, spends nothing, can be cleared again,
+  and can be replaced by total defense. It becomes active only when a legal
+  attack commits it, at which point the attack itself takes -4 and the same -4
+  applies to every other attack roll that round, including opportunity attacks;
+  it also adds +2 dodge AC (+3 with 5 Tumble ranks) to normal and touch AC until
+  the start of the character's next turn and can no longer be cancelled. A
+  refused or cancelled attack never activates it. It stacks with Combat
+  Expertise. Total defense (PHB p. 143) is the separate `Defend` action: a
+  standard action that grants +4 dodge AC (+6 with 5 Tumble ranks), forbids
+  attacks and opportunity attacks, and cannot be combined with fighting
+  defensively or Combat Expertise.
 - Proficiency is authored per character. Equipment categories are
   `simple`/`martial`/`exotic` for weapons, `light_armor`/`medium_armor`/
   `heavy_armor` for armor, and `shield` for shields; exact item names remain

@@ -150,6 +150,24 @@ presentation choices are omitted; nothing here changes a rule silently.
     in fights this change did not intend to touch. This is a recorded deviation,
     not a claim of full cover support.
 
+19g. **The defensive stances commit rather than toggle, and one printed clause is
+    unreachable here.** Fighting defensively and total defense are separate
+    actions. A mere selection is intent: it grants no bonus, spends nothing and
+    may be cancelled or replaced by total defense; only the commit point of a
+    legal attack turns the selection into a stance, so a refused or cancelled
+    attack cannot leave a bonus behind. Once active it is locked until the start
+    of the character's next turn. Fighting defensively stacks with Combat
+    Expertise (RC p.54), whose dodge bonus and attack penalty stay melee-only,
+    and the AC line shows the combined number. Total defense refuses both Combat
+    Expertise and an active fighting-defensively stance, as printed. The Tumble
+    replacement (+3/+6 for 5 ranks, PHB p.84) is implemented and unit-tested with
+    a fixture, but no shipped character has Tumble ranks, so it cannot be reached
+    in campaign content. The control is labelled `Defend`: the full label made
+    the four-column action grid wider than the sidebar's 340 px minimum, the
+    scroll container's bars then oscillated and stalled the frame queue, so the
+    tooltip carries the full name and the sidebar now reserves its vertical bar
+    so no wrapped label can repeat that loop.
+
 ## Narrative and content
 
 20. **Dialogue checks default to the best conscious party member.** Content can

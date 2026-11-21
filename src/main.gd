@@ -60,6 +60,7 @@ const APP_FLAGS: Array[String] = [
 	"--cleave-probe",
 	"--concentration-probe",
 	"--cover-probe",
+	"--defensive-probe",
 	"--creator-acceptance-probe",
 	"--creator-combat-probe",
 	"--creator-combat-reload-probe",
@@ -74,6 +75,7 @@ const APP_FLAGS: Array[String] = [
 	"--demo-combat",
 	"--demo-combat-expertise",
 	"--demo-cover",
+	"--demo-defensive",
 	"--demo-concentration",
 	"--demo-creator",
 	"--demo-creator-diagnostics",
@@ -268,6 +270,8 @@ func _ready() -> void:
 		_start_demo("combat_expertise")
 	elif "--demo-cover" in args:
 		_start_demo("cover")
+	elif "--demo-defensive" in args:
+		_start_demo("defensive")
 	elif "--demo-town-square" in args:
 		_start_demo("town_square")
 	elif "--demo-town-square-mira" in args:
@@ -335,6 +339,8 @@ func _ready() -> void:
 		_inspect_probe()
 	if "--cover-probe" in args:
 		_cover_probe()
+	if "--defensive-probe" in args:
+		_defensive_probe()
 	if "--ranged-probe" in args:
 		_ranged_probe()
 	if "--concentration-probe" in args:
@@ -3698,6 +3704,8 @@ func _start_demo(kind: String, party_ids: Array = ["kaelen", "sera", "aldric", "
 			_qa_inspect_demo()
 		"cover":
 			_qa_cover_demo()
+		"defensive":
+			_qa_defensive_demo()
 		"silence":
 			# QA only: seed the broken-token, silent-bell state so the gated
 			# epilogue row can be reached with ordinary input.
@@ -4163,6 +4171,167 @@ func _qa_cover_demo() -> void:
 			int(e.entry_for(shooter)["index"]), int(e.entry_for(target)["index"])
 		)
 	print("QA COVER READY: shooter_first=%s cover=%d" % [str(shooter_first), cover])
+
+
+## QA-only fixture (--demo-defensive): a deterministic adjacent duel on the 9x5
+## `qa_victory` board for the fighting-defensively and total-defense controls.
+## Defender (2,3) faces the target (3,3); an ally waits at (5,3). Only ids,
+## names and cells are QA values; initiative is the real path.
+func _qa_defensive_demo() -> void:
+	var defender := Character.from_content(Game.content.get_character("kaelen"), Game.content.items)
+	defender.id = "qa_defender"
+	defender.display_name = "QA Defender"
+	var ally := Character.from_content(Game.content.get_character("sera"), Game.content.items)
+	ally.id = "qa_defensive_ally"
+	ally.display_name = "QA Defensive Ally"
+	Game.party.clear()
+	Game.party.append(defender)
+	Game.party.append(ally)
+	Game.start_encounter("qa_victory")
+	var e := Game.encounter
+	if e == null:
+		print("QA DEFENSIVE FAILED: encounter did not start")
+		return
+	var target: Character = null
+	for entry in e.combatants:
+		if int(entry["team"]) == Encounter.TEAM_ENEMY:
+			target = entry["char"]
+			entry["cell"] = Vector2i(3, 3)
+			target.id = "qa_defensive_target"
+			target.display_name = "QA Defensive Target"
+			target.max_hp = 80
+			target.hp = 80
+	e.entry_for(defender)["cell"] = Vector2i(2, 3)
+	e.entry_for(ally)["cell"] = Vector2i(5, 3)
+	var defender_first := false
+	for attempt in 80:
+		e.begin()
+		if e.active_character() == defender and not e.finished:
+			defender_first = true
+			break
+	print("QA DEFENSIVE READY: defender_first=%s" % str(defender_first))
+
+
+## QA-only (--defensive-probe, fixture --demo-defensive). Drives the real combat
+## window: a selection grants nothing and is visible as pending, a committed
+## attack activates and locks the stance, the next turn expires it, and total
+## defense then replaces a fresh selection. Checks the -4, the dodge bonus on
+## normal and touch AC, the disabled control, the engine's cancellation refusal
+## and the sidebar fit. Run at each text scale with `--text-scale=`; captures go
+## under `--trip-shots=<dir>`.
+func _defensive_probe() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--trip-shots="):
+			probe_shots = arg.substr("--trip-shots=".length())
+	DirAccess.make_dir_recursive_absolute(probe_shots)
+	probe_scenario = "defensive"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog()
+	get_window().size = probe_size
+	for i in 8:
+		await get_tree().process_frame
+	var combat := current_screen as CombatScreen
+	if combat == null or Game.encounter == null:
+		_probe_check(false, "combat screen with an encounter exists")
+		_probe_finish("defensive")
+		return
+	var e := Game.encounter
+	var defender: Character = null
+	var target: Character = null
+	for entry in e.combatants:
+		var ch: Character = entry["char"]
+		if ch.id == "qa_defender":
+			defender = ch
+		elif ch.id == "qa_defensive_target":
+			target = ch
+	_probe_check(defender != null and target != null, "the defender and the target exist")
+	if defender == null or target == null:
+		_probe_finish("defensive")
+		return
+	var index := int(e.entry_for(defender)["index"])
+	_probe_check(e.active_character() == defender, "the defender is the active combatant")
+	var checkbox := combat.fight_defensively_check
+	_probe_check(checkbox != null and checkbox.visible, "the Fight defensively control is shown")
+	if checkbox == null:
+		_probe_finish("defensive")
+		return
+	var base_ac := Rules.armor_class(defender)
+	var base_touch := Rules.touch_ac(defender)
+
+	# 1. A selection is only intent: nothing is granted, spent or logged.
+	await _probe_click(checkbox, "Fight defensively")
+	_probe_check(e.fight_defensively_selected_for(index), "the checkbox records a pending choice")
+	_probe_check(
+		not e.fight_defensively_active_for(index), "the pending choice is not active"
+	)
+	_probe_check(Rules.armor_class(defender) == base_ac, "a pending choice adds no AC")
+	_probe_check(Rules.touch_ac(defender) == base_touch, "and no touch AC")
+	_probe_check(not bool(e.turn_state["standard_used"]), "a pending choice spends nothing")
+	_probe_check(
+		combat.fight_defensively_status.text.contains("Selected"),
+		"the sidebar names the pending state",
+	)
+	_probe_check(
+		combat.sidebar_panel.get_global_rect().encloses(
+			combat.fight_defensively_status.get_global_rect()
+		),
+		"the stance line fits inside the sidebar",
+	)
+	await _probe_shot("defensive", "01_selected")
+
+	# 2. The committing attack activates the stance and locks the control.
+	await _probe_click(_probe_button(combat.button_box, "Attack"), "Attack")
+	await _probe_click_cell(combat, Vector2i(3, 3), "attack the target")
+	for i in 8:
+		await get_tree().process_frame
+	_probe_check(
+		e.fight_defensively_active_for(index), "the committed attack activates the stance"
+	)
+	_probe_check(not e.fight_defensively_selected_for(index), "the pending state is consumed")
+	_probe_check(
+		Rules.armor_class(defender) == base_ac + 2, "the active stance grants +2 dodge AC"
+	)
+	_probe_check(Rules.touch_ac(defender) == base_touch + 2, "touch AC keeps the stance")
+	_probe_check(checkbox.disabled, "the active stance cannot be deselected in the UI")
+	var refusal := Game.combat_set_fight_defensively(false)
+	_probe_check(not bool(refusal.get("ok", false)), "the engine refuses cancellation")
+	_probe_check(
+		String(refusal.get("message", "")).contains("cannot be cancelled"),
+		"the refusal explains the lock",
+	)
+	_probe_check(_probe_log_contains(e, "fights defensively"), "the log records the stance")
+	_probe_check(
+		CombatScreen.effective_ac(defender, false, 0, true) == Rules.touch_ac(defender),
+		"the inspector's touch AC matches the resolver",
+	)
+	await _probe_shot("defensive", "02_active")
+
+	# 3. The next own turn expires the stance and unlocks the control.
+	_probe_check(await _probe_advance_to(combat, "qa_defender", 2), "a second turn begins")
+	_probe_check(not e.fight_defensively_active_for(index), "the stance expired")
+	_probe_check(Rules.armor_class(defender) == base_ac, "and its AC bonus is gone")
+	_probe_check(not checkbox.button_pressed, "the control resets after expiry")
+	_probe_check(not checkbox.disabled, "and accepts a new choice")
+
+	# 4. A fresh selection can become total defense before any attack.
+	await _probe_click(checkbox, "Fight defensively")
+	_probe_check(e.fight_defensively_selected_for(index), "the new turn accepts a selection")
+	await _probe_click(_probe_button(combat.button_box, "Defend"), "Defend")
+	_probe_check(e.total_defense_active_for(index), "total defense is active")
+	_probe_check(not e.fight_defensively_selected_for(index), "the pending choice is dropped")
+	_probe_check(
+		not e.fight_defensively_active_for(index), "fighting defensively never activated"
+	)
+	_probe_check(Rules.armor_class(defender) == base_ac + 4, "total defense grants +4 dodge AC")
+	_probe_check(Rules.touch_ac(defender) == base_touch + 4, "and reaches touch AC")
+	_probe_check(bool(e.turn_state["standard_used"]), "it costs the standard action")
+	_probe_check(
+		combat.fight_defensively_status.text.contains("Total defense"),
+		"the sidebar names total defense",
+	)
+	_probe_check(checkbox.disabled, "the stance control locks during total defense")
+	await _probe_shot("defensive", "03_total_defense")
+	_probe_finish("defensive")
 
 
 ## QA-only (--inspect-probe). Drives the real combat window: opens the enemy

@@ -276,6 +276,7 @@ static func armor_class(ch: Character, opts: Dictionary = {}) -> int:
 	# matching the dodge-bonus condition on PHB p.136.
 	if not is_helpless(ch) and not flat_footed:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
+		ac += defensive_dodge_bonus(ch)
 	return ac
 
 
@@ -293,7 +294,24 @@ static func touch_ac(ch: Character, opts: Dictionary = {}) -> int:
 	ac += _feat_ac_bonus(ch, flat_footed or is_helpless(ch))
 	if not is_helpless(ch) and not flat_footed:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
+		# Touch AC keeps dodge bonuses (Rules Compendium, "Touch Attacks").
+		ac += defensive_dodge_bonus(ch)
 	return ac
+
+
+## Dodge AC from the defensive actions (PHB p.140, p.143). Fighting defensively
+## gives +2, or +3 with 5 or more Tumble ranks; total defense gives +4, or +6
+## with 5 or more Tumble ranks (PHB p.84: the Tumble clause replaces the usual
+## bonus). Only the active effect counts: a selection that has not been carried
+## by a committed attack grants nothing. Callers apply the same dodge denial as
+## Combat Expertise, so this returns nothing while Dexterity is denied.
+static func defensive_dodge_bonus(ch: Character) -> int:
+	var tumble := int(ch.skill_ranks.get("tumble", 0))
+	if ch.has_effect("total_defense"):
+		return 6 if tumble >= 5 else 4
+	if ch.has_effect("fighting_defensively"):
+		return 3 if tumble >= 5 else 2
+	return 0
 
 
 ## Feat-granted AC, minus dodge bonuses when Dexterity is denied (PHB p.136).
@@ -657,6 +675,10 @@ static func attack(
 	# decides whether it applies (engagement, 10-ft escape, Precise Shot) and
 	# passes it here so the penalty is part of the auditable roll.
 	attack_bonus_value += int(opts.get("into_melee_penalty", 0))
+	# PHB p.140: fighting defensively is -4 on all attacks in the round. The
+	# encounter passes it only once the stance is active, and it sits before
+	# `bonus_base` so Cleave's same-bonus copy carries it.
+	attack_bonus_value += int(opts.get("fight_defensively_penalty", 0))
 	if melee:
 		attack_bonus_value += Feats.power_attack_attack_penalty(attacker, power_attack)
 		attack_bonus_value += Feats.combat_expertise_attack_penalty(attacker, combat_expertise)
@@ -719,6 +741,7 @@ static func attack(
 		"distance_ft": distance_ft,
 		"into_melee_penalty": int(opts.get("into_melee_penalty", 0)),
 		"cover": cover_bonus,
+		"fight_defensively_penalty": int(opts.get("fight_defensively_penalty", 0)),
 		"details": "",
 	}
 	if not hit:

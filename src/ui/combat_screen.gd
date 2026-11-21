@@ -36,6 +36,12 @@ var power_attack_spin: SpinBox
 var combat_expertise_box: HBoxContainer
 var combat_expertise_spin: SpinBox
 var combat_expertise_status: Label
+## Fighting defensively has a selected state (pre-commitment, cancellable) and an
+## active state (locked until the start of the next turn). Total defense is its
+## own standard action; a selection may be replaced by it.
+var fight_defensively_check: CheckBox
+var fight_defensively_status: Label
+var total_defense_button: Button
 var _ui_actor_index := -1
 var mode := "move"
 var trip_weapon_check: CheckBox
@@ -106,6 +112,11 @@ func _build() -> void:
 	var sidebar_scroll := ScrollContainer.new()
 	sidebar_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sidebar_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Reserving the vertical bar keeps the content width constant. Without it a
+	# wrapped status label changes the content height, which shows or hides the
+	# bar, which changes the wrap width, which changes the height again — a
+	# layout loop that starved the frame queue.
+	sidebar_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	sidebar_panel = sidebar_scroll
 	body.add_child(sidebar_scroll)
 	var sidebar := VBoxContainer.new()
@@ -214,6 +225,16 @@ func _build() -> void:
 	combat_expertise_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	combat_expertise_status.visible = false
 	sidebar.add_child(combat_expertise_status)
+	fight_defensively_check = CheckBox.new()
+	fight_defensively_check.text = "Fight defensively"
+	fight_defensively_check.add_theme_font_size_override("font_size", ThemeBuilder.fs(11))
+	fight_defensively_check.toggled.connect(_on_fight_defensively_toggled)
+	fight_defensively_check.visible = false
+	sidebar.add_child(fight_defensively_check)
+	fight_defensively_status = ThemeBuilder.body("", false, 10)
+	fight_defensively_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fight_defensively_status.visible = false
+	sidebar.add_child(fight_defensively_status)
 	var trip_row := HBoxContainer.new()
 	trip_row.add_theme_constant_override("separation", 6)
 	var trip_label := ThemeBuilder.body("Trip weapon", true, 11)
@@ -232,6 +253,14 @@ func _build() -> void:
 	sidebar.add_child(decision_box)
 	_add_action_button("Move", func() -> void: _set_mode("move", "Click an empty square within your movement."))
 	_add_action_button("5-ft step", func() -> void: _set_mode("step", "Click an adjacent square. A 5-foot step does not provoke."))
+	# The short label keeps the four-column grid inside the sidebar's 340 px
+	# minimum; a longer one widened the grid until the scroll container's
+	# horizontal/vertical bars oscillated. The tooltip carries the full name.
+	total_defense_button = _add_action_button("Defend", _on_total_defense)
+	total_defense_button.tooltip_text = (
+		"Total defense (PHB p.143): +4 dodge AC (+6 with 5 Tumble ranks), no attacks "
+		+ "or opportunity attacks until the start of your next turn."
+	)
 	_add_action_button("Attack", func() -> void: _set_mode("attack", "Click an enemy within reach or range."))
 	_add_action_button("Sheathe weapon", func() -> void: Game.combat_sheathe_weapon())
 	_add_action_button("Load weapon", func() -> void: Game.combat_load_weapon())
@@ -262,7 +291,7 @@ func _build() -> void:
 	))
 
 
-func _add_action_button(text: String, callback: Callable) -> void:
+func _add_action_button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(0, 32)
@@ -270,6 +299,7 @@ func _add_action_button(text: String, callback: Callable) -> void:
 	button.add_theme_font_size_override("font_size", ThemeBuilder.fs(12))
 	button.pressed.connect(callback)
 	button_box.add_child(button)
+	return button
 
 
 func _on_state_changed() -> void:
@@ -389,6 +419,48 @@ func refresh_screen() -> void:
 		combat_expertise_spin.set_value_no_signal(0)
 		combat_expertise_spin.editable = false
 		combat_expertise_status.text = ""
+	var can_defend := (
+		turn_ch != null and not e.finished and e.is_player_turn() and not turn_ch.is_monster
+	)
+	fight_defensively_check.visible = can_defend
+	fight_defensively_status.visible = can_defend
+	if can_defend:
+		var fd_active := e.fight_defensively_active_for(active_index)
+		var fd_selected := e.fight_defensively_selected_for(active_index)
+		var td_active := e.total_defense_active_for(active_index)
+		var standard_spent := bool(e.turn_state.get("standard_used", false))
+		var tumble := int(turn_ch.skill_ranks.get("tumble", 0)) >= 5
+		var fd_bonus := 3 if tumble else 2
+		var td_bonus := 6 if tumble else 4
+		fight_defensively_check.set_pressed_no_signal(fd_active or fd_selected)
+		# Locked once active: the stance cannot be cancelled before it expires.
+		fight_defensively_check.disabled = fd_active or td_active or standard_spent
+		if fd_active:
+			fight_defensively_status.text = (
+				"Active: -4 attack / +%d dodge AC until the start of your next turn; cannot be cancelled."
+				% fd_bonus
+			)
+		elif fd_selected:
+			fight_defensively_status.text = (
+				"Selected: +%d dodge AC and -4 attack apply only when an attack is committed."
+				% fd_bonus
+			)
+		elif td_active:
+			fight_defensively_status.text = (
+				"Total defense: +%d dodge AC; no attacks or opportunity attacks this round."
+				% td_bonus
+			)
+		elif standard_spent:
+			fight_defensively_status.text = "Standard action spent; no defensive action can start now."
+		else:
+			fight_defensively_status.text = (
+				"Optional: +%d dodge AC for -4 on attacks, once an attack is committed."
+				% fd_bonus
+			)
+	else:
+		fight_defensively_check.set_pressed_no_signal(false)
+		fight_defensively_check.disabled = true
+		fight_defensively_status.text = ""
 	if turn_ch != null and turn_ch.cleric_level() > 0:
 		var status := Game.combat_can_turn_undead()
 		turn_label.text = "Turn undead: %d of %d uses left today%s" % [
@@ -535,6 +607,9 @@ func _update_button_states() -> void:
 	var active_cell := (
 		Vector2i(active_entry_now["cell"]) if not active_entry_now.is_empty() else Vector2i(-1, -1)
 	)
+	var active_index := (
+		int(active_entry_now["index"]) if not active_entry_now.is_empty() else -1
+	)
 	var prone := turn_ch != null and turn_ch.is_prone()
 	var trip_weapon_ready := turn_ch != null and bool(e._primary_weapon(turn_ch).get("trip", false))
 	trip_weapon_check.disabled = not trip_weapon_ready or pending
@@ -573,6 +648,11 @@ func _update_button_states() -> void:
 		and not (moved and bool(e.turn_state.get("standard_used", false))),
 		"End turn": not e.finished,
 		"Inspect": not e.finished,
+		"Defend": (
+			standard
+			and not e.fight_defensively_active_for(active_index)
+			and not e.total_defense_active_for(active_index)
+		),
 	}
 	if pending:
 		for key in enabled.keys():
@@ -984,6 +1064,33 @@ func _on_combat_expertise_changed(value: float) -> void:
 				shown = e.active_combat_expertise_pending_amount()
 			combat_expertise_spin.set_value_no_signal(float(shown))
 	Game.last_ui_message = String(result.get("message", "Combat Expertise unchanged."))
+	if message_label != null:
+		message_label.text = Game.last_ui_message
+
+
+## Selecting is not activating: the checkbox only records intent until an attack
+## commits. A refusal (already active, total defense, standard spent) restores
+## the pressed state from the encounter rather than trusting the widget.
+func _on_fight_defensively_toggled(pressed: bool) -> void:
+	if fight_defensively_check == null:
+		return
+	var result := Game.combat_set_fight_defensively(pressed)
+	if not bool(result.get("ok", false)):
+		var e := Game.encounter
+		if e != null:
+			var entry := e.active_entry()
+			var index := int(entry["index"]) if not entry.is_empty() else -1
+			fight_defensively_check.set_pressed_no_signal(
+				e.fight_defensively_active_for(index) or e.fight_defensively_selected_for(index)
+			)
+	Game.last_ui_message = String(result.get("message", "Fighting defensively unchanged."))
+	if message_label != null:
+		message_label.text = Game.last_ui_message
+
+
+func _on_total_defense() -> void:
+	var result := Game.combat_total_defense()
+	Game.last_ui_message = String(result.get("message", "Total defense unavailable."))
 	if message_label != null:
 		message_label.text = Game.last_ui_message
 
