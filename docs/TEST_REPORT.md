@@ -4207,6 +4207,47 @@ world-action safety rests on panel coverage plus the explore-mode guards; paging
 can leave the focused row off-screen until the next focus move; Home/End are not
 bound.
 
+### Dialogue header clearance and focus return (closed, 2026-11-21)
+
+The framed panel now starts below the measured HUD header instead of at 16,16.
+At 1280x720 with normal readouts it keeps its 860x600 size and 800x556 body at
+both text scales. The header is not fixed-height: ten-digit gold and seed values
+at 160 % squeeze the location title onto more lines (header 63 -> 107 px), so the
+panel follows the header's resize, moving down and shrinking only as much as the
+bottom margin requires (589 px at the stress case). Gold, seed and Pause are
+never covered.
+
+Closing a HUD panel opened during a conversation now returns the ring to the
+dialogue control that had it before the click, instead of leaving it on the HUD
+button. If that control was rebuilt away, focus falls back to the first available
+choice, then to "Leave conversation". Exploration keeps returning to its opener,
+nested modals keep carrying the original opener, and a freed opener is guarded.
+
+Tests: `tests/test_dialogue_focus.gd` is 17 tests (5 new: header clearance with
+long readouts at 1.0 and 1.6, focus return to the choice, fallback after a
+dialogue rebuild, exploration opener unchanged, and C/I/J/Tab opening no HUD
+panel during dialogue). Suite **699/699 tests, 7,550 assertions, exit 0**; both
+validators PASS; `--demo-silence` and `--demo-dialogue` dialogue probes PASS at
+1280x720 at 100 % and 160 %.
+
+Candidate `dialogue_header_2026-11-21` (source `7d1729f`, SHA-256
+`1796fb2a55387d5b56313a007599174820151797445197d86605ff4ae5e81bb9`, 110,689,192
+bytes, clean tree): native at 100 % and 160 % shows the whole header (gold, seed,
+Pause) above the panel; Tab focuses a choice, clicking Party opens it, Escape
+closes it and returns the ring to that choice, and Pause still ends the
+conversation. The native Enter after that choice lands back on the root page
+because the authored `crossing` node has `next: root`; that is content behavior,
+not a focus failure.
+
+Deferred: keyboard access to the HUD panels during dialogue. C/I/J remain blocked
+by the exploration explore-mode guard, Tab stays reserved for dialogue focus,
+Esc ends the conversation, and Save has no key binding at all. This batch did not
+add or enable shortcuts.
+
+Limits: long readouts at 160 % shrink the panel to 589 px (one choice row less
+visible; all 13 remain reachable by scroll/paging); native evidence is 1280x720
+at 100 %/160 % only; state is QA-seeded.
+
 ### Corrections to this refresh
 
 - **Journal wheel scrolling is verified.** `builds/qa/runs/2026-11-20_modal/report.md`

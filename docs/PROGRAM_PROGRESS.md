@@ -2297,3 +2297,14 @@ capture are unchanged. Candidate `dialogue_geometry_2026-11-21b` (source
 `263e2e0`, SHA-256 `94af082e`) passes 12 dialogue tests, 694/694 suite, both
 validators and the dialogue probes at 100 %/160 %. Oversized-control clipping
 remains a conditional limit - no shipped modal reproduces it.
+
+Dialogue header clearance and dialogue-aware focus return landed in `7d1729f`:
+the panel starts below the measured HUD header (following it when long readouts
+wrap the title), keeps 860x600 at 1280x720 with normal readouts, and a HUD panel
+closed during a conversation returns the ring to the dialogue control that had it
+(first available choice, then Leave, as fallbacks). Candidate
+`dialogue_header_2026-11-21` (source `7d1729f`, SHA-256 `1796fb2a`) passes 17
+dialogue tests, 699/699 suite, both validators and the dialogue probes at
+100 %/160 %. Keyboard access to the HUD panels during dialogue remains deferred:
+C/I/J are blocked, Tab is reserved for choices, Esc ends the conversation, and
+Save has no binding.
