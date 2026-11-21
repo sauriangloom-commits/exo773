@@ -2655,7 +2655,7 @@ his square, prone if it is occupied. The push stops at walls, occupied squares a
 map edges; an attempt with no space behind the defender is refused before the
 roll. Adaptations 19i-19j record every rule the print does not contain.
 
-Evidence: tests written and failing first (21 failures on the missing entry
+Evidence: tests written and failing first (all 24 failing on the missing entry
 point), then `tests/test_bull_rush.gd` at 24 tests / 90 assertions, the full suite
 at 778/778 tests, 7,976 assertions, 60 scripts, exit 0, and both validators PASS.
 The sidebar gained a `Bull rush` control and a two-button follow decision; the
