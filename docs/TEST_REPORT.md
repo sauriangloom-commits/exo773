@@ -4274,7 +4274,7 @@ rerun. `BUILD.txt` records source `7d1729f`, 0 worktree entries and 0 untracked
 files; the executable hashes to
 `1796fb2a55387d5b56313a007599174820151797445197d86605ff4ae5e81bb9` and
 110,689,192 bytes, matching `BUILD.txt`. That source commit is an ancestor of
-HEAD `3af98a0`; the tree is clean. Reviewed: `report.md` and 11 screenshots in
+HEAD `9b73efe` (docs-only closure); the tree is clean. Reviewed: `report.md` and 11 screenshots in
 `builds/qa/runs/2026-11-21_dialogue_header/` (5 at 100 %, 6 at 160 %).
 
 | Check | 100 % | 160 % | Result |

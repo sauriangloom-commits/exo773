@@ -2346,18 +2346,18 @@ Remaining limits after the refresh:
 
 No artifact was copied, deleted, uploaded or overwritten for this assessment.
 
-The editable source is a local Git repository (`a64eead`..`3af98a0`, 43 commits)
+The editable source is a local Git repository (`a64eead` to the closure head)
 with **no remote**, on the same disk as the working tree. `builds/` is gitignored,
 so the candidate executable and all QA runs exist only there.
 
 | Artifact | Separate recoverable copy? | Detail |
 | --- | --- | --- |
-| Source (`RL_Edit`, HEAD `3af98a0`) | **No current copy** | Only local `.git` (14 MB) and the working tree. The original checkout `Project Ravenloft/ravenloft-foundation` (`1af0253`, separate history) lags the source. |
+| Source (`RL_Edit`, HEAD `9b73efe`; accepted source `7d1729f`) | **No current copy** | Only local `.git` (14 MB) and the working tree. The original checkout `Project Ravenloft/ravenloft-foundation` (`1af0253`, separate history) lags the source. |
 | Source snapshots | Partial, stale | `workspace/snapshots/2026-11-13_*` hold `RL_Edit_source.tar.gz` (four entries, two with manifests). Latest is 2026-11-13, before the 2026-11-20/21 batches. |
 | `builds/qa/rev_before` | Partial, stale | 11 MB revision-comparison copy, not the current tree. |
 | Candidate `dialogue_header_2026-11-21` | **No copy** | One directory (exe + `BUILD.txt`), gitignored; no file of that size elsewhere in the workspace; not in any snapshot. |
 | Evidence `runs/2026-11-21_dialogue_header` | **No copy** | 12 files (report + 5 shots at 100 %, 6 at 160 %), 1.5 MB, gitignored; earlier runs are likewise single copies. |
-| Docs | In Git only | Committed (`3af98a0`), recoverable from `.git` history, but on the same disk with no off-machine copy. |
+| Docs | In Git only | Committed (`9b73efe` and this correction), recoverable from `.git` history, but on the same disk with no off-machine copy. |
 | `edit_copy_audit` | Reference only | Source hash manifests and logs from 2026-11-09; no content. |
 
 Risk: one disk loss removes the current source history, the accepted candidate and
@@ -2367,17 +2367,18 @@ nor useful.
 
 **Bounded plan (one accepted batch, about 126 MB).**
 
-1. Snapshot set: `git bundle create ravenloft-3af98a0.bundle --all`; the final
-   candidate directory; the final evidence run directory; a `SHA256SUMS` file for
-   every file; and a text record of bundle HEAD, candidate hash/size and counts.
+1. Snapshot set: `git bundle create ravenloft-<HEAD>.bundle --all` at the closure
+   head; the final candidate directory; the final evidence run directory; a
+   `SHA256SUMS` file for every file; and a text record of the bundle HEAD,
+   candidate hash/size and counts.
 2. Destinations: two independent user-controlled media (for example an external
    drive and a cloud folder). Nothing was copied.
 3. Integrity before storage: `git bundle verify`; `git fsck --full`; recorded
    HEAD matches `git rev-parse HEAD`; `sha256sum -c SHA256SUMS`; candidate hash
    and bytes match `BUILD.txt`; screenshot hashes match the manifest.
 4. Restore test (about 10 minutes): in a new empty temporary directory,
-   `git clone` the bundle; confirm HEAD `3af98a0`, `git fsck --full` and a clean
-   status; run `tests/test_dialogue_focus.gd` (17/17) with the shared Godot
+   `git clone` the bundle; confirm the restored HEAD equals the head recorded in
+   the manifest, `git fsck --full` and a clean status; run `tests/test_dialogue_focus.gd` (17/17) with the shared Godot
    binary; verify the restored candidate hash and launch it at 1280x720/160 %
    with `--campaign=ashwick_ferry --demo-silence`, comparing its open capture
    with the archived `shots160/open.png` (fall back to visible header/panel checks
