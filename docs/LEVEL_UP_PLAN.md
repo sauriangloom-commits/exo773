@@ -568,7 +568,7 @@ would also be over the cap.
   no feat or spell change.
 - **Order:** after batch 2 is accepted, before batch 3 starts.
 
-## 12. Batch 2 plan: `level_up_core` (planned 2026-11-21, not implemented)
+## 12. Batch 2: `level_up_core` (planned and implemented 2026-11-21)
 
 ### 12.1 Scope
 
@@ -705,7 +705,7 @@ never from increments of the character's current values:
 | Base attack | row at 4 (fighter 4, rogue 3, cleric 3, wizard 2, sorcerer 2) |
 | Base saves | row at 4 (fighter 4/1/1, rogue 1/4/1, cleric 4/1/4, wizard 1/1/4, sorcerer 1/1/4) |
 | Ability increase | +1 to one score, applied before HP, saves and skills are computed |
-| Skill points | budget = class points + Int modifier after the increase (min 1); each added rank checked against the caps at level 4 (class 7, cross 3); unspent points are discarded |
+| Skill points | budget = class points + Int modifier after the increase (min 1); a class rank costs 1 point and a cross-class rank costs 2 (SRD Skills Summary, PHB p. 62); each added rank checked against the caps at level 4 (class 7, cross 3 whole ranks, see below); unspent points are discarded |
 | Feat | fighter only, exactly one; prerequisites evaluated on the staged level-4 character; the authored list is otherwise untouched |
 | Slots before | authored level-3 rows: cleric 3/2, wizard 3/2, sorcerer 6 (no 2nd-level row) |
 | Slots after | cleric +1/+1 = 4/3; wizard +1/+1 = 4/3; sorcerer 1st unchanged at 6, new 2nd-level row 3 |
@@ -720,6 +720,19 @@ The level-4 slot readings are the plan's decision, not the printed bonus-spell
 math: the engine's authored rows already fold in the Int bonus (`ysolde`) or sit at
 the printed 4th-level count (`mira`), so the deltas are explicit and tested per
 class rather than derived from Table 1-1.
+
+**Skill caps at 4th level, confirmed against the printed text (2026-11-21).** The
+SRD Skills Summary and PHB p. 62 read: the maximum rank in a class skill is the
+character's level + 3, and the maximum in a cross-class skill is half of that
+number, "do not round up or down"; each skill point buys 1 rank in a class skill
+and 1/2 rank in a cross-class skill, and half ranks do not improve a check. So at
+4th level the class cap is 7 and the printed cross-class cap is 3.5, not 3 or 4.
+The engine stores whole ranks only (`skill_ranks` is an integer map) and buys a
+cross-class rank for 2 points, so the enforceable cross-class cap is 3 whole ranks:
+a 4th rank would exceed 3.5, and no half rank can be stored. `Skills.max_ranks`
+already floors, which gives exactly 3; batch 2 uses it on the staged level-4
+character instead of duplicating the formula. The unrepresentable 0.5 is recorded
+as an adaptation in `ADAPTATION_LOG.md`, not as a printed value.
 
 ### 12.6 Atomicity, idempotence, XP
 
@@ -780,7 +793,8 @@ Apply:
 15. `test_hp_after_preserves_damage_taken`
 16. `test_skill_points_use_the_budget_at_level_four`
 17. `test_intelligence_increase_raises_the_skill_budget`
-18. `test_class_and_cross_class_caps_are_enforced_on_new_ranks`
+18. `test_class_and_cross_class_caps_are_enforced_on_new_ranks` (class 7; cross-class
+    3 whole ranks because the printed 3.5 cannot be stored)
 19. `test_existing_over_cap_ranks_do_not_block_level_up` (aldric, before the repair)
 20. `test_unspent_skill_points_are_discarded`
 
@@ -851,3 +865,20 @@ current 13-entry expectation until the separate repair commit.
   math would over- or under-count the authored rows; tests 9, 11-13 pin the values.
 - **Save equality.** `to_dict()` includes equipment ids and nested dictionaries;
   tests compare deep copies, not references.
+
+### 12.12 Batch 2 record (2026-11-21)
+
+Implemented as planned; nothing player-visible reads it. `src/core/level_up.gd`
+and `tests/test_level_up_core.gd` (35 tests, written first). The red evidence is
+the log, not the exit code: the new file failed with
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelUp" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_up_core.gd:32)
+
+and was not collected at all (61 scripts, 795/795 tests, 8,126 assertions), while
+GUT still exited 0. After implementation: 830/830 tests, 8,326 assertions, 62
+scripts; `--validate-campaigns` and `--validate-diagnostics` pass, with the class
+table still at 13 accepted authored inconsistencies because no content was edited.
+The skill-cap confirmation stands in 12.5: printed cross-class 3.5, enforced as 3
+whole ranks. Nothing calls `LevelUp` outside its own module and tests; no UI,
+probe, export, content or save-format change was made.

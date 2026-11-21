@@ -229,3 +229,21 @@ multi-square creatures and terrain effects.
 Adaptations: the code-not-content storage choice and the thirteen accepted authored
 inconsistencies are recorded in `ADAPTATION_LOG.md` 49. The table is data only; no
 XP, level, save, UI or rules behaviour reads it yet.
+
+### Level-up core (batch 2, 2026-11-21)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| 3rd-to-4th eligibility at 6,000 XP, level 3 only | PHB Table 3-2 p. 22 | `LevelUp.eligibility`, `LevelUp.XP_THRESHOLD` | `test_eligibility_is_inclusive_at_six_thousand_xp`, `test_a_level_four_character_is_not_eligible` |
+| Read-only preview of the step | `LEVEL_UP_PLAN.md` 12.4 | `LevelUp.preview` | `test_preview_does_not_mutate_the_character`, `test_preview_matches_the_printed_level_four_rows` |
+| Atomic apply; a refusal leaves the character unchanged | `LEVEL_UP_PLAN.md` 12.6 | `LevelUp.apply` (staged `Character`, one commit block) | `test_over_budget_skill_allocation_is_refused_atomically`, `test_second_apply_is_refused_and_changes_nothing` |
+| HP: maximum at 1st, fixed averages, Constitution retroactive, damage preserved | PHB p. 9; class tables p. 22 | `ClassProgression.expected_hp` called from `LevelUp` | `test_constitution_increase_is_retroactive`, `test_hp_after_preserves_damage_taken` |
+| Base attack and base saves set from the 4th-level row | PHB Table 3-1 p. 22; class tables | `LevelUp._stage` | `test_apply_fighter_sets_level_bab_saves_hp_and_feat` |
+| Skill caps: class 7; cross-class printed 3.5 enforced as 3 whole ranks; a cross-class rank costs 2 points | PHB p. 62; SRD Skills Summary | `LevelUp._stage_skills` with `Skills.max_ranks` | `test_class_and_cross_class_caps_are_enforced_on_new_ranks` |
+| Existing authored ranks above the cap are not audited | Adaptation, `ADAPTATION_LOG.md` 51 | `LevelUp._notices` | `test_existing_over_cap_ranks_do_not_block_level_up` |
+| Spell slots: cleric 4/3, wizard 4/3, sorcerer 6 plus a new 2nd-level row of 3; one new known spell | Table 3-6 p. 31; Tables 3-16 and 3-17 pp. 52-54; Table 3-18 p. 55 | `LevelUp.SPELL_SLOT_DELTAS`, `LevelUp._stage_spell` | `test_redirected_slot_readings_are_per_class`, `test_apply_sorcerer_adds_one_second_level_spell_and_no_first_level_slot` |
+| Old saves load without migration and never level on load | `LEVEL_UP_PLAN.md` 12.7 | `Character.from_dict`/`to_dict`, `LevelUp.eligibility` | `test_a_level_three_save_with_six_thousand_xp_is_eligible_after_load`, `test_a_level_four_save_loads_without_migration` |
+
+Adaptations: the whole-rank cross-class cap (printed 3.5), the two-point
+cross-class rank and the authored slot deltas are recorded in `ADAPTATION_LOG.md`
+51. The module is engine-only: no button, probe, export or play path calls it.

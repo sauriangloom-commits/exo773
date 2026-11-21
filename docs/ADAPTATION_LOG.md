@@ -667,3 +667,24 @@ presentation choices are omitted; nothing here changes a rule silently.
     therefore ends at 6/3, matching the book, while the wizard row keeps its
     authored Int bonus. A raising of Constitution recomputes HP from all four levels
     rather than adding an average twice.
+
+51. **Level-up core is engine-only, and its 4th-level skill caps, point costs and
+    slot deltas are explicit.** Batch 2 adds `LevelUp` with no caller in play. The
+    printed skill rule (SRD Skills Summary; PHB p. 62) gives a class cap of
+    character level + 3 (7 at 4th) and a cross-class cap of half that number,
+    "do not round up or down" (3.5 at 4th); each skill point buys 1 class rank or
+    1/2 cross-class rank, and half ranks do not improve a check. The engine stores
+    whole ranks only and charges 2 points per cross-class rank, so the enforceable
+    cross-class cap is 3 whole ranks; `Skills.max_ranks` already floors and is used
+    on the staged level-4 character. A 4th cross-class rank is refused, and the
+    unrepresentable half is recorded here rather than presented as printed. The
+    ability increase is applied before HP, saves and the skill budget; HP is
+    recomputed from all four hit dice and the new Constitution modifier, and
+    current damage is preserved rather than current HP; the authored level-3 rows
+    gain the explicit deltas cleric +1/+1, wizard +1/+1 and sorcerer 2nd-level 3
+    with 1st-level unchanged at 6, so Mira ends on the printed 6/3 and Ysolde keeps
+    her Intelligence bonus. The sorcerer's known list gains exactly one 2nd-level
+    spell, with no 0-level or 1st-level back-fill. Existing ranks above the new
+    cap are shown as a notice and are never audited or clamped. XP is a gate and is
+    never spent; a second apply refuses and changes nothing; old saves load without
+    migration and never level on load.

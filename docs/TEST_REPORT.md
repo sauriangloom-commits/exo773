@@ -5136,3 +5136,28 @@ Batch 2 is planned in `LEVEL_UP_PLAN.md` 12: a pure `LevelUp` module with
 refusals leave the character byte-identical; 35 failing-first tests with the red
 evidence taken from the logged failure output, not the exit code, because GUT
 9.6.1 exits 0 on an unparseable test file. Nothing was implemented.
+
+### Level-up core (2026-11-21)
+
+Batch 2 of the level-up plan adds `src/core/level_up.gd` and
+`tests/test_level_up_core.gd` with 35 tests written before the module existed. The
+red run's exit code was 0 even though the new file never compiled, so the recorded
+evidence is the log:
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelUp" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_up_core.gd:32)
+    ...
+    Scripts              61
+    Tests               795
+    Passing Tests       795
+    Asserts            8126
+
+The file was not collected at all (61 scripts and the old totals unchanged), which
+is exactly why the exit status cannot stand in for a failure. After implementation
+the suite is 830/830 tests, 8,326 assertions and 62 scripts.
+`--validate-campaigns` passes, and `--validate-diagnostics` passes with
+`CLASS PROGRESSION PASS | 13 accepted authored inconsistencies` unchanged. A
+one-time `--import` refresh was needed so the new `class_name` entered the global
+class cache; it changed no source or content. Nothing in play calls `LevelUp` yet.
+No candidate was exported because nothing player-visible changed, no manual testing
+was performed or requested, and no backups were touched.

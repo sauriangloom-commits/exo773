@@ -2861,3 +2861,20 @@ level-4 numbers per class, the explicit per-class slot deltas, old-save and
 idempotence rules, stable refusal codes, and 35 failing-first tests. Red evidence
 must be the logged failure output rather than the exit code, since GUT exits 0 on a
 test file that fails to parse.
+
+### Level-up core landed (2026-11-21)
+
+Batch 2 of `docs/LEVEL_UP_PLAN.md` is implemented as a pure module,
+`src/core/level_up.gd`: `eligibility` gates the single 3rd-to-4th step at 6,000 XP
+inclusive, `preview` returns before/after numbers without touching the character,
+and `apply` stages a level-4 copy, validates the ability increase, skill
+allocation, fighter feat and sorcerer spell on it, then commits the staged fields
+once. Fourth-level numbers come from `ClassProgression`; HP is recomputed with a
+Constitution increase applied across all four levels and current damage preserved;
+skill caps are class 7 and cross-class 3 whole ranks (printed 3.5, which the
+whole-rank model cannot store); slots become cleric 4/3, wizard 4/3, sorcerer 6 at
+1st with a new 2nd-level row of 3, and Mira learns exactly one 2nd-level spell.
+Refusals leave `to_dict()` unchanged, a second apply refuses with
+`already_level_4`, XP is never spent, and old saves load without migration.
+Nothing calls it from play yet, and no content, UI, probe or export was touched.
+Suite 830/830 with 8,326 assertions across 62 scripts; both validators pass.
