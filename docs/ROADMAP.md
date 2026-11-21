@@ -1,13 +1,15 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-21).** 748/748 tests, 7,779 assertions, 58 scripts,
+> **Current boundary (2026-11-21).** 754/754 tests, 7,886 assertions, 59 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
 > windowed probes run at 1280×720 at 100 % and 160 %. Creature soft cover on
 > ranged attacks (and its inspector clause) is accepted within its recorded
 > scope. Fighting defensively and total defense are accepted as committed
 > stances; candidate `defensive_actions_2026-11-21c` (`58cb1a7`) passes its probe,
 > both validators and a matching before/after exe hash, and carries the
-> source-tested combat-scope cleanup. `-b` is preserved and superseded. Earlier candidates
+> source-tested combat-scope cleanup. `-b` is preserved and superseded. Both that
+> batch and its cleanup are closed as accepted within the recorded limits; the
+> recommended next batch is player-initiated bull rush (review below). Earlier candidates
 > `creature_cover_inspector_2026-11-21` (`e64a6c9`) and `creature_cover_2026-11-21`
 > (`4e56d1e`) remain preserved and are still unbound. (The 2026-11-14
 > boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
@@ -115,6 +117,84 @@ note on the ring-twice option would be a worthwhile refinement.
 playtest; no target win rate; not a full balance validation. Solo caster/cleric
 results would improve with their implemented spells, turning and healing and
 are not claimed as proof.
+
+## Next bounded task — roadmap review after the defensive closure (2026-11-21)
+
+Review only. Nothing was implemented, rebuilt or re-checked for this section, and
+no manual testing was requested.
+
+**Recommendation: player-initiated bull rush**, as the next single bounded batch.
+
+- **Player impact.** It is the only remaining P2 special attack a player can
+  reach with shipped content, and it changes the grid rather than a number: push
+  a blocker out of a doorway, break a flank, shove a foe off cover. Concealment,
+  hard and low-wall cover and big-creature cover stay blocked on terrain and wall
+  data that no campaign authors; iterative attacks need a full-attack action model
+  that does not exist (one attack per turn today); AoE templates need grid areas
+  plus new spell content.
+- **Reachability.** Every shipped encounter has an adjacent Medium monster and a
+  PC holding a standard action, so the action is usable as soon as it exists.
+  `Character.size_category` already carries size with a Medium default and no
+  monster authors one, so the printed "Large or smaller" gate is satisfied today
+  and the Large refusal can be pinned with a test fixture instead of new content.
+- **Dependencies already in place.** Size data, occupancy-aware pathing and
+  blocked-square checks, the AoO machinery (`_provoke_single_opportunity`), and
+  the trip batch's contested-check plus pending-decision pattern. The genuinely
+  new pieces are forced movement of the defender with the rusher following, and
+  one action control shaped like `Defend`/trip. Improved Bull Rush stays deferred
+  behind the action, exactly as `FEATS_SKILLS_COVERAGE.md` records.
+- **Automated verification.** Opposed Strength checks are seeded and
+  deterministic. One focused `tests/test_bull_rush.gd` can pin push distance (5
+  ft per 5 the check exceeds), stopping at a wall, an occupied square or the map
+  edge, the defender's provoked attack on initiation, standard-action and
+  once-per-turn gating, refusal against a Large defender, and the movement the
+  rusher spends — all against the real `Encounter`, with no probe change. A
+  windowed scenario is only warranted if the new control is not covered by the
+  existing sidebar probe.
+
+**Bull rush against the newly found regression or evidence gap.** No new
+regression exists. The only defect from these batches was the superseded `-b`
+build letting a live stance into the victory autosave; it is fixed in `7fae8d1`,
+pinned by four real-path tests, contained in candidate
+`defensive_actions_2026-11-21c`, and closed with the batch. The one new **evidence
+gap** is that the cleanup has source-tree evidence only: the exported defensive
+probe never reaches encounter resolution and never writes a save, so no exported
+run demonstrates it. Closing that gap — a headless exported resolution smoke that
+plays the QA encounter and re-reads `auto.json` — is cheaper than a rules batch
+but changes nothing a player can do, and would re-prove what the 754-test suite
+already pins. It ranks second, and should be taken before a second batch that
+again depends on resolution-time behaviour, or folded into the first batch that
+must be proved in the binary.
+
+**Bounded scope if this is chosen (not started).** Player-initiated only, standard
+action only (charge does not exist), Medium and smaller defenders, 5 ft per 5 of
+excess, stop at wall/occupied/edge, defender's attack of opportunity on
+initiation, no Improved Bull Rush, no AI use, no mounted interaction. Rules
+citation to confirm when the batch opens: PHB p. 154 (bull rush) and p. 95
+(Improved Bull Rush). Done means focused tests, the full suite, both validators,
+docs and a traceability row, and no rebuild unless the sidebar changes.
+
+**State after the closure, kept separate.**
+
+- *Confirmed defects:* none open in these areas. The stance leak is fixed and
+  pinned; nothing else was reproduced and left unrepaired.
+- *Deferred features:* mounted and NPC-initiated trip; concealment; hard cover,
+  low walls, reach-melee cover and big-creature cover; Improved Precise Shot;
+  grapple, disarm, sunder, bull rush; two-weapon fighting; iterative attacks; AoE
+  templates; the deferred feats in `FEATS_SKILLS_COVERAGE.md`; any save-migration
+  production step; the turning extensions.
+- *Maintenance debt:* the migration table ships empty (`SAVE_VERSION` stays 1);
+  exported acceptance is not repeated after every batch; `follow_focus`
+  redundancy and the single-pane focus walk; minimal settings versioning; simple
+  combat AI; no content hot reload; placeholder raycaster; shallow UI interaction
+  coverage; GUT runs only in the source tree.
+- *Evidence gaps:* the combat-scope cleanup is not demonstrated by any exported
+  run; exported binaries are probe-covered, not suite-covered; physical held-key
+  acceptance is pending; Enter activation of a focused modal button is
+  native-only; no OS-level crash injection for save writes; case-sensitive
+  filesystem behaviour is asserted through `_classify_names` only; the two
+  creature-cover candidates remain unbound; the earlier `modal_focus` binary is
+  missing; the Tumble +3/+6 stance values are reachable only through a fixture.
 
 ## P0 — Verify and harden the current slice
 
@@ -252,7 +332,9 @@ attacks, with spell-school feats waiting on a saving-throw spell.
    a selection commits only on a legal attack, the active stance is locked until
    the next turn, total defense is a standard action that replaces a selection,
    and both interact with Combat Expertise and normal/touch AC as printed.
-   Grapple, disarm, sunder and bull rush remain open.
+   **Closed 2026-11-21** as accepted within the recorded limits, together with the
+   encounter-resolution cleanup that removed their leaked bonus. Grapple, disarm,
+   sunder and bull rush remain open; bull rush is the recommended next batch.
 3. **Cover and concealment.** **Creature soft cover on ranged attacks is done and
    accepted (2026-11-21):** +4 AC on normal and touch AC for ranged, thrown and
    ranged touch attacks, read with the printed corner method, with the inspector's

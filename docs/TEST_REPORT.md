@@ -4773,3 +4773,17 @@ Limits of this export: 1280x720 at 100 %/160 % on this desktop; the probe reads
 control state and label text, not the rendered pixels beyond the saved captures;
 no new probe was added for the cleanup and no manual test was run or requested;
 backups were not touched.
+
+### Closure of the defensive-actions and combat-scope work (2026-11-21)
+
+Both are closed as accepted within their recorded limits. Fighting defensively and
+total defense: accepted for the committed-stance scope on source `e72a18a`. The
+combat-scope cleanup: accepted on source `58cb1a7` and pinned by the four
+`test_combat_scope_cleanup.gd` tests; candidate `defensive_actions_2026-11-21c`
+carries it and is bound by its own exported checks, which do not reach encounter
+resolution or write a save. Nothing was rebuilt and no check was repeated for this
+closure. No confirmed defect remains open in either area; the defect that was found
+is fixed and recorded above, `-b` stays superseded, and the deferred features,
+maintenance debt and evidence gaps in the ledgers earlier in this file are
+unchanged. No manual testing was performed or requested, and backups were not
+touched.

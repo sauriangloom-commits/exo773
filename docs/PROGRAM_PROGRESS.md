@@ -2608,3 +2608,36 @@ probe-verified. Defeat is covered by real damage plus a real end turn to
 `_check_end`, not by an enemy attack roll. The suite remains source-only
 evidence; no manual testing was performed or requested and backups were not
 touched.
+
+### Defensive actions and combat-scope cleanup closed (2026-11-21)
+
+Both are accepted within the limits recorded with them, and neither leaves open
+work. Fighting defensively and total defense are accepted for the committed-stance
+scope (source `e72a18a`, suite 748/748, windowed probe at 100 %/160 % in source and
+in `-b`). The combat-scope cleanup is accepted on source `58cb1a7` (suite 754/754,
+7,886 assertions, 59 scripts) and on candidate `defensive_actions_2026-11-21c` for
+the exported checks it actually ran; the cleanup itself remains source-tested.
+Nothing was rebuilt and no check was repeated for this closure. `-c` stays the
+current bound candidate and `-b` stays superseded with its defect recorded.
+
+Kept separate:
+
+- *Confirmed defects:* none open from these batches.
+- *Deferred features:* mounted and NPC-initiated trip, concealment, wall/low-wall
+  and reach-melee and big-creature cover, Improved Precise Shot, grapple, disarm,
+  sunder, bull rush, two-weapon fighting, iterative attacks, AoE templates, the
+  deferred feats, any save-migration production step, the turning extensions.
+- *Maintenance debt:* empty migration table, acceptance not repeated per batch,
+  `follow_focus` redundancy, single-pane focus walk, minimal settings versioning,
+  simple AI, no content hot reload, placeholder raycaster, shallow UI coverage,
+  source-only GUT.
+- *Evidence gaps:* no exported run exercises the cleanup; exported binaries are
+  probe-covered only; held-key physical acceptance pending; Enter activation
+  native-only; no OS-level crash injection; case-sensitive filesystem behaviour
+  asserted through `_classify_names`; unbound creature-cover candidates; missing
+  `modal_focus` binary; Tumble stance values fixture-only.
+
+Roadmap review (recorded in `ROADMAP.md`): no new regression, so the recommendation
+is player-initiated bull rush as the next bounded batch, with the exported
+resolution smoke ranked second because it adds evidence rather than play. Limits
+unchanged: 1280x720 at 100 %/160 %; no manual testing; backups untouched.
