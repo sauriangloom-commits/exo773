@@ -2164,3 +2164,9 @@ whose readable leftover belongs to another campaign.
 In source, `--validate-campaigns`, `--validate-diagnostics`, the Inspect probe,
 the settings/journal/refusal layouts and the notice probe at 100 % and 160 % all
 PASS.
+**Acceptance.** `recovery_2026-11-20` was built at 19:08:08 from commit `accbc62`
+with `worktree_entries=0` and no untracked files - 110,678,072 bytes, SHA-256
+`a0e305021ac295cc958d0c97421af2652a1468c21841ceecaa44f66ed4f0b7f8` - and its 13/13
+acceptance log records that hash at both ends
+(`builds/qa/runs/2026-11-20_recovery/acceptance.log`). Limits are listed at the
+end of [TEST_REPORT.md](TEST_REPORT.md).

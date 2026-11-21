@@ -3449,3 +3449,105 @@ at its start and its end line repeats
 `runs=11 failures=0`; per-check logs are in its `export/`, captures in `shots/`.
 Re-hashing the candidate reproduces that value, so the evidence is hash-bound to
 the binary that produced it.
+
+## Save recovery and the read-only Settings notice (2026-11-20)
+
+**The gap.** `write_save` staged a `.tmp`, moved the primary to `.bak`, renamed
+the temp into place and then deleted `.bak`. A process that died between those
+renames left a valid backup or temp that no load ever read: `read_save` only
+looked at the primary, `exists`/`list_saves` reported the slot empty, and the next
+save deleted the crash's `.bak` before staging its own. A settings file written by
+a newer build refused writes silently between one click and the next.
+
+**Recovery design.** `SaveSystem` now names a slot's artifacts
+(`artifact_paths`), reports whether any exist (`has_artifacts`), and reads one
+file through the same version rules as before (`read_payload`, `reason` =
+`missing` / `corrupt` / `unsupported_version`). `load_game` became
+`_choose_save_source` + `_prepare_save` (the validation the load always ran,
+unchanged apart from returning values instead of assigning them) +
+`_apply_prepared_save`, so a candidate is accepted by exactly the checks a normal
+load applies. Selection writes nothing and changes no live state; a corrupt
+candidate is skipped, not repaired.
+
+Ordering and refusals are deliberately asymmetric. A readable primary always
+wins, and its refusal stands: a newer `save_version` (or a content-version
+mismatch) is still the same message, because loading an older backup there would
+be a silent downgrade. Only a missing or unreadable primary lets the backup, then
+the temp file, stand in; each must belong to the loaded campaign (a leftover never
+switches campaigns) and passes `_prepare_save` or is skipped. A recovered load
+reports `recovered_from` and a message naming the source, which the Load panel
+shows in its status line and keeps open, since the restored game is already live
+behind it. `list_saves`/`_save_info` now show a slot whose primary is gone (tagged
+"(from backup)" / "(unfinished save)") instead of "empty".
+
+The legacy directory is a fallback, never a candidate: it is read only when the
+campaign slot holds no artifact at all, so a crash's backup is not replaced by an
+older demo save with the same slot name. `save_game` also refuses to overwrite a
+crashed slot whose readable leftover belongs to another campaign.
+
+**Write-path preservation.** When a crash's `.bak` or `.tmp` occupies the normal
+working name, a new save stages through `.bak.w` / `.tmp.w`, removes only the
+files it created, and leaves crash artifacts intact - on success and on failure.
+The previous unconditional pre-staging `.bak` delete is gone.
+
+**UI.** `Main` gained an optional `modal_notice` strip above a modal's scrolling
+body (kept across `refresh_modal`); Settings passes the read-only line only when
+`settings_newer` is set, so the notice cannot scroll away, and the controls keep
+working - the changes apply for the session and are never written.
+
+**Tests added (18).** `tests/test_save_recovery.gd` (13): missing primary ->
+backup; corrupt primary -> backup with the damaged file left byte-identical; temp
+used only without a readable backup; incompatible primary stops the search with
+the existing refusal and no downgrade; valid primary wins with leftovers
+untouched; foreign-campaign leftover refused without a campaign switch; no valid
+candidate keeps files and refusal; campaign artifacts block the legacy fallback;
+an empty campaign slot still uses it; a later save keeps crash artifacts and
+leaves no `.bak.w`/`.tmp.w`; a save over another campaign's leftover is refused;
+a failed write leaves the artifacts alone; selection changes no live state before
+acceptance. `tests/test_persistence_notices.gd` (5): the notice appears only for a
+newer file, sits outside the scroll and inside the panel, does not freeze the
+controls; the Load row names the backup; the Save row calls a crashed slot
+"interrupted", not "empty"; a recovered load states its source in the status line.
+
+**Source checks.** Suite **641/641, 6,931 assertions, 52 scripts, exit 0**.
+`--validate-campaigns` PASS, `--validate-diagnostics` PASS, `--demo-inspect
+--inspect-probe` PASS, settings/journal/refusal layouts PASS at 100 % and 160 %,
+`--settings-notice-probe` PASS at 100 % and 160 % (notice inside the panel, above
+the scroll, surviving a refresh), `--save-compat-ui-probe` PASS with the new
+backup/newer-primary/temp cases (`UI COMPAT backup status=Loaded slot2 from its
+backup...`, `...incompatible version (99.0)`, `...from its unfinished write...`).
+
+**Exported candidate from the clean tree.** `recovery_2026-11-20` was built at
+2026-11-20T19:08:08-05:00 from commit `accbc62` with `worktree_entries=0` and no
+untracked files; both diff hashes are `e3b0c442...` (SHA-256 of empty input).
+
+| field | value |
+| --- | --- |
+| build_id | `recovery_2026-11-20` |
+| built_at | 2026-11-20T19:08:08-05:00 |
+| source_head | `accbc624d62b0402618527ef75a709e3dbca2a1c` |
+| worktree_entries | 0 |
+| untracked_files | 0 |
+| exe_bytes | 110,678,072 |
+| exe_sha256 | `a0e305021ac295cc958d0c97421af2652a1468c21841ceecaa44f66ed4f0b7f8` |
+
+Acceptance against that hash: **13/13** - list-campaigns, both validators, the
+Inspect probe, the settings/journal/refusal layouts at 100 % and 160 %, the new
+settings-notice probe at 100 % and 160 %, and `--save-compat-ui-probe`.
+`builds/qa/runs/2026-11-20_recovery/acceptance.log` records the exe hash at its
+start and its end line repeats
+`sha256=a0e305021ac295cc958d0c97421af2652a1468c21841ceecaa44f66ed4f0b7f8` with
+`runs=13 failures=0`; per-check logs are in its `export/`, captures in `shots/`.
+
+**Limits.** (1) Failure paths are simulated - a directory on the primary path and
+damaged bytes - not by killing the process mid-write; no OS-level crash injection
+was run. (2) `.bak.w`/`.tmp.w` are working names for one write and are not read by
+recovery: a crash that leaves only those (possible only when a crash artifact was
+already present) reports an empty slot, and the next save replaces them. (3) A
+leftover from another campaign is skipped, not loaded, so such a slot appears in
+the list but refuses to load with "No save in". (4) Validation still uses the
+installed campaign's content, so a recovery copy written for a different
+`content_version` is skipped rather than migrated. (5) Layout and notice evidence
+covers 1280x720 only; other sizes rest on the earlier resolution pass. (6) GUT
+runs in the source tree; the exported binary was verified by the probes above,
+not by the suite.
