@@ -4134,6 +4134,35 @@ scripts, exit 0**; both validators PASS; `--demo-dialogue` and `--demo-silence`
 dialogue layout probes PASS at 1280x720 at both scales; `--creator-story-probe`
 exit 0. Remaining limits are listed in the run report.
 
+### Dialogue text scrolling and modality trace (2026-11-21)
+
+PageUp/PageDown now scroll the conversation body by 90 % of a visible page,
+clamped to `max_value - page`, without moving the focus ring (`da12abf`). The
+handler sits in the existing dialogue branch after the modal and rebind returns,
+so modal scrolling still wins and a rebind still captures the key. Shift+Tab
+walks back through earlier available choices in content order and wraps.
+
+Evidence: `tests/test_dialogue_focus.gd` is now 10 tests (page step, both clamps,
+focus preservation, Tab/Enter after paging, manual offset persistence, modal
+priority, rebind capture, reverse Tab and the wrap). Suite **692/692 tests,
+7,444 assertions, 56 scripts, exit 0**; both validators PASS; `--demo-silence`
+and `--demo-dialogue` dialogue layout probes PASS at 1280x720 at 100 % and
+160 %; `--creator-story-probe` exit 0. Candidate `dialogue_page_2026-11-21`
+(source `da12abf`, SHA-256
+`29298fe2292dffe874fda8423e89c17e50be5cd2da8b52dda5838ff5cb020d74`, 110,686,664
+bytes, clean tree) showed page down/up, top and bottom clamps, Enter after
+paging, reverse Tab and the wrap natively at both scales.
+
+Modality trace (behaviour unchanged): `DialoguePanel` and its dim measure 0x0, so
+the dim never draws or blocks, and HUD controls outside the framed panel stay
+mouse-live. Arrows can focus disabled choice rows and reach HUD buttons. Party,
+Sheet, Inventory, Journal and Save open panels over the conversation; Pause ends
+it and autosaves (existing pause handler). Movement and turn buttons fire but
+`Game` returns early outside explore mode, so world state is unchanged. The
+policy the code implies is full modality for world actions with read-only panels
+allowed on top; the gaps are the 0x0 dim and arrow focus. Limits are in
+`builds/qa/runs/2026-11-21_dialogue_page/report.md`.
+
 ### Corrections to this refresh
 
 - **Journal wheel scrolling is verified.** `builds/qa/runs/2026-11-20_modal/report.md`

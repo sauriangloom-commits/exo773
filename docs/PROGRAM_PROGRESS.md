@@ -2280,5 +2280,13 @@ and Shift+Tab cycle the available choices in content order while a conversation
 is open. Candidate `dialogue_focus_2026-11-21b` (source `01d1cfc`, SHA-256
 `cd00d389`) shows the silence epilogue row revealed at 100 % and 160 % on a
 1280x720 client, with Enter opening the epilogue. Suite 686/686, both validators
-and the dialogue layout probes PASS. Oversized-control clipping remains a
-conditional limit - no shipped modal reproduces it.
+and the dialogue layout probes PASS.
+
+Dialogue PageUp/PageDown now scroll the conversation body one 90 % page with
+clamps, leaving focus, Tab order and activation alone; reverse Tab walks back and
+wraps. Candidate `dialogue_page_2026-11-21` (source `da12abf`, SHA-256
+`29298fe2`) passes the 10-test dialogue file, 692/692 suite, both validators and
+the dialogue layout probes at 100 %/160 %. The trace found the dialogue dim is
+0x0 (HUD stays mouse-live) and arrow focus can land on unavailable rows; both are
+recorded, not changed. Oversized-control clipping remains a conditional limit -
+no shipped modal reproduces it.
