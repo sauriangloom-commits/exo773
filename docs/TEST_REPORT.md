@@ -4015,6 +4015,11 @@ and the places where that record is weaker than a result are named as gaps.
 None of these regressed during the batch; they are the audit's own remaining
 limits, unchanged.
 
+Correction (2026-11-21): the key-repeat half of item 5 is implemented and
+automated-verified; physical held-key acceptance is pending (see the modal
+held-key entry at the end of this file). Gamepad page keys and reveal after a
+silent relayout remain open; the rest of this list is unchanged.
+
 ### Verification gaps (distinct from defects)
 
 - Enter activation of a focused modal button is native-verified only; headless GUI
