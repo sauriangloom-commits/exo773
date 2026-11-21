@@ -1,11 +1,14 @@
 # Prioritized Continuation Roadmap
 
-> **Current boundary (2026-11-21).** 731/731 tests, 7,704 assertions, 57 scripts,
+> **Current boundary (2026-11-21).** 748/748 tests, 7,779 assertions, 58 scripts,
 > exit 0; `--validate-campaigns` and `--validate-diagnostics` both PASS, and the
-> layout probes run at 1280×720 at 100 % and 160 %. Creature soft cover on ranged
-> attacks (and its inspector clause) is accepted within its recorded scope;
-> candidate `creature_cover_inspector_2026-11-21` (`e64a6c9`) passes its cover
-> probe and layout scenario in source and in the exported exe. (The 2026-11-14
+> windowed probes run at 1280×720 at 100 % and 160 %. Creature soft cover on
+> ranged attacks (and its inspector clause) is accepted within its recorded
+> scope. Fighting defensively and total defense are accepted as committed
+> stances; candidate `defensive_actions_2026-11-21` (`a8c8189`) passes its probe,
+> both validators and a matching before/after exe hash. Earlier candidates
+> `creature_cover_inspector_2026-11-21` (`e64a6c9`) and `creature_cover_2026-11-21`
+> (`4e56d1e`) remain preserved and are still unbound. (The 2026-11-14
 > boundary was 538/538, 6,263 assertions, 44 scripts.) Earlier
 > milestones below keep their own numbers as written: a smaller test count or
 > "thirty-seven feats" is history, not current status. The shipped feat catalogue

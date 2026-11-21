@@ -4105,6 +4105,7 @@ the acceptance log records the exe hash at its start and end.
 | `creator_probe_2026-11-20` | `2dc61e1` | `4196d9781955b641210b64fcccc34a7922f9e9b438fd47a123212950f0a7c7cf` | 110,684,280 | 9/9 (both validators + seven creator probes) | yes |
 | `creature_cover_2026-11-21` | `4e56d1e` | `3045596184a265577d3fef325476c2840ded5219ce5ed728470cea382b974a39` | 110,693,592 | Both validators from the exe, Inspect probe, inspect and dialogue layouts at 100 %/160 %; the panel clause was not rendered yet | no |
 | `creature_cover_inspector_2026-11-21` | `e64a6c9` | `b5b1f67403c70472fd290cbb01c08816cc333d9d8a6f105facc8377824c81c89` | 110,698,344 | Both validators from the exe, cover probe and cover layout at 100 %/160 % (23 checks / 23 controls), source suite 731/731 | no |
+| `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Both validators from the exe, defensive probe at 100 %/160 % in source and in the exe (45 checks each), exe hash matched before/after, source suite 748/748 | yes |
 
 `probe_2026-11-20` is superseded by `creator_probe_2026-11-20`: the same
 executable bytes, re-exported from a clean tree, and only the clean one carries
@@ -4593,3 +4594,65 @@ own text, not by reading the PNGs; the QA fixture is not campaign content; nativ
 input was not exercised; no manual test was performed. The two candidates' logs do
 not record a start/end exe hash, so they read "no" in the table's bound column
 even though each BUILD.txt pins the hash.
+
+
+## Fighting defensively and total defense — candidate `defensive_actions_2026-11-21` (2026-11-21)
+
+**Status: accepted within the recorded scope.** Source `a8c8189`, candidate
+`defensive_actions_2026-11-21` (clean tree, 110,708,264 bytes, SHA-256
+`f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b`).
+
+Implemented: fighting defensively as a selected-then-committed stance and total
+defense as its own standard action (PHB pp. 140, 143). A selection grants no
+bonus, spends nothing, can be cleared, and can be replaced by total defense; the
+commit point of a legal attack is the only activation path, so a refused or
+cancelled attack leaves no bonus and writes no stance line. Once active the
+stance applies -4 to every attack roll in the round (opportunity attacks
+included) and +2 dodge AC (+3 with 5 Tumble ranks) to normal and touch AC,
+cannot be cancelled, and ends at the start of the character's next turn. It
+stacks with Combat Expertise (RC p. 54). Total defense grants +4 dodge AC (+6
+with 5 Tumble ranks), forbids attacks and opportunity attacks on both the
+provocation path and the movement reaction path, and refuses Combat Expertise
+and an active fighting-defensively stance. The sidebar shows a checkbox with a
+persistent status line plus a `Defend` action button, both gated on the standard
+action, the lock and the standard-action cost.
+
+Test evidence (`tests/test_defensive_actions.gd`, 17 tests, 71 assertions inside
+the suite):
+
+| Area | Covered by |
+| --- | --- |
+| Selection vs active, deselection | `test_a_selection_grants_nothing_and_can_be_cancelled`, `test_a_legal_attack_commits_the_stance` |
+| Refused / out-of-reach / post-standard attack grants nothing | `test_a_refused_attack_grants_no_bonus`, `test_an_out_of_reach_attack_grants_no_bonus`, `test_a_selection_made_after_the_standard_action_is_refused` |
+| Lock after commitment | `test_an_active_stance_cannot_be_cancelled` |
+| Total defense: cost, replacement, move still allowed, exclusions | `test_total_defense_replaces_a_selection`, `test_total_defense_allows_a_move_afterwards`, `test_total_defense_refuses_combat_expertise` |
+| Opportunity attacks | `test_total_defense_prevents_opportunity_attacks`, `test_an_active_stance_penalises_the_opportunity_attack` |
+| Expiry | `test_the_stance_expires_at_the_start_of_the_next_turn` |
+| Stacking with Combat Expertise, Tumble 5/4 ranks, dodge denial | `test_fighting_defensively_stacks_with_combat_expertise`, `test_tumble_ranks_replace_the_defensive_bonus`, `test_four_tumble_ranks_keep_the_base_bonus`, `test_the_dodge_bonus_is_denied_while_dexterity_is_denied` |
+| Normal/touch/cover parity with the inspector | `test_normal_and_touch_ac_parity_and_cover_stacking` |
+
+Runs at `a8c8189`: source suite 748 tests / 7,779 assertions / 58 scripts, exit
+0; `--validate-campaigns` and `--validate-diagnostics` PASS in source and from
+the candidate exe. Windowed `--demo-defensive --defensive-probe` at 1280x720 and
+100 %/160 %: PASS (45 checks each) in source and in the candidate exe; captures in
+`builds/qa/runs/2026-11-21_defensive/shots_100` and `shots_160`, plus the
+source-run captures in `builds/qa/defensive_shots/`. The exe SHA-256 was
+`f6bb00f2...d5de6b` (110,708,264 bytes) immediately before the acceptance runs
+and byte-identical afterwards, so this candidate is bound.
+
+Defect found and fixed inside the batch: the long `Total defense` label widened
+the four-column action grid past the sidebar's 340 px minimum; the scroll
+container's bars then oscillated and the frame queue stalled (GUT's footer never
+advanced and the process eventually segfaulted). The control is labelled `Defend`
+with the full name in its tooltip, and the sidebar now reserves its vertical
+scrollbar (`SCROLL_MODE_SHOW_ALWAYS`) so a wrapped label cannot restart the loop;
+the full suite and both probes pass at both scales afterwards.
+
+Limits: 1280x720 at 100 %/160 % on this Windows desktop only; the fixture is a QA
+encounter (ids, display names and cells are QA values while initiative stays the
+seeded real path) and is not campaign content; no shipped character has Tumble
+ranks, so the +3/+6 replacement is unit-tested with a fixture and unreachable in
+content; the captures were produced but not read by a human, and no manual test
+was performed or requested; native input was not exercised because no binding or
+focus behaviour changed. Backups were not touched and the two cover candidates
+are preserved unchanged.

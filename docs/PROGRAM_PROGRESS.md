@@ -2527,3 +2527,38 @@ features. Key-repeat acceptance stays an evidence gap. Added a policy: every
 future acceptance run records the executable's SHA-256 before and after the
 checks and the two must match; the two creature-cover candidates remain
 explicitly unbound (their `BUILD.txt` hashes are recorded).
+
+
+### Fighting defensively and total defense (2026-11-21)
+
+Implemented the defensive-actions batch with separate selected and active states.
+A selection grants nothing, spends nothing, can be cleared and can be replaced by
+total defense; the commit point of a legal attack is the only activation path, so
+a refused, cancelled or out-of-reach attack never leaves a bonus behind. An
+active stance applies -4 to every attack roll in the round (opportunity attacks
+included) and +2 dodge AC (+3 with 5 Tumble ranks) to normal and touch AC, cannot
+be cancelled, and expires at the start of the character's next turn. It stacks
+with Combat Expertise (RC p.54). Total defense is a standard action: +4 dodge AC
+(+6 with 5 Tumble ranks), no attacks or opportunity attacks on either reaction
+path, and it refuses Combat Expertise and an active fighting-defensively stance.
+The sidebar gained a state checkbox with a persistent status line and a `Defend`
+button, both gated on the standard action and the lock.
+
+Evidence: `tests/test_defensive_actions.gd` (17 tests, 71 assertions inside the
+suite), full suite 748/748 with 7,779 assertions across 58 scripts, both
+validators in source and from the exe, and the windowed `--demo-defensive
+--defensive-probe` at 1280x720 at 100 %/160 % in source and in candidate
+`defensive_actions_2026-11-21` (`a8c8189`, `f6bb00f2...d5de6b`, 110,708,264
+bytes). The exe hash matched before and after the acceptance runs, so this
+candidate is bound.
+
+The batch also fixed a layout defect it exposed: a long `Total defense` label
+widened the four-column action grid past the sidebar minimum, the scroll
+container's bars oscillated and the frame queue stalled until the suite
+segfaulted. The control is labelled `Defend` (full name in the tooltip) and the
+sidebar reserves its vertical scrollbar so no wrapped label can restart the
+loop. Not implemented and not claimed: Tumble ranks are absent from all shipped
+characters, so the +3/+6 replacement is reachable only through a test fixture;
+mounted, reach-melee, concealment and the other recorded cover gaps are
+unchanged. Backups were not touched; no manual testing was performed or
+requested.

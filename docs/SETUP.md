@@ -170,6 +170,7 @@ given client size and text scale, and exits nonzero if one is):
 # line) and has an asserting probe for the inspector's cover clause:
 "..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo-cover --layout-probe --layout-scenario=cover --probe-size=1280x720 --text-scale=1.0
 "..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo-cover --cover-probe --probe-size=1280x720 --text-scale=1.0 --trip-shots=<abs dir>
+"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --demo-defensive --defensive-probe --probe-size=1280x720 --text-scale=1.0 --trip-shots=<abs dir>
 ```
 
 Native input check (windowed; drives the exported build with OS-level keys, wheel
