@@ -2906,3 +2906,28 @@ blockers and a `complete` flag. Seventeen failing-first tests are specified,
 with red evidence quoted from the log rather than the exit code. Nothing was
 implemented, no candidate was exported, no manual testing was requested and no
 backups were touched.
+
+### Content repair accepted, level-up choices landed (2026-11-22)
+
+The content repair and the batch-3 plan are closed as accepted within their
+recorded limits, with no rebuild and no repeated check. A search of the campaigns,
+encounters, scripted dialogue checks and tests found nothing that reads aldric's or
+mira's listen, spot, bluff or spellcraft ranks, so no dropped rank is depended on;
+the one scripted use of a repaired skill is the encounter first-aid check (Heal
+DC 15), which aldric still has and which the suite exercises.
+
+Batch 3 is implemented: `LevelChoices.choices(ch, draft)` returns the ability
+options, the per-skill cost, cap and affordable ranks, the fighter's feat rows,
+the sorcerer's spell rows, the blockers and a `complete` flag. The fighter list
+comes from `Feats.CATALOG`, filtered by the printed fighter markers, which were
+verified in the book before coding: PHB p. 38 points at Table 5-1, and Table 5-1
+pp. 90-91 marks them with footnote 1, giving ten implemented feats. Prerequisites
+are evaluated on the staged level-4 copy with the pending ability increase, owned
+parameters are not offered, and the sorcerer's pool is the implemented 2nd-level
+spells open to the class minus the known list, with an empty pool forcing
+`complete` to false. `LevelUp.stage` is now the public seam and
+`LevelUp.apply` remains the only authority; `blockers` equals
+`preview(...).required`. Eighteen failing-first tests, red shown by the logged parse
+error naming `LevelChoices`; final suite 850/850 tests, 8,562 assertions, 63 scripts,
+both validators passing. No scene, probe or export path calls the module, so no
+candidate was exported; no manual testing was requested and no backups were touched.

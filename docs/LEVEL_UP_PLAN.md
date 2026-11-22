@@ -614,6 +614,17 @@ accepted differences stay. Before and after, with the points the engine charges
 - **Limit.** No engine line and nothing in the UI changed, so no candidate was
   exported. No manual testing was requested and no backup was touched.
 
+**Closure (2026-11-22).** The repair is accepted within the limits above, on the
+run already recorded for it: no rebuild and no repeated check. What it does not
+cover: the three characters have no playtest or exported run with the new ranks,
+an existing save keeps the ranks it stored, and the party's perception and social
+coverage moved for aldric (no listen or spot, heal 4, diplomacy 2) and mira (no
+listen or spot, bluff 2, spellcraft 2). A search of the campaigns, encounters,
+scripted dialogue checks and tests found nothing that reads those four ranks on
+either character; the one scripted use of a repaired skill is the encounter first-
+aid check (`heal` DC 15, `encounter.gd`), which aldric still has and which the
+suite exercises.
+
 ## 12. Batch 2: `level_up_core` (planned and implemented 2026-11-21)
 
 ### 12.1 Scope
@@ -989,8 +1000,8 @@ Built from `Feats.CATALOG`, never from a hand-written list in the screen:
 - **The printed fighter bonus-feat restriction.** PHB p. 38 limits the bonus feat to
   a named list. `Feats.CATALOG` carries no such metadata today. Batch 3 adds a
   boolean `fighter_bonus` to each catalog entry (metadata only; no rules path reads
-  it), sources the list from the printed page and verifies it there before coding,
-  and filters the slot's options on it. A fighter's optional *general* feat from 3rd
+  it), sources the list from the printed page (verified 2026-11-22; 13.9 quotes
+  the wording and names the table), and filters the slot's options on it. A fighter's optional *general* feat from 3rd
   level is not this picker's business. If the printed list cannot be sourced, the
   picker offers the whole catalog and the gap is recorded as a deferred rules
   feature instead of being presented as correct.
@@ -1159,3 +1170,86 @@ or save-format change.
 - **Evidence gaps:** nothing here is implemented, so there is no red log, no UI, no
   probe, no exported run and no manual playtest for batch 3 yet. The batch-2 run
   does not stand in for any of them.
+
+### 13.9 Batch 3 record (2026-11-22)
+
+Implemented as planned. `src/core/level_choices.gd` (`class_name LevelChoices`)
+returns one `choices(ch, draft)` dictionary; `tests/test_level_choices.gd` holds 18
+tests - the 17 planned plus one for the empty spell pool - written before the module
+existed.
+
+**Source verified before coding.** PHB printed p. 38 reads: "These bonus feats must
+be drawn from the feats noted as fighter bonus feats on Table 5-1: Feats (page 90). A
+fighter must still meet all prerequisites for a bonus feat, including ability score
+and base attack bonus minimums." Table 5-1, printed pp. 90-91, marks them with
+footnote 1: "A fighter may select this feat as one of his fighter bonus feats." The
+plan's earlier wording ("PHB p. 38 ... a named list") was imprecise: the markers are
+in Table 5-1, and p. 38 only points there. `Feats.CATALOG` now carries
+`fighter_bonus` on all 41 entries, ten true: Cleave, Combat Expertise, Dodge, Exotic
+Weapon Proficiency, Improved Trip, Point Blank Shot, Precise Shot, Power Attack,
+Weapon Finesse, Weapon Focus. Implemented feats the table does **not** mark, and that
+the picker therefore excludes: Improved Initiative, Toughness, Skill Focus, Alertness,
+the three armor proficiencies, Shield Proficiency, Simple and Martial Weapon
+Proficiency, Extra Turning, Improved Turning, and the skill feats.
+
+**Seams.** `LevelUp.stage(ch, choices, complete := false)` is the public staging seam
+(the former `_stage`); `apply` still calls it with `complete = true` and commits once.
+`LevelUp.required_choices(ch, choices)` is the single required-choice list that
+`preview`, `apply` and `blockers` read, so the three cannot drift.
+
+**Behaviour.**
+
+- Fighter options: the implemented catalog, filtered by the printed markers, sorted by
+  name and then parameter; the other four classes get none. An owned parameter is left
+  out (Weapon Focus (longsword) is not offered again, other weapons are). Each
+  candidate's prerequisites are checked on the staged level-4 copy with the draft
+  ability applied, and `Feats` reasons are copied verbatim.
+- Parameterized feats expand over the shipped weapons. The parameter is the content
+  id, so `Feats.parse(option.text)` round-trips. A weapon that is not exotic stays
+  listed for Exotic Weapon Proficiency with the reason `Feats` already returns,
+  instead of being filtered by a second rule.
+- Sorcerer: implemented spells of the new level that are open to the class, minus the
+  known list - one row today (`scorching_ray`). Every other class gets none.
+- Skills: `cost_per_rank`, `ranks`, `cap`, `max_new_ranks`, `trained_only` and
+  `affordable` from `Skills` on the staged copy, with `max_new_ranks` also limited by
+  the remaining points; the budget is the class points plus the Int modifier after the
+  draft increase.
+- `blockers` is `LevelUp.required_choices(ch, draft)`, so it equals
+  `preview(...).required` for every class. An empty sorcerer pool keeps "spell" as a
+  blocker and forces `complete` to false.
+- `validate` stages with `complete = true`, so it returns exactly the code `apply`
+  would, with `fields` naming the choice group. It never mutates.
+
+**Red, then green.** Before the module existed the suite logged
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelChoices" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_choices.gd:57)
+
+and never collected the file: `Scripts 62`, `Tests 832`, `Asserts 8350`, with GUT
+still exiting 0. The first green run was 849/850 - the shared helper asserted the
+character was unchanged after a *successful* `apply` too; it now checks that around
+`validate` always and around `apply` only for refusals. Final: 850/850 tests, 8,562
+assertions, 63 scripts; `--validate-campaigns` PASS; `--validate-diagnostics` PASS
+with `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. A one-time
+`--import` registered the new `class_name`; it changed no source or content.
+
+**Limits.** No scene, probe, export or play path calls `LevelChoices`; nothing
+player-visible changed, so no candidate was exported. No manual testing was requested
+and no backup was touched. The screen and its keyboard path are batch 4; exported
+acceptance is batch 5.
+
+**Kept separate.**
+
+- **Defects:** none found in this batch.
+- **Deferred features:** the level-up screen and probe, exported acceptance, levels 5
+  and above, multi-level steps, NPC advancement, half ranks, printed fighter feats
+  this slice does not implement (Weapon Specialization, Improved Bull Rush, Quick
+  Draw, Two-Weapon Fighting and others), and a content check that keeps a 2nd-level
+  arcane spell in the pool.
+- **Maintenance debt:** `Feats.CATALOG` now carries a presentation flag
+  (`fighter_bonus`) that only the choice module reads; a feat's skill parameter is a
+  content id, so a Skill Focus row reads "Skill Focus (search)"; `LevelUp.stage` is
+  public and defaults to review mode (`complete = false`), which a caller could mistake
+  for validation.
+- **Evidence gaps:** no UI, probe, exported run or playtest for batch 3, so the choice
+  data is unit-covered only and its ordering and reasons have not been seen on screen.

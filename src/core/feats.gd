@@ -14,6 +14,7 @@ extends RefCounted
 const CATALOG := {
 	"iron_will": {
 		"name": "Iron Will",
+		"fighter_bonus": false,
 		"page": 95,
 		"benefit": "+2 bonus on Will saves",
 		"prereqs": [],
@@ -23,6 +24,7 @@ const CATALOG := {
 	},
 	"lightning_reflexes": {
 		"name": "Lightning Reflexes",
+		"fighter_bonus": false,
 		"page": 96,
 		"benefit": "+2 bonus on Reflex saves",
 		"prereqs": [],
@@ -32,6 +34,7 @@ const CATALOG := {
 	},
 	"great_fortitude": {
 		"name": "Great Fortitude",
+		"fighter_bonus": false,
 		"page": 94,
 		"benefit": "+2 bonus on Fortitude saves",
 		"prereqs": [],
@@ -41,6 +44,7 @@ const CATALOG := {
 	},
 	"combat_casting": {
 		"name": "Combat Casting",
+		"fighter_bonus": false,
 		"page": 92,
 		"benefit": "+4 on Concentration checks made to cast on the defensive (grappling and pinned are not modeled)",
 		"prereqs": [],
@@ -61,6 +65,7 @@ const CATALOG := {
 	},
 	"dodge": {
 		"name": "Dodge",
+		"fighter_bonus": true,
 		"page": 92,
 		"benefit": "+1 dodge bonus to AC",
 		"prereqs": [{"type": "ability", "ability": "dex", "value": 13}],
@@ -70,6 +75,7 @@ const CATALOG := {
 	},
 	"improved_initiative": {
 		"name": "Improved Initiative",
+		"fighter_bonus": false,
 		"page": 95,
 		"benefit": "+4 bonus on initiative checks",
 		"prereqs": [],
@@ -79,6 +85,7 @@ const CATALOG := {
 	},
 	"alertness": {
 		"name": "Alertness",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "+2 bonus on Listen and Spot checks",
 		"prereqs": [],
@@ -91,6 +98,7 @@ const CATALOG := {
 	},
 	"armor_proficiency_light": {
 		"name": "Armor Proficiency (light)",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "Wear light armor with only the standard armor check penalties",
 		"prereqs": [],
@@ -101,6 +109,7 @@ const CATALOG := {
 	},
 	"armor_proficiency_medium": {
 		"name": "Armor Proficiency (medium)",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "Wear medium armor with only the standard armor check penalties",
 		"prereqs": [{"type": "feat", "value": "armor_proficiency_light"}],
@@ -111,6 +120,7 @@ const CATALOG := {
 	},
 	"armor_proficiency_heavy": {
 		"name": "Armor Proficiency (heavy)",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "Wear heavy armor with only the standard armor check penalties",
 		"prereqs": [
@@ -124,6 +134,7 @@ const CATALOG := {
 	},
 	"shield_proficiency": {
 		"name": "Shield Proficiency",
+		"fighter_bonus": false,
 		"page": 100,
 		"benefit": "Use bucklers, small shields and large shields with standard penalties",
 		"prereqs": [],
@@ -134,6 +145,7 @@ const CATALOG := {
 	},
 	"simple_weapon_proficiency": {
 		"name": "Simple Weapon Proficiency",
+		"fighter_bonus": false,
 		"page": 100,
 		"benefit": "No -4 non-proficiency penalty with simple weapons",
 		"prereqs": [],
@@ -144,6 +156,7 @@ const CATALOG := {
 	},
 	"martial_weapon_proficiency": {
 		"name": "Martial Weapon Proficiency",
+		"fighter_bonus": false,
 		"page": 97,
 		"benefit": "No -4 non-proficiency penalty with the selected martial weapon",
 		"parameter": "weapon",
@@ -155,6 +168,7 @@ const CATALOG := {
 	},
 	"exotic_weapon_proficiency": {
 		"name": "Exotic Weapon Proficiency",
+		"fighter_bonus": true,
 		"page": 94,
 		"benefit": "No -4 non-proficiency penalty with the selected exotic weapon",
 		"parameter": "weapon",
@@ -166,6 +180,7 @@ const CATALOG := {
 	},
 	"extra_turning": {
 		"name": "Extra Turning",
+		"fighter_bonus": false,
 		"page": 94,
 		"benefit": "+4 turning attempts per day, stacking each time it is taken",
 		"prereqs": [{"type": "turn_undead"}],
@@ -175,6 +190,7 @@ const CATALOG := {
 	},
 	"improved_turning": {
 		"name": "Improved Turning",
+		"fighter_bonus": false,
 		"page": 96,
 		"benefit": "Turn or rebuke undead as if one cleric level higher",
 		"prereqs": [{"type": "turn_undead"}],
@@ -184,6 +200,7 @@ const CATALOG := {
 	},
 	"acrobatic": {
 		"name": "Acrobatic",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "+2 bonus on all Jump and Tumble checks",
 		"prereqs": [],
@@ -196,6 +213,7 @@ const CATALOG := {
 	},
 	"agile": {
 		"name": "Agile",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "+2 bonus on all Balance and Escape Artist checks",
 		"prereqs": [],
@@ -208,6 +226,7 @@ const CATALOG := {
 	},
 	"animal_affinity": {
 		"name": "Animal Affinity",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "+2 bonus on all Handle Animal and Ride checks",
 		"prereqs": [],
@@ -220,6 +239,7 @@ const CATALOG := {
 	},
 	"athletic": {
 		"name": "Athletic",
+		"fighter_bonus": false,
 		"page": 89,
 		"benefit": "+2 bonus on all Climb and Swim checks",
 		"prereqs": [],
@@ -232,6 +252,7 @@ const CATALOG := {
 	},
 	"deceitful": {
 		"name": "Deceitful",
+		"fighter_bonus": false,
 		"page": 93,
 		"benefit": "+2 bonus on all Disguise and Forgery checks",
 		"prereqs": [],
@@ -244,6 +265,7 @@ const CATALOG := {
 	},
 	"deft_hands": {
 		"name": "Deft Hands",
+		"fighter_bonus": false,
 		"page": 93,
 		"benefit": "+2 bonus on all Sleight of Hand and Use Rope checks",
 		"prereqs": [],
@@ -256,6 +278,7 @@ const CATALOG := {
 	},
 	"diligent": {
 		"name": "Diligent",
+		"fighter_bonus": false,
 		"page": 93,
 		"benefit": "+2 bonus on all Appraise and Decipher Script checks",
 		"prereqs": [],
@@ -268,6 +291,7 @@ const CATALOG := {
 	},
 	"investigator": {
 		"name": "Investigator",
+		"fighter_bonus": false,
 		"page": 97,
 		"benefit": "+2 bonus on all Gather Information and Search checks",
 		"prereqs": [],
@@ -280,6 +304,7 @@ const CATALOG := {
 	},
 	"magical_aptitude": {
 		"name": "Magical Aptitude",
+		"fighter_bonus": false,
 		"page": 97,
 		"benefit": "+2 bonus on all Spellcraft and Use Magic Device checks",
 		"prereqs": [],
@@ -292,6 +317,7 @@ const CATALOG := {
 	},
 	"negotiator": {
 		"name": "Negotiator",
+		"fighter_bonus": false,
 		"page": 98,
 		"benefit": "+2 bonus on all Diplomacy and Sense Motive checks",
 		"prereqs": [],
@@ -304,6 +330,7 @@ const CATALOG := {
 	},
 	"nimble_fingers": {
 		"name": "Nimble Fingers",
+		"fighter_bonus": false,
 		"page": 98,
 		"benefit": "+2 bonus on all Disable Device and Open Lock checks",
 		"prereqs": [],
@@ -316,6 +343,7 @@ const CATALOG := {
 	},
 	"persuasive": {
 		"name": "Persuasive",
+		"fighter_bonus": false,
 		"page": 98,
 		"benefit": "+2 bonus on all Bluff and Intimidate checks",
 		"prereqs": [],
@@ -328,6 +356,7 @@ const CATALOG := {
 	},
 	"self_sufficient": {
 		"name": "Self-Sufficient",
+		"fighter_bonus": false,
 		"page": 100,
 		"benefit": "+2 bonus on all Heal and Survival checks",
 		"prereqs": [],
@@ -340,6 +369,7 @@ const CATALOG := {
 	},
 	"stealthy": {
 		"name": "Stealthy",
+		"fighter_bonus": false,
 		"page": 101,
 		"benefit": "+2 bonus on all Hide and Move Silently checks",
 		"prereqs": [],
@@ -352,6 +382,7 @@ const CATALOG := {
 	},
 	"skill_focus": {
 		"name": "Skill Focus",
+		"fighter_bonus": false,
 		"page": 100,
 		"benefit": "+3 bonus on checks with the selected skill",
 		"parameter": "skill",
@@ -362,6 +393,7 @@ const CATALOG := {
 	},
 	"weapon_focus": {
 		"name": "Weapon Focus",
+		"fighter_bonus": true,
 		"page": 102,
 		"benefit": "+1 bonus on attack rolls with the selected weapon",
 		"parameter": "weapon",
@@ -377,6 +409,7 @@ const CATALOG := {
 	},
 	"weapon_finesse": {
 		"name": "Weapon Finesse",
+		"fighter_bonus": true,
 		"page": 102,
 		"benefit": "Use Dexterity instead of Strength on attack rolls with light melee weapons",
 		"prereqs": [
@@ -389,6 +422,7 @@ const CATALOG := {
 	},
 	"power_attack": {
 		"name": "Power Attack",
+		"fighter_bonus": true,
 		"page": 98,
 		"benefit": "Trade melee attack bonus for damage, up to base attack bonus",
 		"prereqs": [{"type": "ability", "ability": "str", "value": 13}],
@@ -398,6 +432,7 @@ const CATALOG := {
 	},
 	"combat_expertise": {
 		"name": "Combat Expertise",
+		"fighter_bonus": true,
 		"page": 92,
 		"benefit": "Trade up to 5 points of melee attack bonus for the same dodge bonus to AC",
 		"prereqs": [{"type": "ability", "ability": "int", "value": 13}],
@@ -407,6 +442,7 @@ const CATALOG := {
 	},
 	"cleave": {
 		"name": "Cleave",
+		"fighter_bonus": true,
 		"page": 92,
 		"benefit": "One extra melee attack after dropping a creature with a melee attack",
 		"prereqs": [
@@ -419,6 +455,7 @@ const CATALOG := {
 	},
 	"improved_trip": {
 		"name": "Improved Trip",
+		"fighter_bonus": true,
 		"page": 96,
 		"benefit": "Trip unarmed without provoking, +4 on the trip check, and an immediate melee attack after a successful trip",
 		"prereqs": [
@@ -431,6 +468,7 @@ const CATALOG := {
 	},
 	"point_blank_shot": {
 		"name": "Point Blank Shot",
+		"fighter_bonus": true,
 		"page": 98,
 		"benefit": "+1 bonus on ranged attack and damage rolls within 30 ft.",
 		"prereqs": [],
@@ -458,6 +496,7 @@ const CATALOG := {
 	# `has_active`. Complete Arcane p. 73 extends the same feat to ranged spells.
 	"precise_shot": {
 		"name": "Precise Shot",
+		"fighter_bonus": true,
 		"page": 98,
 		"benefit": "No -4 penalty for shooting or throwing into a melee, or for a ranged spell fired into a melee",
 		"prereqs": [{"type": "feat", "value": "point_blank_shot"}],
@@ -467,6 +506,7 @@ const CATALOG := {
 	},
 	"toughness": {
 		"name": "Toughness",
+		"fighter_bonus": false,
 		"page": 101,
 		"benefit": "+3 hit points",
 		"prereqs": [],
@@ -476,6 +516,7 @@ const CATALOG := {
 	},
 	"multiattack": {
 		"name": "Multiattack",
+		"fighter_bonus": false,
 		"page": 304,
 		"benefit": "Secondary natural attacks take only a -2 penalty",
 		"prereqs": [{"type": "natural_attacks", "value": 3}],
@@ -507,6 +548,13 @@ static func parse(feat_text: String) -> Dictionary:
 		if CATALOG.has(complete):
 			key = complete
 	return {"key": key, "name": base, "param": parameter, "raw": raw}
+
+
+## True for the feats Table 5-1 marks with footnote 1 (PHB p. 90): "A fighter may
+## select this feat as one of his fighter bonus feats." The fighter's Bonus Feats
+## entry on p. 38 points at that table. Metadata only: no rules path reads it yet.
+static func is_fighter_bonus(key: String) -> bool:
+	return bool(CATALOG.get(key, {}).get("fighter_bonus", false))
 
 
 static func entry(key: String) -> Dictionary:

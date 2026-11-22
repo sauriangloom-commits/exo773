@@ -706,3 +706,24 @@ presentation choices are omitted; nothing here changes a rule silently.
     two Int bonus-slot readings and Mira's slot and known-list readings stay
     accepted. Existing saves keep their stored ranks, so no character is
     rewritten mid-campaign.
+
+53. **The fighter's printed bonus-feat markers live in Table 5-1, and the
+    implemented catalog is the selection surface.** PHB p. 38 requires the bonus
+    feats to be "drawn from the feats noted as fighter bonus feats on Table 5-1:
+    Feats (page 90)" and to meet all their prerequisites; Table 5-1, printed
+    pp. 90-91, marks them with footnote 1, "A fighter may select this feat as one
+    of his fighter bonus feats." `Feats.CATALOG` now stores `fighter_bonus` on
+    every entry: ten of the 41 implemented feats are marked (Cleave, Combat
+    Expertise, Dodge, Exotic Weapon Proficiency, Improved Trip, Point Blank Shot,
+    Precise Shot, Power Attack, Weapon Finesse, Weapon Focus), and feats the table
+    does not mark stay selectable only as general feats - notably Improved
+    Initiative, Toughness, Skill Focus and the armor, shield and weapon
+    proficiency feats. Printed fighter feats this slice does not implement (Weapon
+    Specialization, Improved Bull Rush, Quick Draw, Two-Weapon Fighting and others)
+    are absent from the picker and are a deferred content gap, not a silent
+    substitution. Parameterized feats use the content id as their parameter, so a
+    Skill Focus row reads "Skill Focus (search)" while the engine looks the skill
+    up by id; a weapon the table does not call exotic stays listed for Exotic
+    Weapon Proficiency with the reason `Feats` already returns. The choice data is
+    a second reader of `LevelUp.stage`, and `apply` remains the only path that
+    changes a character.

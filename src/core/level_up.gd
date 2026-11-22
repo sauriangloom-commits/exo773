@@ -80,7 +80,7 @@ static func _build(ch: Character, choices: Dictionary, complete: bool) -> Dictio
 		if ch == null:
 			return _blocked(null, String(state["code"]), String(state["message"]))
 		return _blocked(ch, String(state["code"]), String(state["message"]))
-	var staged_result := _stage(ch, choices, complete)
+	var staged_result := stage(ch, choices, complete)
 	if not bool(staged_result.get("ok", false)):
 		return _blocked(
 			ch, String(staged_result["code"]), String(staged_result["message"])
@@ -95,8 +95,10 @@ static func _build(ch: Character, choices: Dictionary, complete: bool) -> Dictio
 
 
 ## Builds the level-4 copy and validates every choice against it. Returns the copy
-## only when all checks pass; the original character is untouched.
-static func _stage(ch: Character, choices: Dictionary, complete: bool) -> Dictionary:
+## only when all checks pass; the original character is untouched. Public so the
+## choice data (batch 3) evaluates options on exactly the character `apply` will
+## validate; `complete` asks for the same refusals `apply` makes.
+static func stage(ch: Character, choices: Dictionary, complete := false) -> Dictionary:
 	var class_key := String(ch.char_class).to_lower()
 	var class_data := Dictionary(ClassProgression.CLASSES[class_key])
 	var row := ClassProgression.row(class_key, TARGET_LEVEL)
@@ -355,24 +357,37 @@ static func _describe(ch: Character, staged: Character, staged_result: Dictionar
 			"known_before": before_known,
 			"known_after": after_known,
 		},
-		"required": _required(ch, staged_result, class_key),
+		"required": _required(ch, staged_result),
 		"notices": _notices(ch, staged),
 	}
 
 
-static func _required(ch: Character, staged_result: Dictionary, class_key: String) -> Array[String]:
+## Which choices the step still needs, without judging their values. `preview`,
+## `apply` and the batch-3 choice data all read this list, so it cannot drift.
+static func required_choices(ch: Character, choices: Dictionary = {}) -> Array[String]:
 	var required: Array[String] = []
-	if String(staged_result.get("ability", "")) == "":
+	if ch == null:
+		return required
+	if String(choices.get("ability", "")).strip_edges() == "":
 		required.append("ability")
+	var class_key := String(ch.char_class).to_lower()
 	var gained := (
 		ClassProgression.feat_slots(class_key, TARGET_LEVEL)
 		- ClassProgression.feat_slots(class_key, 3)
 	)
-	if gained > 0 and String(staged_result.get("feat", "")) == "":
+	if gained > 0 and String(choices.get("feat", "")).strip_edges() == "":
 		required.append("feat")
-	if class_key == "sorcerer" and String(staged_result.get("spell", "")) == "":
+	if class_key == "sorcerer" and String(choices.get("spell", "")).strip_edges() == "":
 		required.append("spell")
 	return required
+
+
+static func _required(ch: Character, staged_result: Dictionary) -> Array[String]:
+	return required_choices(ch, {
+		"ability": String(staged_result.get("ability", "")),
+		"feat": String(staged_result.get("feat", "")),
+		"spell": String(staged_result.get("spell", "")),
+	})
 
 
 ## Authored facts that stay visible without refusing the step: a rank above the

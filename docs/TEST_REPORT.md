@@ -5188,3 +5188,25 @@ Suite 832/832 tests, 8,350 assertions, 62 scripts (batch 2: 830 / 8,326 / 62).
 Logs are in `builds/qa/runs/2026-11-21_content_repair/`. No engine line changed,
 nothing player-visible in the UI moved, so no candidate was exported; no manual
 testing was requested and no backups were touched.
+
+### Level-up choices (2026-11-22)
+
+Batch 3 adds `src/core/level_choices.gd` and `tests/test_level_choices.gd` with 18
+tests written before the module existed: the 17 planned ones plus one for the empty
+spell pool. Before the module existed the log, not the exit code, is the evidence:
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelChoices" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_choices.gd:57)
+
+The file was never collected (`Scripts 62`, `Tests 832`, `Asserts 8350`, unchanged)
+while GUT exited 0. The first green run was 849/850: the shared helper asserted the
+character was unchanged after a successful `apply` as well, and now checks that
+around `validate` always and around `apply` only for refusals.
+
+Final: 850/850 tests, 8,562 assertions, 63 scripts. `--validate-campaigns` PASS;
+`--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. `Feats.CATALOG`
+gained the verified `fighter_bonus` flag, `LevelUp` gained the public `stage` seam
+and `required_choices`, and `LevelUp.apply` is still the only path that changes a
+character. Logs are in `builds/qa/runs/2026-11-22_level_choices/`. No candidate was
+exported, no manual testing was requested and no backups were touched.

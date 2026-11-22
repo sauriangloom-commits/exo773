@@ -249,3 +249,21 @@ level, save, UI or rules behaviour reads it yet.
 Adaptations: the whole-rank cross-class cap (printed 3.5), the two-point
 cross-class rank and the authored slot deltas are recorded in `ADAPTATION_LOG.md`
 51. The module is engine-only: no button, probe, export or play path calls it.
+
+### Level-up choices (batch 3, 2026-11-22)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| One choice-data dictionary for a draft, including ability options, skill cost/cap/affordable ranks, feat and spell rows, blockers and `complete` | `LEVEL_UP_PLAN.md` 13.4 | `LevelChoices.choices` | `test_choices_do_not_mutate_the_character_and_are_deterministic`, `test_blockers_match_level_up_required_for_every_class` |
+| Fighter bonus-feat list from the implemented catalog, filtered by the printed fighter markers | PHB p. 38 (points at Table 5-1); Table 5-1 pp. 90-91, footnote 1 | `Feats.CATALOG` `fighter_bonus`, `Feats.is_fighter_bonus`, `LevelChoices._feat_rows` | `test_fighter_options_come_from_the_catalog_and_are_sorted`, `test_fighter_bonus_flag_filters_the_slot` |
+| Prerequisites evaluated on the staged level-4 character, including the pending ability increase | PHB p. 38; `LEVEL_UP_PLAN.md` 13.2 | `LevelUp.stage`, `Feats.prereqs` | `test_prerequisites_are_evaluated_on_the_staged_level_four_character`, `test_pending_ability_increase_changes_the_feat_options` |
+| Owned and parameterized feats: an owned parameter is not offered; parameters expand over shipped weapons | `LEVEL_UP_PLAN.md` 13.2 | `LevelChoices._owns`, `LevelChoices._parameters` | `test_owned_feat_parameters_are_not_offered`, `test_parameterized_feats_expand_per_shipped_weapon`, `test_option_text_round_trips_through_feats_parse` |
+| Sorcerer's new known spell from the implemented 2nd-level spells open to the class; an empty pool blocks completion | Table 3-17 p. 54; `LEVEL_UP_PLAN.md` 13.3 | `LevelChoices._spell_rows` | `test_sorcerer_options_are_the_implemented_second_level_arcane_spells`, `test_known_spells_are_excluded_and_both_modules_agree`, `test_an_empty_pool_blocks_completion` |
+| Skill option cost, cap and affordable ranks; the budget follows the drafted Int increase | PHB p. 62; Table 3-2 p. 22 | `LevelChoices._skill_rows`, `LevelChoices._budget` with `Skills` | `test_skill_options_report_cost_cap_and_affordable_ranks`, `test_intelligence_increase_raises_the_budget_and_max_ranks` |
+| Blockers equal `preview(...).required`; validation returns the code `apply` would, without mutating | `LEVEL_UP_PLAN.md` 13.4-13.5 | `LevelUp.required_choices`, `LevelUp.stage`, `LevelChoices.validate` | `test_validate_agrees_with_apply_on_every_refusal_code` |
+| The step still goes through `LevelUp.apply`; an ineligible character reports the eligibility code | `LEVEL_UP_PLAN.md` 13.1, 13.5 | `LevelChoices.choices` on `LevelUp.eligibility` | `test_the_step_still_goes_through_level_up_apply`, `test_ineligible_character_gets_the_level_up_code` |
+
+Adaptations: the printed markers living in Table 5-1, the catalog as the selection
+surface and the content-id skill parameter are recorded in `ADAPTATION_LOG.md` 53.
+The module is engine-only: no scene, probe, export or play path calls it, and
+`LevelUp.apply` remains the only thing that changes a character.
