@@ -2878,3 +2878,31 @@ Refusals leave `to_dict()` unchanged, a second apply refuses with
 `already_level_4`, XP is never spent, and old saves load without migration.
 Nothing calls it from play yet, and no content, UI, probe or export was touched.
 Suite 830/830 with 8,326 assertions across 62 scripts; both validators pass.
+
+### Content repair landed, batch 3 planned (2026-11-21)
+
+The scheduled content commit is done: aldric's block is now diplomacy 2, heal 4,
+sense motive 3 (12 of 12 points), mira's is bluff 2, diplomacy 3, search 1,
+spellcraft 2 (12 of 12), and ysolde's search drops from 4 to 3 (18 of 30). Which
+ranks could stay follows the arithmetic, not preference: sense motive 3 costs
+half of aldric's twelve points, so listen and spot could not be funded beside the
+two class skills and were dropped. No other field changed, no save is migrated,
+and the accepted inconsistency set is down to eight. The expected list in
+`test_class_progression.gd` and the level-up notice coverage were adjusted to the
+repaired data. Suite 832/832 tests, 8,350 assertions, 62 scripts;
+`--validate-campaigns` passes and `--validate-diagnostics` passes with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+
+Batch 3, `level_choices`, is planned in `docs/LEVEL_UP_PLAN.md` 13 and not
+implemented: a pure `LevelChoices` module for the choice data the screen needs.
+The fighter's feat list is derived from `Feats.CATALOG` with parameters expanded
+over shipped weapons and skills and prerequisites evaluated on the staged level-4
+character, filtered by a new `fighter_bonus` flag taken from the printed page;
+the sorcerer's spell list is every implemented 2nd-level spell open to the class
+minus the known list (one row today, `scorching_ray`); the returned
+`choices(ch, draft)` dictionary carries the ability options, per-skill cost, cap
+and affordable ranks, the feat and spell rows with their refusal reasons, the
+blockers and a `complete` flag. Seventeen failing-first tests are specified,
+with red evidence quoted from the log rather than the exit code. Nothing was
+implemented, no candidate was exported, no manual testing was requested and no
+backups were touched.

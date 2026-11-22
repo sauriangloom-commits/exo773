@@ -928,3 +928,234 @@ table still at 13 accepted authored inconsistencies because no content was edite
 The skill-cap confirmation stands in 12.5: printed cross-class 3.5, enforced as 3
 whole ranks. Nothing calls `LevelUp` outside its own module and tests; no UI,
 probe, export, content or save-format change was made.
+
+## 13. Batch 3: `level_choices` (planned 2026-11-21, not implemented)
+
+### 13.1 Scope
+
+One pure module, `src/core/level_choices.gd` (`class_name LevelChoices`,
+`RefCounted`), that answers what the level-up screen has to render for the single
+3rd-to-4th step: which choices exist, which of them are legal on the level-4
+character, and why the illegal ones are refused. `LevelUp` stays the authority that
+applies a step; `LevelChoices` never mutates a character and never writes a save.
+Batch 4 (`level_up_ui`) owns the scene, focus and probe; batch 5 owns exported
+acceptance. No content edit, no new feat or spell, no class-table change.
+
+Deviation to record: batch 3 adds one public seam to `level_up.gd`,
+`static func stage(ch, choices) -> Dictionary`, which returns the staged level-4
+copy or the refusal (today's private `_stage`). Option eligibility has to be
+evaluated on exactly the character `apply` will validate; a second staging routine
+in another module would let the two drift. The seam changes no behaviour and batch
+2's tests stay as they are.
+
+```gdscript
+class_name LevelChoices
+extends RefCounted
+
+static func choices(ch: Character, draft: Dictionary = {}) -> Dictionary
+static func feat_options(ch: Character, draft: Dictionary = {}) -> Array[Dictionary]
+static func skill_options(ch: Character, draft: Dictionary = {}) -> Array[Dictionary]
+static func spell_options(ch: Character, draft: Dictionary = {}) -> Array[Dictionary]
+static func validate(ch: Character, choices: Dictionary) -> Dictionary
+```
+
+`draft` is the caller's partial choice (`{"ability": "dex"}`), so the lists follow
+the pending ability increase. `choices` refuses nothing of its own: an ineligible
+character gets `{"ok": false, "code": ..., "message": ...}` copied from
+`LevelUp.eligibility`.
+
+### 13.2 The fighter feat list
+
+Built from `Feats.CATALOG`, never from a hand-written list in the screen:
+
+- **Slot.** Options exist only when
+  `ClassProgression.feat_slots(class, 4) - ClassProgression.feat_slots(class, 3) == 1`,
+  which is the fighter. The other four classes get `granted: 0` and an empty list,
+  and `LevelUp` still refuses a chosen feat with `feat_slot_unavailable`.
+- **Ownership filter.** A non-repeatable feat the character already owns is left
+  out, since it could only be refused with `feat_already_owned`. A repeatable feat
+  stays, because `Extra Turning`, `Toughness`, `Skill Focus` and `Weapon Focus` may
+  be taken again. A parameterized feat is offered once per legal parameter, not once
+  for the base key.
+- **Parameter expansion.** `parameter: "weapon"` expands over the weapon ids the
+  content actually ships (items with `kind == "weapon"`), rendered as the authored
+  text (`"Weapon Focus (longsword)"`); `parameter: "skill"` expands over
+  `Skills.all_keys()`. A round-trip test asserts
+  `Feats.parse(option.text).key == option.key` and `.param == option.param`.
+- **Prerequisites.** Each candidate is checked with
+  `Feats.prereqs(staged, key, param)` on the staged copy, so the fighter's 4th-level
+  base attack and the pending ability increase are already in force. The `reasons`
+  array is copied verbatim, so the screen can print "requires DEX 13 (has 12)".
+- **The printed fighter bonus-feat restriction.** PHB p. 38 limits the bonus feat to
+  a named list. `Feats.CATALOG` carries no such metadata today. Batch 3 adds a
+  boolean `fighter_bonus` to each catalog entry (metadata only; no rules path reads
+  it), sources the list from the printed page and verifies it there before coding,
+  and filters the slot's options on it. A fighter's optional *general* feat from 3rd
+  level is not this picker's business. If the printed list cannot be sourced, the
+  picker offers the whole catalog and the gap is recorded as a deferred rules
+  feature instead of being presented as correct.
+- **Order.** Sorted by printed name and then parameter, so two renders of the same
+  character are identical.
+
+```gdscript
+{"text": "Dodge", "key": "dodge", "param": "", "name": "Dodge", "group": "fighter_bonus",
+ "eligible": false, "reasons": ["requires DEX 13 (has 12)"], "owned": false}
+```
+
+### 13.3 The sorcerer's new 2nd-level spell
+
+- **The pool** is every spell in `ContentDB.spells` whose `level` equals
+  `LevelUp.NEW_SPELL_LEVEL` (2) and whose `classes` array contains the character's
+  class in lower case. Today that is exactly one entry, `scorching_ray` (evocation,
+  wizard and sorcerer), so the picker has one row; the list is derived, not
+  hard-coded, so a content addition widens it without a code change.
+- **Exclusions** are the three refusals `LevelUp._stage_spell` already produces: an
+  id absent from `ContentDB.spells` (`spell_not_implemented`), a spell of any other
+  level (`spell_level_not_new`), and an id already in `spells.known`
+  (`spell_already_known`). Only the sorcerer has a non-empty list; passing a spell
+  for any other class is refused with `spell_choice_unavailable`.
+- **Empty pool.** If a later content change removes the only 2nd-level arcane
+  spell, the picker reports `options: []` and `complete: false`, and the step
+  cannot be finished. The plan does not invent a spell and does not relax
+  `spell_required`. A test pins "one option today" so an emptied pool fails
+  visibly.
+- **What it does not do:** no 0-level or 1st-level back-fill, no prepared-list
+  change, no slot arithmetic - the slot delta stays `LevelUp.SPELL_SLOT_DELTAS`.
+
+### 13.4 Choice-validation data for the screen
+
+`choices(ch, draft)` returns one dictionary; the screen reads it and re-derives no
+rule of its own:
+
+```gdscript
+{
+    "ok": true,
+    "code": "eligible",
+    "message": "",
+    "from_level": 3,
+    "to_level": 4,
+    "ability": {
+        "required": true,
+        "chosen": "dex",
+        "options": ["str", "dex", "con", "int", "wis", "cha"],
+        "scores": {"dex": {"before": 12, "after": 13, "modifier_before": 1, "modifier_after": 1}},
+    },
+    "skills": {
+        "budget": 2,
+        "spent": 1,
+        "remaining": 1,
+        "class_cap": 7,
+        "cross_cap": 3,
+        "chosen": {"heal": 1},
+        "options": [
+            {"skill": "heal", "name": "Heal", "ability": "wis", "class_skill": true,
+             "cost_per_rank": 1, "ranks": 4, "cap": 7, "max_new_ranks": 3,
+             "trained_only": false, "affordable": true}
+        ],
+    },
+    "feat": {"granted": 1, "required": true, "chosen": "", "options": []},
+    "spell": {
+        "new_level": 2,
+        "required": true,
+        "chosen": "",
+        "options": [
+            {"id": "scorching_ray", "name": "Scorching Ray", "level": 2,
+             "school": "evocation", "eligible": true, "reason": ""}
+        ],
+    },
+    "complete": false,
+    "blockers": ["ability", "feat"],
+}
+```
+
+Rules for that data:
+
+- `max_new_ranks` is `cap - current rank`, further limited by what the remaining
+  points buy: `remaining` for a class skill, `floor(remaining / 2)` for a
+  cross-class one. Unspent points may remain and are discarded by `apply`.
+- Every number comes from `Skills` and `ClassProgression` evaluated on the staged
+  copy, so caps and costs are never duplicated in screen code.
+- `blockers` equals `LevelUp.preview(ch, draft).required`; a test compares the two
+  for all five classes.
+- `complete` is `blockers.is_empty()` and never promises that `apply` will accept:
+  `LevelUp.apply` stays the only authority.
+- No presentation data is added beyond names and ids: no portraits, no prose, no
+  colour.
+
+### 13.5 Refusal parity
+
+`LevelChoices.validate(ch, choices)` stages the character through the same seam
+`LevelUp.apply` uses and returns `{"ok", "code", "message", "fields"}`, with the
+same `code` as `LevelUp` for every refusal. Tests compare the two for each batch-2
+code: `missing_ability_increase`, `unknown_ability`, `unknown_skill`,
+`negative_rank`, `skill_points_over_budget`, `skill_rank_above_cap`, `feat_required`,
+`feat_slot_unavailable`, `feat_not_implemented`, `feat_already_owned`,
+`feat_prerequisites_unmet`, `spell_required`, `spell_choice_unavailable`,
+`spell_not_implemented`, `spell_level_not_new`, `spell_already_known`. It is
+advisory: the screen may grey out a control, but the step always goes through
+`LevelUp.apply`.
+
+### 13.6 Failing-first tests
+
+`tests/test_level_choices.gd`, written before the module exists. Red protocol is
+batch 2's, extended: keep the log under
+`builds/qa/runs/<date>_level_choices/`, and accept the red state only from its text.
+The expected shape, to be quoted from that real log at implementation time and not
+from this plan:
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelChoices" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_choices.gd:<line>)
+
+with the totals unchanged and `test_level_choices.gd` never collected, while GUT
+still exits 0. When the module exists but a value is wrong, quote the `[Failed]`
+block's assertion line with its expected and actual values, never the exit code.
+
+1. `test_fighter_options_come_from_the_catalog_and_are_sorted`
+2. `test_only_the_fighter_gets_a_feat_slot` (four classes: `granted` 0, no options)
+3. `test_owned_non_repeatable_feats_are_not_offered` (kaelen: Iron Will and Weapon
+   Focus (longsword) absent, other weapons present)
+4. `test_repeatable_and_parameterized_feats_expand_per_parameter`
+5. `test_option_text_round_trips_through_feats_parse`
+6. `test_prerequisites_are_evaluated_on_the_staged_level_four_character` (Cleave
+   ineligible: "requires the Power Attack feat")
+7. `test_pending_ability_increase_changes_the_feat_options` (kaelen's Dodge: refused
+   at Dex 12, offered with `{"ability": "dex"}`)
+8. `test_fighter_bonus_flag_filters_the_slot`
+9. `test_sorcerer_options_are_the_implemented_second_level_arcane_spells` (one row,
+   `scorching_ray`; cleric, wizard and fighter have none)
+10. `test_known_spells_are_excluded_and_both_modules_agree`
+11. `test_skill_options_report_cost_cap_and_affordable_ranks` (class 7, cross 3,
+    cost 1 and 2, `max_new_ranks` follows the remaining points)
+12. `test_intelligence_increase_raises_the_budget_and_max_ranks` (ysolde Int 17 to
+    18: budget 5 to 6)
+13. `test_choices_do_not_mutate_the_character_and_are_deterministic`
+14. `test_blockers_match_level_up_required_for_every_class`
+15. `test_validate_agrees_with_apply_on_every_refusal_code`
+16. `test_ineligible_character_gets_the_level_up_code` (level 2, XP 5,999, level 4)
+17. `test_the_step_still_goes_through_level_up_apply` (choice data applies nothing
+    by itself)
+
+### 13.7 Verification and records
+
+After implementation: full suite, both validators, and a diff limited to
+`src/core/level_choices.gd`, the `stage` seam in `src/core/level_up.gd`, the
+`fighter_bonus` metadata in `src/core/feats.gd` (13.2), `tests/test_level_choices.gd`
+and the records. No export, no manual testing request, no backup changes, no content
+or save-format change.
+
+### 13.8 State after this planning step, kept separate
+
+- **Defects:** none known. The single-entry 2nd-level arcane pool is a content
+  limitation, not a defect: the rule reads the pool, it does not require more than
+  one spell.
+- **Deferred features:** the level-up screen and its probe (batch 4), exported
+  acceptance (batch 5), levels 5 and above, multi-level steps, NPC advancement,
+  half ranks (the engine stores whole ranks), and the printed fighter bonus-feat
+  restriction if its page cannot be sourced.
+- **Maintenance debt:** `LevelUp._stage` becoming a public seam in this batch;
+  `Skills.max_ranks` reading `ch.level`, so every option must be computed on the
+  staged copy; `Feats.CATALOG` carrying no class-feat metadata until 13.2 adds it;
+  the plan's two original stage names still mapping to `LevelUp`.
+- **Evidence gaps:** nothing here is implemented, so there is no red log, no UI, no
+  probe, no exported run and no manual playtest for batch 3 yet. The batch-2 run
+  does not stand in for any of them.
