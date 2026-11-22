@@ -5262,6 +5262,27 @@ tests, 9,238 assertions, 65 scripts; `--validate-campaigns` PASS;
 `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
 `builds/qa/runs/2026-11-22_level_up_contract/`.
 
+### Refusal codes agree between validate and apply (2026-11-22)
+
+Bounded repair of the defect batch 4a recorded as open: `LevelChoices.validate` now
+asks `LevelUp.eligibility` first, as `LevelUp.apply` does, and only then stages the
+draft. Four regression tests were written first in `tests/test_level_choices.gd`. Red,
+22 tests collected with 18 passing and 4 failing:
+
+    [Failed]:  validate refuses a character who is already 4th level
+    [Failed]:  ["eligible"] expected to equal ["already_level_4"]:  validate reports the applied-already code
+    [Failed]:  ["feat_already_owned"] expected to equal ["already_level_4"]:  both modules agree on the code
+    [Failed]:  ["unknown_ability"] expected to equal ["xp_below_threshold"]:  an eligibility refusal outranks the choice checks
+    SCRIPT ERROR: Invalid access to property or key 'commoner' on a base object of type 'Dictionary'.
+
+Validation accepted a stale draft that `apply` refuses, and an untabled class crashed
+inside `validate` rather than returning `class_not_tabled`; one eligibility test
+removes both. Green: 41/41 in the two level-up files, 876/876 tests, 9,318 assertions,
+65 scripts; `--validate-campaigns` PASS; `--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_refusal_codes/`. The stale-screen UI test is unchanged and
+still passes.
+
 ### Level-up probe (batch 4b-4c, planned 2026-11-22)
 
 No run exists for the probe and none is claimed: `--level-up-probe` is not

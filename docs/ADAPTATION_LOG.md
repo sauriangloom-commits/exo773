@@ -770,3 +770,14 @@ presentation choices are omitted; nothing here changes a rule silently.
     writes nothing; the disagreement with `validate`'s own doc comment is recorded
     as an open defect in `LEVEL_UP_PLAN.md` 14.11 rather than repaired in 4a,
     because repairing it changes a batch-3 refusal code.
+
+56. **`validate` asks eligibility before it judges a choice.** The defect recorded in
+    entry 55 is repaired in its own commit: `LevelChoices.validate` now returns
+    `LevelUp.eligibility`'s code and message before it stages anything, so a spent
+    step, a character below the threshold, one not at 3rd level and one with no class
+    table are refused with the same code and message `LevelUp.apply` gives. Nothing
+    printed moved and no rule changed; the screen still asks `validate` first and
+    `LevelUp.apply` is still the only writer. Entry 55's note that the disagreement
+    was recorded rather than repaired no longer applies, and the same fix removes a
+    script error: `LevelUp.stage` indexes the class table directly, so `validate` used
+    to crash on an untabled class instead of reporting `class_not_tabled`.

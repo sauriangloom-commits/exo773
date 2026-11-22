@@ -306,3 +306,119 @@ func test_an_empty_pool_blocks_completion() -> void:
 	assert_true(Array(Dictionary(choices["spell"])["options"]).is_empty(), "no 2nd-level spell remains")
 	assert_false(bool(choices["complete"]), "the step cannot complete")
 	assert_true(Array(choices["blockers"]).has("spell"), "the missing spell stays a blocker")
+
+
+# 19
+## `validate` is documented as returning "the same refusal code `LevelUp.apply` would
+## return". For a character who has already taken the step that was false: one
+## authored at 4th level passed validation and was then refused by apply.
+func test_validate_refuses_an_already_leveled_character_with_the_apply_code() -> void:
+	var ch := _character("kaelen")
+	ch.level = LevelUp.TARGET_LEVEL
+	var draft := {"ability": "str", "feat": "Power Attack", "skills": {"climb": 1}}
+	var before := ch.to_dict().duplicate(true)
+	var validated := LevelChoices.validate(ch, draft)
+	var applied := LevelUp.apply(ch, draft)
+	assert_false(bool(validated.get("ok", true)), "validate refuses a character who is already 4th level")
+	assert_eq(String(validated.get("code", "")), "already_level_4", "validate reports the applied-already code")
+	assert_eq(
+		String(validated.get("code", "")),
+		String(applied.get("code", "")),
+		"validate and apply agree on the code",
+	)
+	assert_eq(
+		String(validated.get("message", "")),
+		String(applied.get("message", "")),
+		"validate and apply agree on the message",
+	)
+	assert_eq(ch.to_dict(), before, "neither refusal changes the character")
+
+
+# 20
+## The applied case: after a real apply, the same draft must be refused by both
+## modules with the same code, and the character must not change again.
+func test_a_spent_step_refuses_identically_through_both_modules() -> void:
+	var ch := _character("kaelen")
+	var draft := {"ability": "str", "feat": "Power Attack", "skills": {"climb": 1}}
+	var first := LevelUp.apply(ch, draft)
+	assert_true(bool(first.get("ok", false)), String(first.get("message", "")))
+	var leveled := ch.to_dict().duplicate(true)
+	var validated := LevelChoices.validate(ch, draft)
+	var reapplied := LevelUp.apply(ch, draft)
+	assert_false(bool(validated.get("ok", true)), "a spent step is refused")
+	assert_eq(String(validated.get("code", "")), "already_level_4", "the code is the applied-already code")
+	assert_eq(
+		String(validated.get("code", "")),
+		String(reapplied.get("code", "")),
+		"both modules agree on the code",
+	)
+	assert_eq(String(validated.get("message", "")), String(reapplied.get("message", "")), "and on the message")
+	assert_eq(ch.to_dict(), leveled, "a second attempt changes nothing")
+
+
+# 21
+## Eligibility is decided before any choice is judged, so a draft that is also
+## invalid still reports why the step is closed rather than the first staging error.
+func test_validation_reports_eligibility_before_it_checks_choices() -> void:
+	var cases := [
+		["xp_below_threshold", "xp", 5999],
+		["not_level_3", "level", 2],
+		["class_not_tabled", "char_class", "Commoner"],
+	]
+	for case in cases:
+		var ch := _character("kaelen")
+		ch.set(String(case[1]), case[2])
+		var draft := {"ability": "not_an_ability", "feat": "Not A Feat"}
+		var before := ch.to_dict().duplicate(true)
+		var validated := LevelChoices.validate(ch, draft)
+		var applied := LevelUp.apply(ch, draft)
+		assert_eq(
+			String(validated.get("code", "")),
+			String(case[0]),
+			"an eligibility refusal outranks the choice checks: %s" % String(case[0]),
+		)
+		assert_eq(
+			String(validated.get("code", "")),
+			String(applied.get("code", "")),
+			"validate agrees with apply: %s" % String(case[0]),
+		)
+		assert_eq(ch.to_dict(), before, "no refusal changes the character: %s" % String(case[0]))
+
+
+# 22
+## Deep equality after every refusal, from both modules: no case may leave a trace,
+## and no case may be refused by one module and accepted by the other.
+func test_no_refusal_changes_the_character_data() -> void:
+	var cases := [
+		["already 4th level", "kaelen", {"level": 4}, {"ability": "str", "feat": "Power Attack"}],
+		["below the threshold", "kaelen", {"xp": 5999}, {"ability": "str", "feat": "Power Attack"}],
+		["not 3rd level", "kaelen", {"level": 2}, {"ability": "str", "feat": "Power Attack"}],
+		["no class table", "kaelen", {"char_class": "Commoner"}, {"ability": "str"}],
+		["missing ability", "kaelen", {}, {"feat": "Power Attack"}],
+		["unknown ability", "kaelen", {}, {"ability": "luck", "feat": "Power Attack"}],
+		["unmet feat prerequisite", "kaelen", {}, {"ability": "str", "feat": "Cleave"}],
+		["unimplemented feat", "kaelen", {}, {"ability": "str", "feat": "Not A Feat"}],
+		["over-budget skills", "kaelen", {}, {"ability": "str", "feat": "Power Attack", "skills": {"climb": 99}}],
+		["unknown skill", "kaelen", {}, {"ability": "str", "feat": "Power Attack", "skills": {"nonsense": 1}}],
+		["missing spell", "mira", {}, {"ability": "cha"}],
+		["spell on the wrong class", "sera", {}, {"ability": "str", "spell": "scorching_ray"}],
+	]
+	for case in cases:
+		var label := String(case[0])
+		var ch := _character(String(case[1]))
+		var fields: Dictionary = case[2]
+		for key in fields.keys():
+			ch.set(String(key), fields[key])
+		var draft: Dictionary = Dictionary(case[3])
+		var before := ch.to_dict().duplicate(true)
+		var validated := LevelChoices.validate(ch, draft)
+		assert_false(bool(validated.get("ok", true)), "validate refuses: %s" % label)
+		assert_eq(ch.to_dict(), before, "validation changes nothing: %s" % label)
+		var applied := LevelUp.apply(ch, draft)
+		assert_false(bool(applied.get("ok", true)), "apply refuses: %s" % label)
+		assert_eq(ch.to_dict(), before, "a refusal changes nothing: %s" % label)
+		assert_eq(
+			String(validated.get("code", "")),
+			String(applied.get("code", "")),
+			"the refusal codes agree: %s" % label,
+		)

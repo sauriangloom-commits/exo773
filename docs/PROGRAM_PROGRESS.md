@@ -3013,3 +3013,19 @@ call fails the suite rather than passing unnoticed, and no wrapper API was added
 keep the old "exactly three things" sentence true. 872/872 tests, 9,238 assertions,
 65 scripts, both validators passing; logs in
 `builds/qa/runs/2026-11-22_level_up_contract/`.
+
+### The validate/apply refusal code repaired (2026-11-22)
+
+The defect batch 4a recorded as open is fixed in its own bounded commit, before 4b.
+`LevelChoices.validate` now asks `LevelUp.eligibility` first, exactly as
+`LevelUp.apply` does, and only then stages the draft; no rule changed and
+`LevelUp.apply` is still the only writer. Four regression tests were written first:
+red showed `["eligible"] expected to equal ["already_level_4"]` - validation accepting
+a stale draft that apply refuses - and a script error on an untabled class, because
+`LevelUp.stage` indexes the class table directly. One eligibility test removes both.
+
+Green: 876/876 tests, 9,318 assertions, 65 scripts, both validators passing, ending
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`; logs in
+`builds/qa/runs/2026-11-22_refusal_codes/`. The stale-screen UI test is unchanged and
+still passes. No candidate was exported, no manual testing was requested and no
+backups were touched.

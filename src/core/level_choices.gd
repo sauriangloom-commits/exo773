@@ -4,8 +4,9 @@ extends RefCounted
 ## Choice data for the single 3rd-to-4th level step (docs/LEVEL_UP_PLAN.md 13).
 ##
 ## Pure data: nothing here mutates a character, writes a save or applies a step.
-## `LevelUp.apply` remains the only authority, and every refusal code below is the
-## one `LevelUp.stage(..., true)` already produces. Every rule is read from the
+## `LevelUp.apply` remains the only authority, and every refusal this module returns
+## is the code `apply` would return: eligibility first, then the same staging
+## refusals. Every rule is read from the
 ## module that owns it: caps and costs from `Skills`, slots from
 ## `ClassProgression`, prerequisites and the printed fighter markers from `Feats`,
 ## staging and the required-choice list from `LevelUp`.
@@ -137,14 +138,26 @@ static func spell_options(ch: Character, draft: Dictionary = {}) -> Array[Dictio
 	return _spell_rows(ch, staged_result["staged"])
 
 
-## Advisory refusal check: the same refusal code `LevelUp.apply` would return,
-## with the choice group the screen should mark. Never mutates the character.
+## Advisory refusal check: the same refusal code `LevelUp.apply` would return, in
+## the order `apply` asks - is the step open at all, then is this draft legal. The
+## eligibility test has to come first for two reasons: `apply` refuses a spent or
+## unopened step before it looks at a choice, so a draft-only check could accept a
+## character `apply` would refuse; and `LevelUp.stage` indexes the class table
+## directly, so an untabled class would be a script error rather than a refusal.
+## Never mutates the character.
 static func validate(ch: Character, choices: Dictionary) -> Dictionary:
+	var state := LevelUp.eligibility(ch)
+	if not bool(state.get("eligible", false)):
+		return _refusal(String(state.get("code", "")), String(state.get("message", "")))
 	var staged := LevelUp.stage(ch, choices, true)
 	if bool(staged.get("ok", false)):
 		return {"ok": true, "code": "eligible", "message": "", "fields": {}}
-	var code := String(staged.get("code", ""))
-	var message := String(staged.get("message", ""))
+	return _refusal(String(staged.get("code", "")), String(staged.get("message", "")))
+
+
+## A refusal in the shape the screen consumes, naming the choice group to mark when
+## the code belongs to one. Eligibility codes name no group.
+static func _refusal(code: String, message: String) -> Dictionary:
 	var field := _field_for(code)
 	var fields := {}
 	if field != "":

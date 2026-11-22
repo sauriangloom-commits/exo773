@@ -1688,14 +1688,14 @@ run). One is fixed in the screen: a refusal on Confirm had no control of its own
 on screen, because the refused group's rows live on another step, so the modal now
 moves to that step (`ADAPTATION_LOG.md` 55).
 
-One defect is open and deferred, in batch 3's module: `LevelChoices.validate`
-returns the staging code (`feat_already_owned` and so on) where `LevelUp.apply`
-returns `already_level_4` for a character who has already taken the step, against
-`validate`'s own comment that it returns "the same refusal code `LevelUp.apply`
-would return". Both refuse and neither writes anything, so 4a ships with the
-behaviour pinned by `test_a_stale_page_cannot_apply_after_the_character_has_leveled`
-and the disagreement recorded rather than repaired here; repairing it changes a
-batch-3 refusal code, which 14.2 rules out for this batch.
+One defect was found and is now repaired, in its own bounded commit at the head of
+batch 4 (14.15): `LevelChoices.validate` returned the staging code
+(`feat_already_owned` and so on) - or, for a character authored at 4th level, `ok` -
+where `LevelUp.apply` returns `already_level_4`, against `validate`'s own comment that
+it returns "the same refusal code `LevelUp.apply` would return". It stayed open when
+4a was accepted, because repairing it changes a batch-3 refusal code and 14.2 rules
+that out for 4a. `test_a_stale_page_cannot_apply_after_the_character_has_leveled`
+pinned the refusal and the absence of any write in the meantime, and still does.
 
 The singular `modal` field is still recorded as debt below, not as a defect: the
 level-up modal replaces the sheet's modal rather than stacking on it, so the close
@@ -1832,6 +1832,52 @@ testing was requested and no backups were touched.
 The acceptance does not cover the open defect. `LevelChoices.validate` and
 `LevelUp.apply` disagree on a character who has already taken the step, so `validate`
 is not yet the "same refusal code `LevelUp.apply` would return" its own comment
-promises. It stays open, recorded in 14.11, and is repaired in its own bounded commit
-before 4b starts. Until then a stale screen still refuses and writes nothing, which is
+promises. It stayed open at this acceptance - repairing it changes a batch-3 refusal
+code, which 14.2 rules out for 4a - and was repaired in its own bounded commit before
+4b started (14.15). A stale screen refuses and writes nothing either way, which is
 what `test_a_stale_page_cannot_apply_after_the_character_has_leveled` pins.
+
+### 14.15 The validate/apply refusal code is repaired (2026-11-22)
+
+Bounded: one function in `src/core/level_choices.gd` and one test file.
+`LevelChoices.validate` now asks `LevelUp.eligibility` first, exactly as
+`LevelUp.apply` does, and only then stages the draft; the refusal shape moved into
+`_refusal` so both paths build it the same way. No rule changed, no printed value
+moved, and `LevelUp.apply` is still the only writer.
+
+**Red, before the fix**, from `tests/test_level_choices.gd`
+(`builds/qa/runs/2026-11-22_refusal_codes/red.log`): 22 tests collected, 18 passing,
+4 failing.
+
+    [Failed]:  validate refuses a character who is already 4th level
+    [Failed]:  ["eligible"] expected to equal ["already_level_4"]:  validate reports the applied-already code
+    [Failed]:  ["eligible"] expected to equal ["already_level_4"]:  validate and apply agree on the code
+    [Failed]:  [""] expected to equal ["The character is already 4th level."]:  validate and apply agree on the message
+    [Failed]:  ["feat_already_owned"] expected to equal ["already_level_4"]:  both modules agree on the code
+    [Failed]:  ["unknown_ability"] expected to equal ["xp_below_threshold"]:  an eligibility refusal outranks the choice checks
+    SCRIPT ERROR: Invalid access to property or key 'commoner' on a base object of type 'Dictionary'.
+
+The first lines are the severe half: validation **accepted** a stale draft that
+`apply` then refused. The script error is the second: `LevelUp.stage` indexes the
+class table directly, so an untabled class crashed inside `validate` instead of
+returning `class_not_tabled`. Both were the missing eligibility test, and one fix
+removes both.
+
+**Green.** The four new tests with the 18 existing ones and the 19 screen tests:
+41/41 in the two files, then 876/876 tests, 9,318 assertions, 65 scripts in the full
+suite; `--validate-campaigns` PASS; `--validate-diagnostics` PASS ending
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_refusal_codes/`.
+
+**What the tests cover.** An already-leveled character with a previously valid fighter
+draft (`test_validate_refuses_an_already_leveled_character_with_the_apply_code`); the
+same after a real apply (`test_a_spent_step_refuses_identically_through_both_modules`);
+three eligibility refusals reached with a draft that is also invalid
+(`test_validation_reports_eligibility_before_it_checks_choices`); and deep equality of
+`Character.to_dict()` after every refusal from either module across twelve cases,
+including the three eligibility codes and both classes' missing choices
+(`test_no_refusal_changes_the_character_data`).
+`test_a_stale_page_cannot_apply_after_the_character_has_leveled` is unchanged and
+still passes, so the screen's own refusal path stays pinned. The deep-equality limit
+is that it compares serialized data, not object identity: a refusal that set and then
+cleared a field would pass.
