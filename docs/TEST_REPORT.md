@@ -5283,9 +5283,37 @@ removes both. Green: 41/41 in the two level-up files, 876/876 tests, 9,318 asser
 `builds/qa/runs/2026-11-22_refusal_codes/`. The stale-screen UI test is unchanged and
 still passes.
 
-### Level-up probe (batch 4b-4c, planned 2026-11-22)
+### Level-up probe (batch 4b, 2026-11-22)
 
-No run exists for the probe and none is claimed: `--level-up-probe` is not
-implemented, so there is no `LEVEL UP PROBE` receipt line at either scale. Its red
-will be that missing line; its green must be `_probe_finish("level_up")` at 1.0 and
-at 1.6 with the C1-C9 checks, in the same log.
+Run: `--level-up-probe`, 1280x720, headless, text scale 1.0, saves redirected to
+`user://qa_level_up_probe` and removed before the receipt. Logs are in
+`builds/qa/runs/2026-11-22_level_up_ui/`.
+
+Red, before the flag existed (`red_probe.log`):
+
+    Unknown application option:
+      --level-up-probe
+    Nothing was started (exit status 2). Application options follow Godot's `--` separator.
+
+with no `PROBE RESULT PASS scenario=level_up` line anywhere in that log.
+
+Green (`probe5.log`):
+
+    PROBE RESULT PASS scenario=level_up elapsed_ms=3878
+
+137 `PROBE CHECK PASS` lines, no `SCRIPT ERROR` line, and the probe's save directory
+gone at the end. Suite 876/876 tests, 9,320 assertions, 65 scripts, 0 `[Failed]`;
+`--validate-campaigns` PASS; `--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+
+Covered: the real `qa_victory` crossing 6,000 XP once per character; the button per
+page and its absence below the threshold; a keyboard walk from the sheet's `Level up`
+button through Strength, two Climb ranks, Back and on to Confirm; summary and Confirm
+numbers compared with `LevelUp.preview` as numbers; a refused Confirm that keeps the
+modal open (`The fighter gains a feat at 4th level; choose one.`); the apply; the
+save/reload round-trip; a second apply refused with `already_level_4`; and
+Cancel/Escape/Back-Escape writing nothing to the character or to the slot.
+
+Not covered: rendered pixels (the probe reads control rectangles and state, never the
+drawn frame), the 160 % layout and C1-C9 (4c), the sorcerer's Spells step end to end,
+an exported build, and any human playtest.

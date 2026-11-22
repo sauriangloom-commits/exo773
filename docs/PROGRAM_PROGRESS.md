@@ -3029,3 +3029,22 @@ Green: 876/876 tests, 9,318 assertions, 65 scripts, both validators passing, end
 `builds/qa/runs/2026-11-22_refusal_codes/`. The stale-screen UI test is unchanged and
 still passes. No candidate was exported, no manual testing was requested and no
 backups were touched.
+
+### 4b: `--level-up-probe` at 100 % (2026-11-22)
+
+`--level-up-probe` landed in `src/main.gd` only: the allowlist entry, the dispatch
+line and `_level_up_probe()` with its helpers. Red was the flag not existing - the run
+started nothing, exited 2 and printed no receipt. Green is
+`PROBE RESULT PASS scenario=level_up elapsed_ms=3878` with 137 passing checks and the
+probe's save directory removed; the suite is 876/876 tests, 9,320 assertions, 65
+scripts, both validators passing.
+
+The probe walks the victory's XP crossing and its once-only award, the button per page,
+the keyboard path from the sheet to Apply, every summary number against
+`LevelUp.preview`, a refused Confirm that keeps the modal open, the apply, the
+save/reload round-trip, a second apply refused with `already_level_4`, and
+Cancel/Escape/Back-Escape writing nothing. Inputs are real key events inside the sheet
+and the screen, and direct calls only for `new_game`, `start_encounter`, the end check,
+save/load and the tab select. It reads control rectangles and state, not rendered
+pixels. 4c (160 % and C1-C9) is still outstanding; no candidate was exported, no manual
+testing was requested and no backups were touched.

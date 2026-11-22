@@ -1729,13 +1729,14 @@ that opens the sheet directly on an eligible character.
   the callback owns its own focus after closing; `close_modal` clears it for that
   reason, so a stale callback cannot outlive its modal.
 
-**Evidence gaps.** 4a has run (14.13); 4b and 4c have not. The 160 % layout is
-pinned only by the suite's control-rectangle checks: no probe has walked the
-screen, and no window has shown it at either scale, so C1-C9 are specified and
-partly asserted, not evidenced. The probe's numbers will be `preview`'s, so a
-preview bug would be reproduced faithfully rather than caught. No manual testing is
-requested here, and none of these tests substitutes for the exported acceptance run
-in batch 5.
+**Evidence gaps.** 4a has run (14.13), 4b has run (14.16), 4c has not. The 160 %
+layout is still pinned only by the suite's control-rectangle checks: no probe has
+walked the screen at 1.6, and no window has shown it at either scale, so C1-C9 are
+specified and partly asserted, not evidenced. The probe reads control rectangles and
+the state its own controls produced, never rendered pixels, and its numbers are
+`preview`'s, so a preview bug would be reproduced faithfully rather than caught. No
+manual testing is requested here, and none of these tests substitutes for the exported
+acceptance run in batch 5.
 
 ### 14.12 Risks
 
@@ -1757,7 +1758,7 @@ in batch 5.
 
 Section 14 is accepted as written and closed as a plan. 4a - the screen, the sheet's
 button and their tests - is implemented; 4b and 4c, `--level-up-probe` at 100 % and
-at 160 %, are not. This subsection is the record of 4a and the only part of
+at 160 %, are not as of this record (4b has since landed: 14.16). This subsection is the record of 4a and the only part of
 section 14 that has run.
 
 **What landed.** `src/ui/level_up_screen.gd` (new, with its tracked `.uid`);
@@ -1810,8 +1811,9 @@ applying.
 control-rectangle tests. No probe has walked the screen at either scale, so the
 1280x720 layout at 160 % has not been seen in a window and the C1-C9 checks in 14.6
 are not evidenced. Nothing player-visible was exported, no manual testing was
-requested and no backups were touched. 4b and 4c remain outstanding, and one defect
-in batch 3's `validate` is recorded above rather than repaired here.
+requested and no backups were touched. 4c remains outstanding, 4b landed afterwards
+(14.16), and the defect in batch 3's `validate` was recorded at this point and repaired
+in 14.15.
 
 **The call surface was reconciled after the fact.** Section 14.7 first said the
 screen may call "exactly three things"; the shipped screen also reads
@@ -1881,3 +1883,102 @@ including the three eligibility codes and both classes' missing choices
 still passes, so the screen's own refusal path stays pinned. The deep-equality limit
 is that it compares serialized data, not object identity: a refusal that set and then
 cleared a field would pass.
+
+### 14.16 4b is implemented: `--level-up-probe` at 100 % (2026-11-22)
+
+Landed, all in `src/main.gd`: `--level-up-probe` in the allowlist between
+`--layout-probe` and `--list-campaigns`, its dispatch line, `_level_up_probe()` and
+thirteen small helpers beside it (`_probe_key`, `_probe_tab_until`,
+`_probe_first_control`, `_probe_level_up_control`, `_probe_level_up_step`,
+`_probe_level_up_header_text`, `_probe_level_up_numbers`, `_probe_sheet_tabs`,
+`_probe_level_up_buttons`, `_probe_level_up_reasons`, `_probe_save_dir_files`,
+`_probe_save_artifacts`, `_probe_open_level_up_page`) plus
+`_level_up_probe_cleanup`. No other source file changed.
+
+**Red.** The flag did not exist, so the run started nothing and printed no receipt
+(`builds/qa/runs/2026-11-22_level_up_ui/red_probe.log`):
+
+    Unknown application option:
+      --level-up-probe
+    Nothing was started (exit status 2). Application options follow Godot's `--` separator.
+
+and `grep -c "PROBE RESULT PASS scenario=level_up"` on that log is `0`.
+
+**Green**, from `probe5.log` in the same directory:
+
+    PROBE RESULT PASS scenario=level_up elapsed_ms=3878
+
+with 137 `PROBE CHECK PASS` lines, no `SCRIPT ERROR` line, and the probe's save
+directory gone at the end. Full suite: 876/876 tests, 9,320 assertions, 65 scripts,
+0 `[Failed]`; `--validate-campaigns` PASS; `--validate-diagnostics` PASS ending
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+
+**Input split, by design.** Real `InputEventKey` down/up pairs through the viewport:
+opening the level-up screen (Tab to `Level up`, Enter), every Tab inside it, every
+row choice (Enter), Continue, Back, Cancel, Escape and the final Apply. Direct calls:
+`Game.new_game`, `Game.start_encounter`, the encounter's own `_check_end()` and
+`changed.emit()` (to prove the award cannot be paid twice),
+`ExplorationScreen._open_party`, `refresh_modal`, the sheet's tab select
+(`TabContainer.current_tab` - a probe cannot pick a tab without coordinates, and the
+tab bar is not a level-up control), `Game.save_game` and `Game.load_game`. Save and
+load are the calls the pause menu makes and cannot be typed into a probe; everything
+inside the party sheet and the level-up screen is a key event.
+
+**What the run asserts.**
+
+1. 5,999 XP with `xp_below_threshold` on all four, then a real `qa_victory` driven to
+   victory through the encounter's own end check: `victory`, one award of 150 each,
+   6,149 XP each, a second `changed` pays nothing, all four eligible, mode back to
+   `explore`.
+2. Four pages, four `Level up` buttons; one character at 5,000 XP gives three buttons
+   and one reason line; restoring the XP restores the button.
+3. Tab to the button, Enter; the modal is titled `Level up`; the fighter's steps are
+   Summary, Ability, Skills, Feat, Confirm; every summary number equals
+   `LevelUp.preview` or `LevelChoices.choices` as whole numbers - HP 28/28 -> 36/36,
+   base attack, three saves, one ability point, two skill points, one feat slot and no
+   spell slots.
+4. Continue, Strength, Continue, Climb twice (`Spent 2 of 2 points`), Back to Ability
+   with the choice intact, Continue back to Skills with the allocation intact, Feat.
+5. A refused Confirm first: with the feat left unset, Apply keeps the modal open,
+   moves it to the Feat step, prints `The fighter gains a feat at 4th level; choose
+   one.`, puts focus on a `feat_` row, and changes neither the character nor the save
+   directory.
+6. Then Power Attack, Confirm and Apply: the modal closes, the sheet shows three
+   buttons and one reason, level 4, XP unchanged by the step, HP, base attack and
+   Fortitude at the previewed values, `Power Attack` recorded, Climb at 6 ranks.
+7. Save into `level_up_probe` and reload: level, XP, HP, base attack, feat and ranks
+   survive.
+8. A second `LevelUp.apply` with the same draft refuses `already_level_4` and leaves
+   `to_dict()` deep-equal; the reloaded page still offers no button.
+9. Cancel, Escape, and Back-then-Escape on the rogue after spending a point: the
+   modal closes, focus returns to her `Level up` button (checked for Escape), and her
+   `to_dict()`, the slot's bytes, its modification time, the directory listing and the
+   `.bak`/`.tmp` artifact list are all unchanged.
+
+**Isolation.** `SaveSystem.save_dir` is redirected to `user://qa_level_up_probe`
+before anything is created and removed, files first, at the end, so the victory's own
+`save_game("auto")` lands there too. The text scale is written into `Game.settings`
+directly and `_apply_theme()` is called, because `Game.set_text_scale` saves the
+player's settings file; that file's modification time is unchanged across the run, and
+no `level_up_probe` file exists anywhere under the appdata directory afterwards.
+
+**Evidence level, stated plainly.** The probe reads control rectangles and the state
+its own controls produced; it does not read rendered pixels, so it cannot say the text
+is legible, unclipped in the drawn frame or free of overlap. C1-C9 at 160 % are 4c's
+work and are not claimed here. Coverage is one scale (1.0), one class walked end to
+end (the fighter) and one class for the no-write walk (the rogue); the sorcerer's
+Spells step is covered by `test_the_steps_follow_the_class` and the screen suite, not
+by this probe. This is functional QA, not acceptance: no candidate was exported, no
+manual testing was requested and no backups were touched.
+
+**Defects found in 4b.** None in the product. Three in the probe, fixed in place and
+recorded because they explain the bounds: `find_children(pattern, "")` matches nothing
+(the type filter must name a class, so it is `"Button"`); the rogue's skill row cannot
+be named before her Skills step exists, because the screen builds only the current
+step; and a 40-press Tab bound cannot cross a 48-row skill list, so the walk's bound is
+240 - the ring on the Skills step is 50 controls (`PROBE FOCUS skills_ring=50` in the
+log). The first two surfaced as named failing checks rather than silence, which is what
+the per-hop assertions are for.
+
+**Still open.** 4c (the 160 % pass and C1-C9); the deferred features and maintenance
+debt listed in 14.11; and the export and playtest gap that only batch 5 can close.

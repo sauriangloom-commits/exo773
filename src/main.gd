@@ -112,6 +112,7 @@ const APP_FLAGS: Array[String] = [
 	"--intro-click",
 	"--intro-layout-probe",
 	"--layout-probe",
+	"--level-up-probe",
 	"--list-campaigns",
 	"--nonlethal-probe",
 	"--package-diagnostics-probe",
@@ -381,6 +382,8 @@ func _ready() -> void:
 		_intro_layout_probe()
 	if "--training-probe" in args:
 		_training_probe()
+	if "--level-up-probe" in args:
+		_level_up_probe()
 	if "--list-campaigns" in args:
 		_list_campaigns_and_quit()
 	if "--validate-campaigns" in args:
@@ -3826,6 +3829,679 @@ func _encounter_end_probe() -> void:
 	e.changed.emit()
 	_probe_check(int(Game.party[0].xp) == xp_after, "the same resolution cannot pay twice")
 	_probe_finish("encounter_end")
+
+
+# ----------------------------------------------------- level-up probe (4b)
+
+## `--level-up-probe`, 100 % pass. Batch 4b of docs/LEVEL_UP_PLAN.md 14.8: the step a
+## real victory pays for, spent through the screen by keyboard, then saved, reloaded
+## and refused a second time.
+##
+## Input split, by design. Direct calls: `Game.new_game`, `Game.start_encounter`, the
+## encounter's own end check, `changed.emit` (to prove the award is paid once), the
+## exploration screen's `_open_party`, `refresh_modal`, `_probe_tab`'s page select,
+## `Game.save_game` and `Game.load_game` - a probe cannot type a campaign id or a slot
+## name, and those are the same calls the pause menu makes. Keyboard events: every
+## action inside the party sheet and the level-up screen, pushed as real
+## `InputEventKey` down/up pairs through the viewport (Tab, Shift+Tab, Enter,
+## Escape), so the focus trap, the reveal walk and the button activation are the
+## shipped ones.
+##
+## Evidence level: control rectangles and the state the real controls produced. No
+## rendered pixels are compared, and the 160 % pass with the C1-C9 checks is 4c.
+##
+## Isolation: saves go to `user://qa_level_up_probe`, which is removed before the
+## receipt, and the text scale is written into `Game.settings` directly, because
+## `Game.set_text_scale` would save the player's settings file.
+func _level_up_probe() -> void:
+	probe_scenario = "level_up"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog()
+	var previous_save_dir := SaveSystem.save_dir
+	var previous_scale := float(Game.settings.get("text_scale", 1.0))
+	SaveSystem.save_dir = "user://qa_level_up_probe"
+	DirAccess.make_dir_recursive_absolute(SaveSystem.save_dir)
+	Game.settings["text_scale"] = 1.0
+	_apply_theme()
+	get_window().size = probe_size
+	for i in 6:
+		await get_tree().process_frame
+	print(
+		"PROBE VIEWPORT=%s text_scale=%.2f"
+		% [str(get_viewport().get_visible_rect().size), float(Game.settings.get("text_scale", 1.0))]
+	)
+	print(
+		"PROBE INPUT keyboard=Tab,Shift+Tab,Enter,Escape direct=new_game,start_encounter,check_end,changed.emit,open_party,refresh_modal,tab_select,save_game,load_game"
+	)
+	print("PROBE SCOPE text_scale=1.0 only; the 160 % pass belongs to 4c")
+	await _level_up_probe_body()
+	_level_up_probe_cleanup(previous_save_dir, previous_scale)
+	_probe_finish("level_up")
+
+
+## Everything the probe asserts. Any early return is a failed check above it, so the
+## receipt still reports the failure rather than a truncated run.
+func _level_up_probe_body() -> void:
+	var loaded := Game.load_campaign("ravenloft_demo")
+	_probe_check(bool(loaded.get("ok", false)), "the demo campaign loads")
+	var started := Game.new_game(["kaelen", "sera", "aldric", "mira"], 4242)
+	_probe_check(bool(started.get("ok", false)), "the four-character party starts")
+	if not bool(started.get("ok", false)):
+		return
+
+	# 1. A real victory crosses 6,000 XP, once.
+	print("PROBE STEP 01 victory")
+	for member in Game.party:
+		member.xp = 5999
+	for member in Game.party:
+		var state := LevelUp.eligibility(member)
+		_probe_check(
+			not bool(state.get("eligible", true)),
+			"%s is ineligible below the threshold" % member.display_name,
+		)
+		_probe_check(
+			String(state.get("code", "")) == "xp_below_threshold",
+			"%s reports xp_below_threshold" % member.display_name,
+		)
+	var fight := Game.start_encounter("qa_victory")
+	_probe_check(bool(fight.get("ok", false)), "the QA victory encounter starts")
+	var e := Game.encounter
+	_probe_check(e != null, "the encounter exists")
+	if e == null:
+		return
+	var enemy: Character = null
+	for entry in e.combatants:
+		if int(entry["team"]) == Encounter.TEAM_ENEMY:
+			enemy = entry["char"]
+			break
+	_probe_check(enemy != null, "the encounter has an enemy")
+	if enemy == null:
+		return
+	var award := int(e.xp_award)
+	_probe_check(award > 0, "the encounter awards XP")
+	enemy.apply_nonlethal(enemy.hp + 1)
+	e._check_end()
+	_probe_check(e.finished and String(e.outcome) == "victory", "a real defeat resolves in victory")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 5999 + award,
+			"%s was paid the award once" % member.display_name,
+		)
+		_probe_check(
+			int(member.xp) >= LevelUp.XP_THRESHOLD,
+			"%s cleared 6,000 XP" % member.display_name,
+		)
+	e.changed.emit()
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 5999 + award,
+			"%s cannot be paid twice" % member.display_name,
+		)
+	for member in Game.party:
+		_probe_check(
+			bool(LevelUp.eligibility(member).get("eligible", false)),
+			"%s is eligible after the victory" % member.display_name,
+		)
+	for i in 8:
+		await get_tree().process_frame
+	_probe_check(Game.mode == "explore", "the victory returns the game to exploration")
+	_probe_check(current_screen is ExplorationScreen, "the exploration screen is up")
+	if not current_screen is ExplorationScreen:
+		return
+	var crossed := int(Game.party[0].xp)
+
+	# 2. The button appears only on eligible pages.
+	print("PROBE STEP 02 pages")
+	current_screen._open_party(0)
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(get("modal") != null, "the party sheet opens")
+	var pages := _probe_sheet_tabs()
+	_probe_check(pages != null and pages.get_tab_count() == 4, "the sheet has four pages")
+	_probe_check(_probe_level_up_buttons() == 4, "every eligible page offers Level up")
+	Game.party[3].xp = 5000
+	refresh_modal()
+	for i in 4:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_buttons() == 3, "a page below the threshold offers no button")
+	_probe_check(_probe_level_up_reasons() == 1, "and states the reason instead")
+	Game.party[3].xp = crossed
+	refresh_modal()
+	for i in 4:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_buttons() == 4, "restoring the XP restores the button")
+
+	# 3. Keyboard into the screen, and the summary against the preview.
+	print("PROBE STEP 03 keyboard")
+	var opener := await _probe_tab_until("LevelUpButton")
+	_probe_check(opener != null, "Tab reaches the page's Level up button")
+	if opener == null:
+		return
+	await _probe_key(KEY_ENTER)
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(current_screen.get("level_up_screen") != null, "Enter opens the level-up screen")
+	_probe_check(String(get("modal_title")) == "Level up", "the modal is titled Level up")
+	var screen = current_screen.get("level_up_screen")
+	if screen == null:
+		return
+	var ch: Character = Game.party[0]
+	_probe_check(
+		Array(screen.steps) == ["summary", "ability", "skills", "feat", "confirm"],
+		"the fighter's steps are Summary, Ability, Skills, Feat, Confirm",
+	)
+	_probe_check(_probe_level_up_step() == "Summary", "the screen opens on Summary")
+	var preview := LevelUp.preview(ch, {})
+	var hp: Dictionary = preview["hit_points"]
+	_probe_check(
+		_probe_level_up_numbers("SummaryHP")
+		== [int(hp["hp_before"]), int(hp["max_before"]), int(hp["hp_after"]), int(hp["max_after"])],
+		"the summary HP numbers are the preview's",
+	)
+	var bab: Dictionary = preview["base_attack"]
+	_probe_check(
+		_probe_level_up_numbers("SummaryBAB") == [int(bab["before"]), int(bab["after"])],
+		"the summary base attack numbers are the preview's",
+	)
+	var saves: Dictionary = preview["base_saves"]
+	for save in ["fort", "ref", "will"]:
+		var entry: Dictionary = saves[save]
+		_probe_check(
+			_probe_level_up_numbers("Summary" + String(save).to_upper())
+			== [int(entry["before"]), int(entry["after"])],
+			"the summary %s numbers are the preview's" % save,
+		)
+	var choices := LevelChoices.choices(ch, {})
+	_probe_check(
+		_probe_level_up_numbers("SummaryAbility") == [1],
+		"the summary states the one-point ability increase",
+	)
+	_probe_check(
+		_probe_level_up_numbers("SummarySkills") == [int(choices["skills"]["budget"])],
+		"the summary skill points are the choice data's",
+	)
+	_probe_check(
+		_probe_level_up_numbers("SummaryFeat") == [int(choices["feat"]["granted"])],
+		"the summary feat slot is the choice data's",
+	)
+	_probe_check(
+		_probe_level_up_numbers("SummarySpells").is_empty(),
+		"a fighter's summary states no spell slots",
+	)
+
+	# 4. Keyboard through every step.
+	print("PROBE STEP 04 steps")
+		# Each hop names its target: a focus order that misses one is a failed check here,
+	# not a mystery two steps later. The limits are generous because a step's rows sit
+	# between the footer and the step strip in the focus order.
+	var continue_button := await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Ability", "Continue advances to Ability")
+	var strength_row := await _probe_tab_until("ability_str")
+	_probe_check(strength_row != null, "Tab reaches the Strength row")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	var strength := _probe_level_up_control("ability_str") as Button
+	_probe_check(strength != null and strength.button_pressed, "Enter chooses Strength")
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue after the choice")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Skills", "Continue advances to Skills")
+	var climb_row := await _probe_tab_until("skill_climb")
+	_probe_check(climb_row != null, "Tab reaches the Climb row")
+	await _probe_key(KEY_ENTER)
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(
+		_probe_level_up_header_text() == "Spent 2 of 2 points",
+		"two presses spend the fighter's two points",
+	)
+	var ring := _modal_focusables()
+	var ring_names: Array[String] = []
+	for control in ring:
+		ring_names.append(String(control.name))
+	print("PROBE FOCUS skills_ring=%d names=%s" % [ring.size(), ",".join(ring_names)])
+	var back_button := await _probe_tab_until("footer_back")
+	_probe_check(back_button != null, "Tab reaches Back")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Ability", "Back returns to Ability")
+	strength = _probe_level_up_control("ability_str") as Button
+	_probe_check(
+		strength != null and strength.button_pressed,
+		"the ability choice survived Back",
+	)
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue after Back")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Skills", "Continue returns to Skills")
+	_probe_check(
+		_probe_level_up_header_text() == "Spent 2 of 2 points",
+		"the skill allocation survived Back",
+	)
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue on Skills")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Feat", "Continue advances to Feat")
+
+	# 9. A refused Confirm keeps the modal open. The feat is left unset on purpose:
+	# Continue allows it, because a missing feat is left to Confirm, where
+	# `LevelChoices.validate` states the engine's own reason (level_up_screen.gd
+	# `_forward_enabled`).
+	print("PROBE STEP 09 refusal")
+	var files_before_refusal := _probe_save_dir_files()
+	var pre_refusal := JSON.stringify(ch.to_dict())
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue on Feat")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(
+		_probe_level_up_step() == "Confirm",
+		"Confirm is reachable with the feat left unset",
+	)
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Apply level up")
+	await _probe_key(KEY_ENTER)
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(
+		current_screen.get("level_up_screen") != null,
+		"a refused Confirm keeps the modal open",
+	)
+	_probe_check(
+		_probe_level_up_step() == "Feat",
+		"the refusal moves the modal to the step that owns it",
+	)
+	var refusal := _probe_level_up_control("Refusal") as Label
+	_probe_check(
+		refusal != null and refusal.is_visible_in_tree() and refusal.text != "",
+		"the refusal states the engine's reason",
+	)
+	if refusal != null:
+		print("PROBE REFUSAL text=%s" % refusal.text)
+	var refusal_owner := get_viewport().gui_get_focus_owner()
+	_probe_check(
+		refusal_owner != null and String(refusal_owner.name).begins_with("feat_"),
+		"focus moves to the refused group",
+	)
+	_probe_check(JSON.stringify(ch.to_dict()) == pre_refusal, "the refused Confirm changed nothing")
+	_probe_check(int(ch.level) == 3, "the refused Confirm left the character at 3rd level")
+	_probe_check(_probe_save_dir_files() == files_before_refusal, "the refused Confirm wrote no save")
+
+	# Now answer it, and walk on to Confirm for real.
+	var feat_row := await _probe_tab_until("feat_power_attack")
+	_probe_check(feat_row != null, "Tab reaches the Power Attack row")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	continue_button = await _probe_tab_until("footer_forward")
+	_probe_check(continue_button != null, "Tab reaches Continue on Feat")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Confirm", "Continue advances to Confirm")
+
+	# 5. Confirm applies, through validate, once.
+	print("PROBE STEP 05 apply")
+	var draft: Dictionary = Dictionary(screen.draft).duplicate(true)
+	var validated := LevelChoices.validate(ch, draft)
+	_probe_check(bool(validated.get("ok", false)), "the walked draft passes validate")
+	var confirm_preview := LevelUp.preview(ch, draft)
+	var confirm_hp: Dictionary = confirm_preview["hit_points"]
+	_probe_check(
+		_probe_level_up_numbers("ConfirmHP")
+		== [
+			int(confirm_hp["hp_before"]),
+			int(confirm_hp["max_before"]),
+			int(confirm_hp["hp_after"]),
+			int(confirm_hp["max_after"]),
+		],
+		"the Confirm HP numbers are the preview's",
+	)
+	var xp_before_level := int(ch.xp)
+	var forward := await _probe_tab_until("footer_forward")
+	_probe_check(
+		forward != null and String((forward as Button).text) == "Apply level up",
+		"the Confirm forward button applies",
+	)
+	await _probe_key(KEY_ENTER)
+	for i in 8:
+		await get_tree().process_frame
+	_probe_check(current_screen.get("level_up_screen") == null, "Apply closes the level-up screen")
+	_probe_check(get("modal") != null, "the party sheet is back")
+	_probe_check(int(ch.level) == 4, "the character is 4th level")
+	_probe_check(int(ch.xp) == xp_before_level, "the level step awards no XP")
+	_probe_check(
+		int(ch.max_hp) == int(confirm_hp["max_after"]),
+		"the new HP is the previewed one",
+	)
+	_probe_check(
+		int(ch.base_attack) == int(confirm_preview["base_attack"]["after"]),
+		"the new base attack is the previewed one",
+	)
+	_probe_check(
+		int(Dictionary(ch.base_saves)["fort"])
+		== int(Dictionary(confirm_preview["base_saves"])["fort"]["after"]),
+		"the new fortitude save is the previewed one",
+	)
+	_probe_check(ch.feats.has("Power Attack"), "the chosen feat is recorded")
+	_probe_check(int(ch.skill_ranks.get("climb", 0)) == 6, "the two skill ranks are recorded")
+	_probe_check(_probe_level_up_buttons() == 3, "the leveled page no longer offers the step")
+	_probe_check(_probe_level_up_reasons() == 1, "and states why instead")
+
+	# 6. Save and reload.
+	print("PROBE STEP 06 save")
+	var saved := Game.save_game("level_up_probe")
+	_probe_check(bool(saved.get("ok", false)), "the level-up saves")
+	var save_path := SaveSystem.path_for("level_up_probe", Game.campaign_id)
+	_probe_check(FileAccess.file_exists(save_path), "the slot file exists")
+	var saved_bytes := _probe_bytes(save_path)
+	_probe_check(not saved_bytes.is_empty(), "the slot has bytes")
+	var reloaded := Game.load_game("level_up_probe")
+	_probe_check(bool(reloaded.get("ok", false)), "the slot reloads")
+	ch = Game.party[0]
+	_probe_check(int(ch.level) == 4, "the level survived the reload")
+	_probe_check(int(ch.xp) == xp_before_level, "the XP survived the reload")
+	_probe_check(
+		int(ch.max_hp) == int(confirm_hp["max_after"]),
+		"the HP survived the reload",
+	)
+	_probe_check(
+		int(ch.base_attack) == int(confirm_preview["base_attack"]["after"]),
+		"the base attack survived the reload",
+	)
+	_probe_check(ch.feats.has("Power Attack"), "the feat survived the reload")
+	_probe_check(int(ch.skill_ranks.get("climb", 0)) == 6, "the skill ranks survived the reload")
+
+	# 7. A second apply refuses and changes nothing.
+	print("PROBE STEP 07 idempotence")
+	var before_second := ch.to_dict().duplicate(true)
+	var second := LevelUp.apply(ch, draft)
+	_probe_check(not bool(second.get("ok", true)), "a second apply is refused")
+	_probe_check(
+		String(second.get("code", "")) == "already_level_4",
+		"the second refusal is already_level_4",
+	)
+	_probe_check(ch.to_dict() == before_second, "the refused second apply changes nothing")
+	close_modal()
+	for i in 2:
+		await get_tree().process_frame
+	current_screen._open_party(0)
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_buttons() == 3, "the reloaded page still offers no button")
+
+	# 8. Cancel and Escape write nothing.
+	print("PROBE STEP 08 no-write")
+	var sera: Character = Game.party[1]
+	var sera_before := JSON.stringify(sera.to_dict())
+	var mtime_before := FileAccess.get_modified_time(save_path)
+	var files_before := _probe_save_dir_files()
+	var artifacts_before := _probe_save_artifacts("level_up_probe")
+	var opened: bool = await _probe_open_level_up_page(1)
+	_probe_check(opened, "the rogue's page opens its level-up screen")
+	if opened:
+		await _probe_tab_until("footer_forward")
+		await _probe_key(KEY_ENTER)
+		var rogue_ability := _probe_first_control("ability_")
+		_probe_check(rogue_ability != "", "the rogue's ability rows exist")
+		await _probe_tab_until(rogue_ability)
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until("footer_forward")
+		await _probe_key(KEY_ENTER)
+		_probe_check(_probe_level_up_step() == "Skills", "the rogue reaches Skills")
+		var rogue_skill := _probe_first_control("skill_")
+		_probe_check(rogue_skill != "", "the rogue's skill rows exist")
+		await _probe_tab_until(rogue_skill)
+		await _probe_key(KEY_ENTER)
+		_probe_check(
+			_probe_level_up_header_text() == "Spent 1 of 10 points",
+			"the rogue spent a point before cancelling",
+		)
+		await _probe_key(KEY_ESCAPE)
+		for i in 4:
+			await get_tree().process_frame
+		_probe_check(current_screen.get("level_up_screen") == null, "Escape closes the level-up screen")
+		_probe_check(get("modal") != null, "the sheet is back after Escape")
+		var owner := get_viewport().gui_get_focus_owner()
+		_probe_check(
+			owner != null and String(owner.name) == "LevelUpButton",
+			"focus returns to the Level up button after Escape",
+		)
+		_probe_check(JSON.stringify(sera.to_dict()) == sera_before, "Escape wrote nothing to the character")
+		_probe_check(_probe_bytes(save_path) == saved_bytes, "Escape left the slot's bytes alone")
+		_probe_check(
+			FileAccess.get_modified_time(save_path) == mtime_before,
+			"Escape did not rewrite the slot",
+		)
+		_probe_check(_probe_save_dir_files() == files_before, "Escape wrote no save file")
+		_probe_check(
+			_probe_save_artifacts("level_up_probe") == artifacts_before,
+			"Escape left no .bak or .tmp artifact",
+		)
+	opened = await _probe_open_level_up_page(1)
+	_probe_check(opened, "the rogue's page opens its level-up screen again")
+	if opened:
+		await _probe_tab_until("footer_forward")
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until(_probe_first_control("ability_"))
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until("footer_cancel")
+		await _probe_key(KEY_ENTER)
+		for i in 4:
+			await get_tree().process_frame
+		_probe_check(current_screen.get("level_up_screen") == null, "Cancel closes the level-up screen")
+		_probe_check(JSON.stringify(sera.to_dict()) == sera_before, "Cancel wrote nothing to the character")
+		_probe_check(_probe_bytes(save_path) == saved_bytes, "Cancel left the slot's bytes alone")
+		_probe_check(_probe_save_dir_files() == files_before, "Cancel wrote no save file")
+	opened = await _probe_open_level_up_page(1)
+	_probe_check(opened, "the rogue's page opens a third time")
+	if opened:
+		await _probe_tab_until("footer_forward")
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until(_probe_first_control("ability_"))
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until("footer_forward")
+		await _probe_key(KEY_ENTER)
+		await _probe_tab_until("footer_back")
+		await _probe_key(KEY_ENTER)
+		for i in 2:
+			await get_tree().process_frame
+		_probe_check(_probe_level_up_step() == "Ability", "Back works before the escape too")
+		await _probe_key(KEY_ESCAPE)
+		for i in 4:
+			await get_tree().process_frame
+		_probe_check(
+			current_screen.get("level_up_screen") == null,
+			"Escape after Back closes the level-up screen",
+		)
+		_probe_check(JSON.stringify(sera.to_dict()) == sera_before, "Back then Escape wrote nothing")
+		_probe_check(_probe_bytes(save_path) == saved_bytes, "Back then Escape left the slot alone")
+		_probe_check(
+			FileAccess.get_modified_time(save_path) == mtime_before,
+			"Back then Escape did not rewrite the slot",
+		)
+		_probe_check(
+			_probe_save_artifacts("level_up_probe") == artifacts_before,
+			"Back then Escape left no save artifact",
+		)
+	close_modal()
+
+
+## Pushes one key as a real down/up pair, so a focused Button activates on release
+## exactly as it does for a player.
+func _probe_key(code: int, shift := false) -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.shift_pressed = shift
+		event.pressed = pressed
+		get_viewport().push_input(event)
+	await get_tree().process_frame
+
+
+## Tabs forward until the named control holds focus. Bounded, and returns null when
+## the control is never reached, so a broken order fails as a named check.
+func _probe_tab_until(control_name: String, limit := 240) -> Control:
+	for step in limit:
+		var owner := get_viewport().gui_get_focus_owner()
+		if owner != null and String(owner.name) == control_name:
+			return owner
+		await _probe_key(KEY_TAB)
+	var reached := get_viewport().gui_get_focus_owner()
+	return reached if reached != null and String(reached.name) == control_name else null
+
+
+## The first control whose name starts with `prefix`, so a class-specific row can be
+## reached without the probe knowing which skills that class lists. `skill_reset`
+## shares the prefix but is the allocation reset, not a row, so it is skipped.
+func _probe_first_control(prefix: String) -> String:
+	var modal: Control = get("modal")
+	if modal == null:
+		return ""
+	for node in modal.find_children(prefix + "*", "Button", true, false):
+		if String(node.name) != "skill_reset":
+			return String(node.name)
+	return ""
+
+
+func _probe_level_up_control(control_name: String) -> Control:
+	var modal: Control = get("modal")
+	if modal == null:
+		return null
+	return modal.find_child(control_name, true, false) as Control
+
+
+func _probe_level_up_step() -> String:
+	var label := _probe_level_up_control("StepTitle") as Label
+	return "" if label == null else label.text
+
+
+func _probe_level_up_header_text() -> String:
+	var label := _probe_level_up_control("SpentHeader") as Label
+	return "" if label == null else label.text
+
+
+## Every whole number printed in one summary line, so the check compares numbers
+## with `LevelUp.preview` rather than rendered prose.
+func _probe_level_up_numbers(control_name: String) -> Array[int]:
+	var out: Array[int] = []
+	var label := _probe_level_up_control(control_name) as Label
+	if label == null:
+		return out
+	var regex := RegEx.create_from_string("-?[0-9]+")
+	for found in regex.search_all(label.text):
+		out.append(int(found.get_string()))
+	return out
+
+
+func _probe_sheet_tabs() -> TabContainer:
+	var modal: Control = get("modal")
+	if modal == null:
+		return null
+	for node in modal.find_children("*", "TabContainer", true, false):
+		return node as TabContainer
+	return null
+
+
+func _probe_level_up_buttons() -> int:
+	var modal: Control = get("modal")
+	if modal == null:
+		return 0
+	return modal.find_children("LevelUpButton", "Button", true, false).size()
+
+
+func _probe_level_up_reasons() -> int:
+	var modal: Control = get("modal")
+	if modal == null:
+		return 0
+	return modal.find_children("LevelUpReason", "Label", true, false).size()
+
+
+## Every file in the probe's save directory for the current campaign, sorted.
+func _probe_save_dir_files() -> Array[String]:
+	var out: Array[String] = []
+	var directory := SaveSystem.campaign_dir(Game.campaign_id)
+	var dir := DirAccess.open(directory)
+	if dir == null:
+		return out
+	for name in dir.get_files():
+		out.append(String(name))
+	out.sort()
+	return out
+
+
+## The slot's own files, including the numbered working copies an interrupted write
+## would leave behind, sorted. Compared before and after a Cancel so a stray `.bak`
+## or `.tmp` is a named failure rather than a silence.
+func _probe_save_artifacts(slot: String) -> Array[String]:
+	var out: Array[String] = []
+	var directory := SaveSystem.campaign_dir(Game.campaign_id)
+	var dir := DirAccess.open(directory)
+	if dir == null:
+		return out
+	for name in dir.get_files():
+		var plain := String(name)
+		if plain.begins_with(slot + "."):
+			out.append(plain)
+	out.sort()
+	return out
+
+
+## Selects a page, then Tabs to its Level up button and presses Enter. The page
+## select is the one direct input here: a probe cannot click a tab without
+## coordinates, and the tab bar is not a level-up control.
+func _probe_open_level_up_page(page: int) -> bool:
+	var tabs := _probe_sheet_tabs()
+	if tabs == null:
+		return false
+	tabs.current_tab = clampi(page, 0, tabs.get_tab_count() - 1)
+	for i in 4:
+		await get_tree().process_frame
+	var opener := await _probe_tab_until("LevelUpButton")
+	if opener == null:
+		return false
+	await _probe_key(KEY_ENTER)
+	for i in 6:
+		await get_tree().process_frame
+	return current_screen.get("level_up_screen") != null
+
+
+## Removes the probe's own save directory and restores the redirect and the text
+## scale, which was only ever written in memory.
+func _level_up_probe_cleanup(previous_save_dir: String, previous_scale: float) -> void:
+	var root := SaveSystem.save_dir
+	var campaign := SaveSystem.campaign_dir(Game.campaign_id)
+	for directory in [campaign, root]:
+		var dir := DirAccess.open(directory)
+		if dir == null:
+			continue
+		for name in dir.get_files():
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(directory.path_join(String(name))))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(campaign))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(root))
+	SaveSystem.save_dir = previous_save_dir
+	Game.settings["text_scale"] = previous_scale
+	_apply_theme()
+	_probe_check(SaveSystem.save_dir == previous_save_dir, "the save directory is restored")
+	_probe_check(
+		not DirAccess.dir_exists_absolute(root),
+		"the probe's save directory is gone",
+	)
 
 
 func _trip_probe(scenario: String) -> void:
