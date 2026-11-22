@@ -5317,3 +5317,41 @@ Cancel/Escape/Back-Escape writing nothing to the character or to the slot.
 Not covered: rendered pixels (the probe reads control rectangles and state, never the
 drawn frame), the 160 % layout and C1-C9 (4c), the sorcerer's Spells step end to end,
 an exported build, and any human playtest.
+
+### Level-up probe (batch 4c, 2026-11-22)
+
+Run: `--level-up-probe`, 1280x720, headless, one pass at 100 % and one at 160 %, saves
+redirected to `user://qa_level_up_probe` and removed before the receipt. Logs are in
+`builds/qa/runs/2026-11-22_level_up_ui/`.
+
+Red, before the two-pass loop (`probe5.log`, the 4b run): one receipt with no scale,
+and the run's own scope line.
+
+    PROBE SCOPE text_scale=1.0 only; the 160 % pass belongs to 4c
+
+`grep -c "scale=1.60"` on that log is `0`.
+
+Green (`probe_4c_4.log`):
+
+    PROBE RECEIPT scale=1.00 result=PASS checks=172 failures=0
+    PROBE RECEIPT scale=1.60 result=PASS checks=173 failures=0
+    PROBE AGGREGATE result=PASS scenario=level_up scales=1.00,1.60 checks=347 failures=0
+    PROBE RESULT PASS scenario=level_up elapsed_ms=10766
+
+Both passes keep the whole 4b walk: the real victory and its once-only award, the
+button per page, the keyboard path, the refused Confirm, the draft surviving Back, the
+apply, the save/reload round-trip, the second apply refused with `already_level_4`, and
+Cancel/Escape/Back-Escape writing nothing. Each pass prints a `PROBE C1`-`C9` geometry
+line per criterion, and each walks the sorcerer's Spells step on her own page and slot.
+
+Suite 877/877 tests, 9,343 assertions, 65 scripts, 0 `[Failed]`;
+`--validate-campaigns` PASS; `--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+
+The one product defect this exposed - End not scrolling any modal body - was fixed with
+its own regression test; the red and green are in
+`builds/qa/runs/2026-11-22_level_up_ui/red_end.log` and `green_end.log`, and the record
+is `LEVEL_UP_PLAN.md` 14.18.
+
+Not covered: rendered pixels (the probe reads control rectangles and state), any window
+at either scale (the runs are headless), an exported build, and any human playtest.

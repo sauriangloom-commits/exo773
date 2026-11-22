@@ -2898,11 +2898,14 @@ func _probe_tail(step: String) -> void:
 ## transcript. Setup lives in the QA fixture (`_qa_trip_demo`); these checks only
 ## read the state that the real control tree produced.
 var probe_failures: Array[String] = []
+## How many checks the current run has made, so a two-pass probe can tag each pass.
+var probe_checks := 0
 var probe_done := false
 var probe_started_ms := 0
 
 
 func _probe_check(ok: bool, label: String) -> void:
+	probe_checks += 1
 	if ok:
 		print("PROBE CHECK PASS %s" % label)
 		return
@@ -3831,27 +3834,29 @@ func _encounter_end_probe() -> void:
 	_probe_finish("encounter_end")
 
 
-# ----------------------------------------------------- level-up probe (4b)
+# ----------------------------------------------------- level-up probe (4b-4c)
 
-## `--level-up-probe`, 100 % pass. Batch 4b of docs/LEVEL_UP_PLAN.md 14.8: the step a
-## real victory pays for, spent through the screen by keyboard, then saved, reloaded
-## and refused a second time.
+## `--level-up-probe`: the whole batch-4 walk at 100 % and 160 % in one run, each
+## scale on its own receipt and the run summed up in one aggregate.
 ##
 ## Input split, by design. Direct calls: `Game.new_game`, `Game.start_encounter`, the
 ## encounter's own end check, `changed.emit` (to prove the award is paid once), the
-## exploration screen's `_open_party`, `refresh_modal`, `_probe_tab`'s page select,
+## exploration screen's `_open_party`, `refresh_modal`, the sheet's tab select,
 ## `Game.save_game` and `Game.load_game` - a probe cannot type a campaign id or a slot
-## name, and those are the same calls the pause menu makes. Keyboard events: every
-## action inside the party sheet and the level-up screen, pushed as real
-## `InputEventKey` down/up pairs through the viewport (Tab, Shift+Tab, Enter,
-## Escape), so the focus trap, the reveal walk and the button activation are the
-## shipped ones.
+## name, and those are the calls the pause menu makes. Fixture writes (`xp = 5999`,
+## `text_scale`, `scroll_vertical = 0`) are the same kind of setup and are named in the
+## log. Keyboard events: every action inside the party sheet and the level-up screen,
+## pushed as real `InputEventKey` down/up pairs through the viewport (Tab, Shift+Tab,
+## Enter, End, Escape), so the focus trap, the reveal walk and the button activation
+## are the shipped ones. There is no second focus system here: containment and reveal
+## are read from `_modal_focusables()` and from the state the shipped walk leaves.
 ##
 ## Evidence level: control rectangles and the state the real controls produced. No
-## rendered pixels are compared, and the 160 % pass with the C1-C9 checks is 4c.
+## rendered pixels are compared, so nothing here speaks to legibility, clipping in the
+## drawn frame or overlap.
 ##
-## Isolation: saves go to `user://qa_level_up_probe`, which is removed before the
-## receipt, and the text scale is written into `Game.settings` directly, because
+## Isolation: saves go to `user://qa_level_up_probe`, removed before the receipt, and
+## the text scale is written into `Game.settings` directly, because
 ## `Game.set_text_scale` would save the player's settings file.
 func _level_up_probe() -> void:
 	probe_scenario = "level_up"
@@ -3861,27 +3866,50 @@ func _level_up_probe() -> void:
 	var previous_scale := float(Game.settings.get("text_scale", 1.0))
 	SaveSystem.save_dir = "user://qa_level_up_probe"
 	DirAccess.make_dir_recursive_absolute(SaveSystem.save_dir)
-	Game.settings["text_scale"] = 1.0
-	_apply_theme()
 	get_window().size = probe_size
-	for i in 6:
-		await get_tree().process_frame
 	print(
-		"PROBE VIEWPORT=%s text_scale=%.2f"
-		% [str(get_viewport().get_visible_rect().size), float(Game.settings.get("text_scale", 1.0))]
+		"PROBE INPUT keyboard=Tab,Shift+Tab,Enter,End,Escape direct=new_game,start_encounter,check_end,changed.emit,open_party,refresh_modal,tab_select,save_game,load_game fixture=xp,text_scale,scroll_vertical"
 	)
 	print(
-		"PROBE INPUT keyboard=Tab,Shift+Tab,Enter,Escape direct=new_game,start_encounter,check_end,changed.emit,open_party,refresh_modal,tab_select,save_game,load_game"
+		"PROBE SCOPE scales=1.00,1.60 viewport=%s evidence=control rectangles and state, not rendered pixels"
+		% str(probe_size)
 	)
-	print("PROBE SCOPE text_scale=1.0 only; the 160 % pass belongs to 4c")
-	await _level_up_probe_body()
+	var scales: Array[String] = []
+	for scale in [1.0, 1.6]:
+		Game.settings["text_scale"] = float(scale)
+		_apply_theme()
+		for i in 6:
+			await get_tree().process_frame
+		print(
+			"PROBE PASS BEGIN scale=%.2f viewport=%s"
+			% [float(scale), str(get_viewport().get_visible_rect().size)]
+		)
+		var checks_before := probe_checks
+		var failures_before := probe_failures.size()
+		await _level_up_probe_pass(float(scale))
+		var checks := probe_checks - checks_before
+		var failed := probe_failures.size() - failures_before
+		scales.append("%.2f" % float(scale))
+		print(
+			"PROBE RECEIPT scale=%.2f result=%s checks=%d failures=%d"
+			% [float(scale), "PASS" if failed == 0 else "FAIL", checks, failed]
+		)
 	_level_up_probe_cleanup(previous_save_dir, previous_scale)
+	print(
+		"PROBE AGGREGATE result=%s scenario=level_up scales=%s checks=%d failures=%d"
+		% [
+			"PASS" if probe_failures.is_empty() else "FAIL",
+			",".join(scales),
+			probe_checks,
+			probe_failures.size(),
+		]
+	)
 	_probe_finish("level_up")
 
 
-## Everything the probe asserts. Any early return is a failed check above it, so the
-## receipt still reports the failure rather than a truncated run.
-func _level_up_probe_body() -> void:
+## One scale's pass. Everything it needs is built here - campaign, party, victory - so
+## the two passes are independent and the second cannot inherit the first's state.
+func _level_up_probe_pass(scale: float) -> void:
 	var loaded := Game.load_campaign("ravenloft_demo")
 	_probe_check(bool(loaded.get("ok", false)), "the demo campaign loads")
 	var started := Game.new_game(["kaelen", "sera", "aldric", "mira"], 4242)
@@ -3971,7 +3999,8 @@ func _level_up_probe_body() -> void:
 		await get_tree().process_frame
 	_probe_check(_probe_level_up_buttons() == 4, "restoring the XP restores the button")
 
-	# 3. Keyboard into the screen, and the summary against the preview.
+	# 3. Keyboard into the screen, the layout checks, and the summary against
+	# the preview.
 	print("PROBE STEP 03 keyboard")
 	var opener := await _probe_tab_until("LevelUpButton")
 	_probe_check(opener != null, "Tab reaches the page's Level up button")
@@ -3991,6 +4020,7 @@ func _level_up_probe_body() -> void:
 		"the fighter's steps are Summary, Ability, Skills, Feat, Confirm",
 	)
 	_probe_check(_probe_level_up_step() == "Summary", "the screen opens on Summary")
+	await _level_up_probe_layout(scale)
 	var preview := LevelUp.preview(ch, {})
 	var hp: Dictionary = preview["hit_points"]
 	_probe_check(
@@ -4031,7 +4061,7 @@ func _level_up_probe_body() -> void:
 
 	# 4. Keyboard through every step.
 	print("PROBE STEP 04 steps")
-		# Each hop names its target: a focus order that misses one is a failed check here,
+	# Each hop names its target: a focus order that misses one is a failed check here,
 	# not a mystery two steps later. The limits are generous because a step's rows sit
 	# between the footer and the step strip in the focus order.
 	var continue_button := await _probe_tab_until("footer_forward")
@@ -4053,6 +4083,7 @@ func _level_up_probe_body() -> void:
 	for i in 2:
 		await get_tree().process_frame
 	_probe_check(_probe_level_up_step() == "Skills", "Continue advances to Skills")
+	await _level_up_probe_skills_layout(scale)
 	var climb_row := await _probe_tab_until("skill_climb")
 	_probe_check(climb_row != null, "Tab reaches the Climb row")
 	await _probe_key(KEY_ENTER)
@@ -4063,11 +4094,6 @@ func _level_up_probe_body() -> void:
 		_probe_level_up_header_text() == "Spent 2 of 2 points",
 		"two presses spend the fighter's two points",
 	)
-	var ring := _modal_focusables()
-	var ring_names: Array[String] = []
-	for control in ring:
-		ring_names.append(String(control.name))
-	print("PROBE FOCUS skills_ring=%d names=%s" % [ring.size(), ",".join(ring_names)])
 	var back_button := await _probe_tab_until("footer_back")
 	_probe_check(back_button != null, "Tab reaches Back")
 	await _probe_key(KEY_ENTER)
@@ -4096,11 +4122,11 @@ func _level_up_probe_body() -> void:
 		await get_tree().process_frame
 	_probe_check(_probe_level_up_step() == "Feat", "Continue advances to Feat")
 
-	# 9. A refused Confirm keeps the modal open. The feat is left unset on purpose:
+	# 5. A refused Confirm keeps the modal open. The feat is left unset on purpose:
 	# Continue allows it, because a missing feat is left to Confirm, where
 	# `LevelChoices.validate` states the engine's own reason (level_up_screen.gd
 	# `_forward_enabled`).
-	print("PROBE STEP 09 refusal")
+	print("PROBE STEP 05 refusal")
 	var files_before_refusal := _probe_save_dir_files()
 	var pre_refusal := JSON.stringify(ch.to_dict())
 	continue_button = await _probe_tab_until("footer_forward")
@@ -4154,8 +4180,8 @@ func _level_up_probe_body() -> void:
 		await get_tree().process_frame
 	_probe_check(_probe_level_up_step() == "Confirm", "Continue advances to Confirm")
 
-	# 5. Confirm applies, through validate, once.
-	print("PROBE STEP 05 apply")
+	# 6. Confirm applies, through validate, once.
+	print("PROBE STEP 06 apply")
 	var draft: Dictionary = Dictionary(screen.draft).duplicate(true)
 	var validated := LevelChoices.validate(ch, draft)
 	_probe_check(bool(validated.get("ok", false)), "the walked draft passes validate")
@@ -4202,8 +4228,8 @@ func _level_up_probe_body() -> void:
 	_probe_check(_probe_level_up_buttons() == 3, "the leveled page no longer offers the step")
 	_probe_check(_probe_level_up_reasons() == 1, "and states why instead")
 
-	# 6. Save and reload.
-	print("PROBE STEP 06 save")
+	# 7. Save and reload.
+	print("PROBE STEP 07 save")
 	var saved := Game.save_game("level_up_probe")
 	_probe_check(bool(saved.get("ok", false)), "the level-up saves")
 	var save_path := SaveSystem.path_for("level_up_probe", Game.campaign_id)
@@ -4226,8 +4252,8 @@ func _level_up_probe_body() -> void:
 	_probe_check(ch.feats.has("Power Attack"), "the feat survived the reload")
 	_probe_check(int(ch.skill_ranks.get("climb", 0)) == 6, "the skill ranks survived the reload")
 
-	# 7. A second apply refuses and changes nothing.
-	print("PROBE STEP 07 idempotence")
+	# 8. A second apply refuses and changes nothing.
+	print("PROBE STEP 08 idempotence")
 	var before_second := ch.to_dict().duplicate(true)
 	var second := LevelUp.apply(ch, draft)
 	_probe_check(not bool(second.get("ok", true)), "a second apply is refused")
@@ -4244,8 +4270,8 @@ func _level_up_probe_body() -> void:
 		await get_tree().process_frame
 	_probe_check(_probe_level_up_buttons() == 3, "the reloaded page still offers no button")
 
-	# 8. Cancel and Escape write nothing.
-	print("PROBE STEP 08 no-write")
+	# 9. Cancel and Escape write nothing.
+	print("PROBE STEP 09 no-write")
 	var sera: Character = Game.party[1]
 	var sera_before := JSON.stringify(sera.to_dict())
 	var mtime_before := FileAccess.get_modified_time(save_path)
@@ -4338,7 +4364,366 @@ func _level_up_probe_body() -> void:
 			_probe_save_artifacts("level_up_probe") == artifacts_before,
 			"Back then Escape left no save artifact",
 		)
+
+	# 10. The sorcerer's Spells step, on her own page and her own slot.
+	await _level_up_probe_sorcerer(scale)
 	close_modal()
+
+
+## C1-C4, C6, C8 and C9 on the Summary step, with the geometry printed so the
+## evidence is the rectangles rather than this function's opinion of them.
+func _level_up_probe_layout(scale: float) -> void:
+	var root: Control = get("modal")
+	var body := _probe_level_up_control("LevelUpBody")
+	var panel := _probe_panel_of(body)
+	var pane := _probe_level_up_control("StepScroll") as ScrollContainer
+	var rows := _probe_level_up_control("StepRows") as VBoxContainer
+	var footer := _probe_level_up_control("Footer")
+	var strip := _probe_level_up_control("StepStrip")
+	var heading := _probe_modal_heading()
+	var close := _probe_button_titled("Close (Esc)")
+	var client := get_viewport().get_visible_rect()
+	if (
+		root == null
+		or panel == null
+		or pane == null
+		or rows == null
+		or footer == null
+		or strip == null
+		or heading == null
+		or close == null
+	):
+		_probe_check(false, "[%.2f] C1-C9 the modal's parts exist" % scale)
+		return
+	var panel_rect := panel.get_global_rect()
+	print(
+		"PROBE C1 geom scale=%.2f panel=%s client=%s requested=%s"
+		% [scale, str(panel_rect), str(client), str(panel.custom_minimum_size)]
+	)
+	_probe_check(client.encloses(panel_rect), "[%.2f] C1 the panel is inside the client area" % scale)
+	_probe_check(
+		panel_rect.position.x >= 15.5 and panel_rect.position.y >= 15.5,
+		"[%.2f] C1 the panel keeps the 16 px cap margin" % scale,
+	)
+	var expected_height := 688.0 if scale > 1.0 else 620.0
+	_probe_check(
+		is_equal_approx(panel_rect.size.y, expected_height),
+		"[%.2f] C1 the panel height is the %d the request and the cap give"
+		% [scale, int(expected_height)],
+	)
+
+	print(
+		"PROBE C2 geom scale=%.2f heading=%s close=%s"
+		% [scale, str(heading.get_global_rect()), str(close.get_global_rect())]
+	)
+	_probe_check(
+		_probe_contains_rect(panel, heading) and _probe_contains_rect(panel, close),
+		"[%.2f] C2 the heading and Close are inside the panel" % scale,
+	)
+	_probe_check(
+		client.encloses(heading.get_global_rect()) and client.encloses(close.get_global_rect()),
+		"[%.2f] C2 the heading and Close are inside the client area" % scale,
+	)
+
+	print(
+		"PROBE C3 geom scale=%.2f footer=%s pane=%s"
+		% [scale, str(footer.get_global_rect()), str(pane.get_global_rect())]
+	)
+	_probe_check(_probe_contains_rect(panel, footer), "[%.2f] C3 the footer is inside the panel" % scale)
+	_probe_check(
+		not _probe_contains_rect(pane, footer),
+		"[%.2f] C3 the footer is outside the scrolling body" % scale,
+	)
+
+	var labels := 0
+	var clipped := 0
+	var outside := 0
+	for child in strip.get_children():
+		var label := child as Label
+		if label == null:
+			continue
+		labels += 1
+		if label.get_minimum_size().x > label.size.x + 0.5:
+			clipped += 1
+		if not _probe_contains_rect(strip, label) or not _probe_contains_rect(panel, label):
+			outside += 1
+	print("PROBE C4 geom scale=%.2f labels=%d clipped=%d outside=%d" % [scale, labels, clipped, outside])
+	_probe_check(labels > 0 and clipped == 0, "[%.2f] C4 no step label is clipped" % scale)
+	_probe_check(outside == 0, "[%.2f] C4 every step label is inside the strip and the panel" % scale)
+
+	var pane_bar := pane.get_h_scroll_bar()
+	var body_bar: ScrollBar = null
+	var body_scroll := get("modal_scroll") as ScrollContainer
+	if body_scroll != null:
+		body_bar = body_scroll.get_h_scroll_bar()
+	var widest := 0.0
+	for child in rows.get_children():
+		var row := child as Control
+		if row != null:
+			widest = maxf(widest, row.size.x)
+	print(
+		"PROBE C6 geom scale=%.2f pane_h=%s body_h=%s widest_row=%.1f pane_w=%.1f"
+		% [
+			scale,
+			"%.0f/%.0f" % [pane_bar.max_value, pane_bar.page],
+			"none" if body_bar == null else "%.0f/%.0f" % [body_bar.max_value, body_bar.page],
+			widest,
+			pane.size.x,
+		]
+	)
+	_probe_check(
+		pane_bar.max_value <= pane_bar.page
+		and (body_bar == null or body_bar.max_value <= body_bar.page),
+		"[%.2f] C6 the body needs no horizontal scrolling" % scale,
+	)
+	_probe_check(widest <= pane.size.x + 1.0, "[%.2f] C6 no row is wider than the pane" % scale)
+
+	var spanning := 0
+	var ascending := 0
+	var previous := -1000000.0
+	for child in rows.get_children():
+		var row := child as Control
+		if row == null:
+			continue
+		if absf(row.size.x - rows.size.x) <= 1.0:
+			spanning += 1
+		if row.position.y > previous:
+			ascending += 1
+		previous = row.position.y
+	print(
+		"PROBE C9 geom scale=%.2f rows=%d spanning=%d ascending=%d column_w=%.1f"
+		% [scale, rows.get_child_count(), spanning, ascending, rows.size.x]
+	)
+	_probe_check(rows is VBoxContainer, "[%.2f] C9 the step is a single column" % scale)
+	_probe_check(
+		spanning == rows.get_child_count() and ascending == rows.get_child_count(),
+		"[%.2f] C9 every row spans the column, in content order" % scale,
+	)
+
+
+## C5 and C7 on the Skills step: the tallest step, so the one that scrolls.
+func _level_up_probe_skills_layout(scale: float) -> void:
+	var pane := _probe_level_up_control("StepScroll") as ScrollContainer
+	var rows := _probe_level_up_control("StepRows") as VBoxContainer
+	if pane == null or rows == null:
+		_probe_check(false, "[%.2f] C5-C7 the Skills body exists" % scale)
+		return
+
+	# C5 and C8 share one walk, and it starts on a row: every stop is checked for
+	# staying inside the modal (C8) and, for the rows, for being revealed in the pane
+	# (C5). The walk is the shipped trap - Tab reaches `_cycle_modal_focus` - not a
+	# second focus system.
+	var first_row_name := _probe_first_control("skill_")
+	var first_row: Control = null
+	if first_row_name != "":
+		first_row = await _probe_tab_until(first_row_name)
+	_probe_check(first_row != null, "[%.2f] Tab reaches the first skill row" % scale)
+	var root: Control = get("modal")
+	var ring := _modal_focusables()
+	var expected := 0
+	for control in ring:
+		if rows.is_ancestor_of(control):
+			expected += 1
+	var visited := {}
+	var hidden := 0
+	var escaped := 0
+	for step in ring.size() + 1:
+		var owner := get_viewport().gui_get_focus_owner()
+		if owner == null or not root.is_ancestor_of(owner) or not _can_take_focus(owner):
+			escaped += 1
+		if owner != null and rows.is_ancestor_of(owner):
+			visited[String(owner.name)] = true
+			if not _probe_inside_height(owner, pane):
+				hidden += 1
+				print(
+					"PROBE C5 hidden=%s rect=%s pane=%s scroll=%d"
+					% [
+						String(owner.name),
+						str(owner.get_global_rect()),
+						str(pane.get_global_rect()),
+						pane.scroll_vertical,
+					]
+				)
+		await _probe_key(KEY_TAB)
+		# The walk runs on `gui_focus_changed` and the pane applies its new scroll on
+		# the sort after that, so a stop is read two frames later, as the suite does.
+		await get_tree().process_frame
+	print(
+		"PROBE C5 geom scale=%.2f rows_focusable=%d visited=%d hidden=%d"
+		% [scale, expected, visited.size(), hidden]
+	)
+	_probe_check(
+		expected > 0 and visited.size() == expected and hidden == 0,
+		"[%.2f] C5 every row focusable is revealed inside its pane" % scale,
+	)
+	print(
+		"PROBE C8 geom scale=%.2f ring=%d tabs=%d outside=%d first_row=%s"
+		% [scale, ring.size(), ring.size() + 1, escaped, first_row_name]
+	)
+	_probe_check(
+		ring.size() > 0 and escaped == 0,
+		"[%.2f] C8 Tab never leaves the modal" % scale,
+	)
+
+	# C7: the body scrolls to the same last row the walk reaches. Resetting the scroll
+	# is fixture setup, not a player action; End is the key.
+	var travel := _scroll_travel(pane)
+	pane.scroll_vertical = 0
+	await get_tree().process_frame
+	var last: Control = null
+	for child in rows.get_children():
+		var row := child as Control
+		if row is Button:
+			last = row
+	print(
+		"PROBE C7 geom scale=%.2f travel=%d rows=%d reset=direct"
+		% [scale, travel, rows.get_child_count()]
+	)
+	if scale > 1.0:
+		_probe_check(travel > 0, "[%.2f] C7 the Skills step is taller than its pane" % scale)
+	_probe_check(last != null, "[%.2f] C7 the Skills step offers a row" % scale)
+	if last == null:
+		return
+	await _probe_key(KEY_END)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print(
+		"PROBE C7 end scale=%.2f scroll=%d travel=%d last_inside=%s last_rect=%s pane=%s"
+		% [
+			scale,
+			pane.scroll_vertical,
+			travel,
+			str(_probe_inside_height(last, pane)),
+			str(last.get_global_rect()),
+			str(pane.get_global_rect()),
+		]
+	)
+	_probe_check(
+		pane.scroll_vertical == travel,
+		"[%.2f] C7 End takes the body to its last row" % scale,
+	)
+	_probe_check(_probe_inside_height(last, pane), "[%.2f] C7 End reveals the last row" % scale)
+
+
+## The sorcerer's Spells step, walked by keyboard on her own page and her own slot.
+## The fixture is her party member at the XP the victory paid; her walk shares no state
+## with the fighter's, which the check at the end re-reads to show.
+func _level_up_probe_sorcerer(scale: float) -> void:
+	print("PROBE STEP 10 sorcerer")
+	var mira: Character = Game.party[3]
+	var fighter: Character = Game.party[0]
+	var fighter_level := int(fighter.level)
+	var fighter_xp := int(fighter.xp)
+	close_modal()
+	for i in 2:
+		await get_tree().process_frame
+	current_screen._open_party(3)
+	for i in 6:
+		await get_tree().process_frame
+	var opened: bool = await _probe_open_level_up_page(3)
+	_probe_check(opened, "[%.2f] the sorcerer's page opens her level-up screen" % scale)
+	if not opened:
+		return
+	var screen = current_screen.get("level_up_screen")
+	if screen == null:
+		_probe_check(false, "[%.2f] the sorcerer's controller exists" % scale)
+		return
+	_probe_check(
+		Array(screen.steps) == ["summary", "ability", "skills", "spells", "confirm"],
+		"[%.2f] the sorcerer's steps include Spells and no Feat" % scale,
+	)
+	await _probe_tab_until("footer_forward")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Ability", "[%.2f] the sorcerer reaches Ability" % scale)
+	var ability_row := _probe_first_control("ability_")
+	_probe_check(ability_row != "", "[%.2f] the sorcerer's ability rows exist" % scale)
+	await _probe_tab_until(ability_row)
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	await _probe_tab_until("footer_forward")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Skills", "[%.2f] the sorcerer reaches Skills" % scale)
+	var budget := int(Dictionary(LevelChoices.choices(mira, {})["skills"])["budget"])
+	var skill_row := _probe_first_control("skill_")
+	for i in budget:
+		await _probe_tab_until(skill_row)
+		await _probe_key(KEY_ENTER)
+		await get_tree().process_frame
+	_probe_check(
+		_probe_level_up_header_text() == "Spent %d of %d points" % [budget, budget],
+		"[%.2f] the sorcerer spends her %d points" % [scale, budget],
+	)
+	await _probe_tab_until("footer_forward")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Spells", "[%.2f] the sorcerer reaches Spells" % scale)
+	var spell_row := _probe_first_control("spell_")
+	_probe_check(spell_row != "", "[%.2f] the Spells step offers a spell" % scale)
+	await _probe_tab_until(spell_row)
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	var chosen := _probe_level_up_control(spell_row) as Button
+	_probe_check(
+		chosen != null and chosen.button_pressed,
+		"[%.2f] Enter selects %s" % [scale, spell_row],
+	)
+	await _probe_tab_until("footer_forward")
+	await _probe_key(KEY_ENTER)
+	for i in 2:
+		await get_tree().process_frame
+	_probe_check(_probe_level_up_step() == "Confirm", "[%.2f] the sorcerer reaches Confirm" % scale)
+	var draft: Dictionary = Dictionary(screen.draft).duplicate(true)
+	var preview := LevelUp.preview(mira, draft)
+	_probe_check(
+		Array(Dictionary(preview["spells"])["known_after"]).size()
+		> Array(Dictionary(preview["spells"])["known_before"]).size(),
+		"[%.2f] the draft previews a newly known spell" % scale,
+	)
+	await _probe_tab_until("footer_forward")
+	await _probe_key(KEY_ENTER)
+	for i in 8:
+		await get_tree().process_frame
+	_probe_check(
+		current_screen.get("level_up_screen") == null,
+		"[%.2f] the sorcerer's Apply closes the screen" % scale,
+	)
+	_probe_check(int(mira.level) == 4, "[%.2f] the sorcerer is 4th level" % scale)
+	var picked := String(draft.get("spell", ""))
+	_probe_check(
+		Array(mira.spells.get("known", [])).has(picked),
+		"[%.2f] the chosen spell is recorded" % scale,
+	)
+	var slots_ok := true
+	var slots_after := Dictionary(preview["spells"]["slots_after"])
+	var mira_slots := Dictionary(mira.spells.get("slots", {}))
+	for slot in slots_after.keys():
+		if str(mira_slots.get(slot)) != str(slots_after.get(slot)):
+			slots_ok = false
+	print(
+		"PROBE SORCERER spell=%s slots=%s preview=%s"
+		% [picked, str(mira_slots), str(slots_after)]
+	)
+	_probe_check(slots_ok, "[%.2f] the sorcerer's slots are the previewed ones" % scale)
+	var saved := Game.save_game("level_up_probe_sorcerer")
+	_probe_check(
+		bool(saved.get("ok", false)),
+		"[%.2f] the sorcerer's level-up saves on its own slot" % scale,
+	)
+	_probe_check(
+		FileAccess.file_exists(SaveSystem.path_for("level_up_probe_sorcerer", Game.campaign_id)),
+		"[%.2f] the sorcerer's slot file exists" % scale,
+	)
+	_probe_check(
+		int(fighter.level) == fighter_level and int(fighter.xp) == fighter_xp,
+		"[%.2f] the fighter's state is untouched by the sorcerer's walk" % scale,
+	)
 
 
 ## Pushes one key as a real down/up pair, so a focused Button activates on release
@@ -4370,20 +4755,73 @@ func _probe_tab_until(control_name: String, limit := 240) -> Control:
 ## reached without the probe knowing which skills that class lists. `skill_reset`
 ## shares the prefix but is the allocation reset, not a row, so it is skipped.
 func _probe_first_control(prefix: String) -> String:
-	var modal: Control = get("modal")
-	if modal == null:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
 		return ""
-	for node in modal.find_children(prefix + "*", "Button", true, false):
+	for node in modal_root.find_children(prefix + "*", "Button", true, false):
 		if String(node.name) != "skill_reset":
 			return String(node.name)
 	return ""
 
 
 func _probe_level_up_control(control_name: String) -> Control:
-	var modal: Control = get("modal")
-	if modal == null:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
 		return null
-	return modal.find_child(control_name, true, false) as Control
+	return modal_root.find_child(control_name, true, false) as Control
+
+
+## The panel the modal body sits in: found by walking up, because a node's default
+## name carries a counter once several panels have existed in one run.
+func _probe_panel_of(control: Control) -> Control:
+	var node := control
+	while node != null and not node is PanelContainer:
+		node = node.get_parent()
+	return node
+
+
+## The modal's title label: the first Label in tree order, which is the header's.
+func _probe_modal_heading() -> Label:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
+		return null
+	for node in modal_root.find_children("*", "Label", true, false):
+		return node as Label
+	return null
+
+
+func _probe_button_titled(title: String) -> Button:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
+		return null
+	for node in modal_root.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button.text == title:
+			return button
+	return null
+
+
+func _probe_contains_rect(outer: Control, inner: Control) -> bool:
+	if outer == null or inner == null:
+		return false
+	var box := outer.get_global_rect()
+	var rect := inner.get_global_rect()
+	return (
+		rect.position.x >= box.position.x - 0.5
+		and rect.position.y >= box.position.y - 0.5
+		and rect.end.x <= box.end.x + 0.5
+		and rect.end.y <= box.end.y + 0.5
+	)
+
+
+## True when the control's whole height sits inside the pane that clips it - the same
+## rule `tests/test_modal_focus.gd` and `tests/test_level_up_screen.gd` use.
+func _probe_inside_height(control: Control, pane: Control) -> bool:
+	if control == null or pane == null:
+		return false
+	var rect := control.get_global_rect()
+	var view := pane.get_global_rect()
+	return rect.position.y >= view.position.y - 0.5 and rect.end.y <= view.end.y + 0.5
 
 
 func _probe_level_up_step() -> String:
@@ -4410,26 +4848,26 @@ func _probe_level_up_numbers(control_name: String) -> Array[int]:
 
 
 func _probe_sheet_tabs() -> TabContainer:
-	var modal: Control = get("modal")
-	if modal == null:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
 		return null
-	for node in modal.find_children("*", "TabContainer", true, false):
+	for node in modal_root.find_children("*", "TabContainer", true, false):
 		return node as TabContainer
 	return null
 
 
 func _probe_level_up_buttons() -> int:
-	var modal: Control = get("modal")
-	if modal == null:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
 		return 0
-	return modal.find_children("LevelUpButton", "Button", true, false).size()
+	return modal_root.find_children("LevelUpButton", "Button", true, false).size()
 
 
 func _probe_level_up_reasons() -> int:
-	var modal: Control = get("modal")
-	if modal == null:
+	var modal_root: Control = get("modal")
+	if modal_root == null:
 		return 0
-	return modal.find_children("LevelUpReason", "Label", true, false).size()
+	return modal_root.find_children("LevelUpReason", "Label", true, false).size()
 
 
 ## Every file in the probe's save directory for the current campaign, sorted.
@@ -8727,13 +9165,20 @@ func _scroll_modal_body(event: InputEventKey) -> bool:
 		direction = 1
 	elif event.is_action_pressed("ui_page_up", true) or event.is_action_pressed("ui_up", true):
 		direction = -1
-	if direction == 0:
+	# End jumps to the last row instead of a page at a time. The keyboard path in
+	# LEVEL_UP_PLAN.md 14.5 promises it beside PageDown, and the level-up probe's C7
+	# reads that same key.
+	var to_end := event.is_action_pressed("ui_end", true)
+	if direction == 0 and not to_end:
 		return false
 	if _focused_control_needs_vertical_keys(page):
 		return false
 	var body := _modal_body_target()
 	if body == null:
 		return false
+	if to_end:
+		body.scroll_vertical = _modal_body_scroll_range()
+		return true
 	var step := 0
 	if page:
 		step = int(round(MODAL_PAGE_STEP * float(_modal_body_page_height())))

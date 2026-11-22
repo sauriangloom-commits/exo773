@@ -781,3 +781,13 @@ presentation choices are omitted; nothing here changes a rule silently.
     was recorded rather than repaired no longer applies, and the same fix removes a
     script error: `LevelUp.stage` indexes the class table directly, so `validate` used
     to crash on an untabled class instead of reporting `class_not_tabled`.
+
+57. **End scrolls a modal body, and C5 is read as the scrolling rows.** Two adjustments
+    in 4c, both recorded rather than applied silently. `End` now jumps a modal body to
+    its last row: `LEVEL_UP_PLAN.md` 14.5 promised it beside PageDown, the handler never
+    read `ui_end`, and the level-up screen needed it to reach the last skill row without
+    tabbing through 46 of them. And C5 of 14.6 - "every focusable in
+    `_modal_focusables()`" - is read as the rows inside the step's scrolling pane,
+    because C3 requires the footer to sit outside that pane and the header `Close` is
+    not part of the body; the header and footer are held by C2 and C3 instead. No rule
+    or printed value is involved in either.

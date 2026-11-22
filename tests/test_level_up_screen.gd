@@ -787,3 +787,40 @@ func test_a_confirm_writes_only_the_intended_character_fields() -> void:
 		if member.id == ch.id:
 			continue
 		assert_eq(member.to_dict(), others[member.id], "%s is unchanged" % member.display_name)
+
+
+# 20
+## C7's keyboard half. The plan promises that End, like PageDown, scrolls the step
+## body (LEVEL_UP_PLAN.md 14.5); the body used to ignore it, so the last Skills row
+## could only be reached by Tabbing to it.
+func test_end_scrolls_the_skills_body_to_its_last_row_at_both_scales() -> void:
+	for scale in [1.0, 1.6]:
+		_set_scale(scale)
+		_all_eligible()
+		await _open_sheet(0)
+		await _open_level_up(0)
+		await _press("Continue")
+		await _press_named("ability_str")
+		await _press("Continue")
+		var pane := _step_scroll()
+		var rows := _named(_modal(), "StepRows")
+		assert_not_null(pane, "the step body exists at %s" % scale)
+		assert_not_null(rows, "the step rows exist at %s" % scale)
+		if pane == null or rows == null:
+			continue
+		var travel := _travel(pane)
+		var last: Control = null
+		for child in rows.get_children():
+			if child is Button:
+				last = child as Control
+		assert_not_null(last, "the Skills step offers rows at %s" % scale)
+		if last == null:
+			continue
+		assert_gt(travel, 0, "the Skills step is taller than its body at %s" % scale)
+		_send_key(KEY_END)
+		await wait_frames(3)
+		assert_eq(pane.scroll_vertical, travel, "End takes the body to its last row at %s" % scale)
+		assert_true(_fully_inside(last, pane), "End reveals the last row at %s" % scale)
+		main.call("close_modal")
+		await wait_frames(3)
+		_set_scale(original_scale)

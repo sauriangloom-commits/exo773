@@ -1457,9 +1457,12 @@ printed.
   inside the scrolling body, so it never scrolls away.
 - **C4** every step-strip label is inside the strip and inside the panel; none is
   clipped (`label.get_minimum_size().x <= label.size.x + 0.5`).
-- **C5** for every focusable in `_modal_focusables()`, after focusing it and running
-  the reveal walk, its rect is fully inside the body pane (`_fully_inside` from
-  `tests/test_modal_focus.gd`), at both scales.
+- **C5** for every focusable in `_modal_focusables()`, after focusing it and running the
+  reveal walk, its rect is fully inside the body pane (`_fully_inside` from
+  `tests/test_modal_focus.gd`), at both scales. Read literally that includes the header
+  `Close` and the footer, which C3 requires to sit *outside* the scrolling pane; 4c
+  reads C5 as the row controls inside `StepRows`, as `tests/test_level_up_screen.gd`
+  already does, and leaves the header and footer to C2 and C3 (`ADAPTATION_LOG.md` 57).
 - **C6** the body has no horizontal scrollbar and no row is wider than the pane.
 - **C7** at 160 % the Skills step is taller than its pane (`_scroll_travel(pane) > 0`)
   and End reveals the last row; at 100 % the same checks hold with whatever travel
@@ -1697,6 +1700,12 @@ it returns "the same refusal code `LevelUp.apply` would return". It stayed open 
 that out for 4a. `test_a_stale_page_cannot_apply_after_the_character_has_leveled`
 pinned the refusal and the absence of any write in the meantime, and still does.
 
+A second product defect was found by 4c's C7 and is recorded in 14.18: the modal body
+never answered the End key, although 14.5 promised it beside PageDown, so the last
+Skills row could only be reached by Tabbing through 46 rows. It is fixed in
+`_scroll_modal_body` with a regression test at both scales, and it is kept separate
+from 4c's probe defects (14.17), which were the probe's own mistakes.
+
 The singular `modal` field is still recorded as debt below, not as a defect: the
 level-up modal replaces the sheet's modal rather than stacking on it, so the close
 path reopens the sheet.
@@ -1729,14 +1738,14 @@ that opens the sheet directly on an eligible character.
   the callback owns its own focus after closing; `close_modal` clears it for that
   reason, so a stale callback cannot outlive its modal.
 
-**Evidence gaps.** 4a has run (14.13), 4b has run (14.16), 4c has not. The 160 %
-layout is still pinned only by the suite's control-rectangle checks: no probe has
-walked the screen at 1.6, and no window has shown it at either scale, so C1-C9 are
-specified and partly asserted, not evidenced. The probe reads control rectangles and
-the state its own controls produced, never rendered pixels, and its numbers are
-`preview`'s, so a preview bug would be reproduced faithfully rather than caught. No
-manual testing is requested here, and none of these tests substitutes for the exported
-acceptance run in batch 5.
+**Evidence gaps.** All three parts have run (14.13, 14.16, 14.17). C1-C9 are now
+evidenced as control rectangles at both scales, by a probe that is headless: no window
+has shown the screen at either scale, so nothing here speaks to how it renders, and a
+control that is "inside the pane" is inside by rectangle, not by pixel. The probe reads
+control rectangles and the state its own controls produced, never rendered pixels, and
+its numbers are `preview`'s, so a preview bug would be reproduced faithfully rather
+than caught. No manual testing is requested here, and none of these tests substitutes
+for the exported acceptance run in batch 5.
 
 ### 14.12 Risks
 
@@ -1758,7 +1767,7 @@ acceptance run in batch 5.
 
 Section 14 is accepted as written and closed as a plan. 4a - the screen, the sheet's
 button and their tests - is implemented; 4b and 4c, `--level-up-probe` at 100 % and
-at 160 %, are not as of this record (4b has since landed: 14.16). This subsection is the record of 4a and the only part of
+at 160 %, are not as of this record (4b and 4c have since landed: 14.16, 14.17). This subsection is the record of 4a and the only part of
 section 14 that has run.
 
 **What landed.** `src/ui/level_up_screen.gd` (new, with its tracked `.uid`);
@@ -1811,9 +1820,8 @@ applying.
 control-rectangle tests. No probe has walked the screen at either scale, so the
 1280x720 layout at 160 % has not been seen in a window and the C1-C9 checks in 14.6
 are not evidenced. Nothing player-visible was exported, no manual testing was
-requested and no backups were touched. 4c remains outstanding, 4b landed afterwards
-(14.16), and the defect in batch 3's `validate` was recorded at this point and repaired
-in 14.15.
+requested and no backups were touched. 4b and 4c landed afterwards (14.16, 14.17), and
+the defect in batch 3's `validate` was recorded at this point and repaired in 14.15.
 
 **The call surface was reconciled after the fact.** Section 14.7 first said the
 screen may call "exactly three things"; the shipped screen also reads
@@ -1980,5 +1988,136 @@ step; and a 40-press Tab bound cannot cross a 48-row skill list, so the walk's b
 log). The first two surfaced as named failing checks rather than silence, which is what
 the per-hop assertions are for.
 
-**Still open.** 4c (the 160 % pass and C1-C9); the deferred features and maintenance
-debt listed in 14.11; and the export and playtest gap that only batch 5 can close.
+**Still open at that point.** 4c, which landed next (14.17). The deferred features and
+maintenance debt listed in 14.11, and the export and playtest gap that only batch 5 can
+close, remain open after it.
+
+### 14.17 4c is implemented: both scales and C1-C9 (2026-11-22)
+
+`--level-up-probe` now runs two passes in one run, 100 % then 160 %, each with its own
+receipt, and prints one aggregate line. The whole batch-4 walk - victory, pages,
+keyboard path, refused Confirm, apply, save/reload/idempotence, Cancel/Esc - runs at
+both scales, and a sorcerer's Spells step is walked at each. Everything is in
+`src/main.gd` except one regression test in `tests/test_level_up_screen.gd`.
+
+**Red, before the loop existed** (`builds/qa/runs/2026-11-22_level_up_ui/probe5.log`,
+the 4b run): one receipt, no scale, and the run said so itself.
+
+    PROBE SCOPE text_scale=1.0 only; the 160 % pass belongs to 4c
+    PROBE RESULT PASS scenario=level_up elapsed_ms=3878
+
+`grep -c "scale=1.60"` on that log is `0`, and it contains no `PROBE C` line at all.
+
+**Green** (`probe_4c_4.log`, same directory):
+
+    PROBE RECEIPT scale=1.00 result=PASS checks=172 failures=0
+    PROBE RECEIPT scale=1.60 result=PASS checks=173 failures=0
+    PROBE AGGREGATE result=PASS scenario=level_up scales=1.00,1.60 checks=347 failures=0
+    PROBE RESULT PASS scenario=level_up elapsed_ms=10766
+
+Full suite 877/877 tests, 9,343 assertions, 65 scripts, 0 `[Failed]`;
+`--validate-campaigns` PASS; `--validate-diagnostics` PASS ending
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+
+**Input split.** Keyboard: every action inside the sheet and the screen - opening,
+Tab, Shift+Tab, every row choice, Continue, Back, Cancel, End, Escape, Apply. Direct
+calls: `new_game`, `start_encounter`, the encounter's end check, `changed.emit`,
+`_open_party`, `refresh_modal`, the sheet's tab select, `save_game`, `load_game`.
+Fixture writes are named in the run's own input line
+(`fixture=xp,text_scale,scroll_vertical`): 5,999 XP before the victory, the text scale,
+and the scroll reset before C7's End. There is no second focus system: containment and
+reveal are read from `_modal_focusables()` and from where the shipped walk leaves the
+ring.
+
+**C1-C9, each with the geometry it asserts** (the two runs' own lines):
+
+| Check | Meaning | 100 % | 160 % |
+| --- | --- | --- | --- |
+| C1 | the panel's rect is inside the client rect, keeps at least 16 px of margin, and is the height the request and the cap give | panel (190,50,900,620) in 1280x720 | panel (16,16,1248,688) in 1280x720, i.e. the capped 688 |
+| C2 | the heading's and `Close (Esc)`'s rects are inside the panel and inside the client | heading (218,74), close (961,74) | heading (44,40), close (1085,42) |
+| C3 | the footer's rect is inside the panel and **not** inside the scrolling body's rect | footer y 604, pane y 194-596 | footer y 631-680, pane y 205-623 |
+| C4 | each strip label's rect is inside the strip and the panel, and its minimum width fits its width | 5 labels, 0 clipped | 5 labels, 0 clipped |
+| C5 | every row control the trap can focus, visited by Tab, has its whole height inside the pane after the reveal walk | 46 of 46, 0 hidden | 46 of 46, 0 hidden |
+| C6 | neither the step pane nor the modal body needs horizontal travel, and no row is wider than the pane | h 1/1, widest row 844 | h 1/1, widest row 1192 |
+| C7 | the Skills step's travel, and that End takes the body to its last row and leaves that row inside the pane | travel 1668, scroll 1668 | travel 2180, scroll 2180 |
+| C8 | every Tab stop, starting from a row, stays a descendant of the modal with a real focus mode | ring 50, 0 outside | ring 50, 0 outside |
+| C9 | the step is a `VBoxContainer`, every row spans the column, and row y rises in content order | 9/9/9 of 844 | 9/9/9 of 1192 |
+
+C7's End assertions failed until 14.18's fix; everything else in the table passed on
+the run before it.
+
+**Two corrections, recorded rather than applied silently.**
+
+1. C5 as first written says "for every focusable in `_modal_focusables()`", which
+   includes the header `Close` and the footer - and C3 requires the footer to be
+   outside the scrolling pane. C5 is read as the row controls inside `StepRows`, which
+   is what `tests/test_level_up_screen.gd` already checks; the header and footer are
+   held by C2 and C3.
+2. C8 is read as "from the first row", so its walk starts at `skill_appraise` (the
+   first row the trap can focus on the Skills step) and covers the whole ring. Run on
+   the Summary step the ring is only 4 controls, which would have made the check
+   trivial.
+
+**The sorcerer's Spells step** is walked at both scales on her own page and her own
+save slot (`level_up_probe_sorcerer`): Summary, Ability, both skill points, Spells -
+where the one offered row, `spell_scorching_ray`, is selected with Enter and asserted
+pressed - then Confirm and Apply. The run asserts her steps include `spells` and no
+`feat`, that the draft previews a newly known spell, that `known` then holds it, that
+her slots equal `preview.spells.slots_after` (`{"1": max 6, used 0; "2": max 3, used
+0}`), that her level-up saves on its own slot, and that the fighter's level and XP are
+untouched by her walk.
+
+**Isolation and cleanup, verified after the run.** The probe's saves go to
+`user://qa_level_up_probe`; `find` over the appdata tree finds no `*level_up_probe*`
+file afterwards, the shipped `campaigns/` directory is empty, and the run's own last
+checks are `the save directory is restored` and `the probe's save directory is gone`.
+The text scale is written into `Game.settings` and `_apply_theme()` is called, never
+`Game.set_text_scale`; `settings.cfg`'s modification time is identical before and after
+a probe-only run (measured, `PROBE RECEIPT` in the same log).
+
+**Probe defects found in 4c** - the probe's own, not the product's:
+`int()` on a spell-slot value crashed, because a slot is a structure rather than a
+number, so the values are compared as text; C5 read each stop one frame after the Tab
+and caught the pane mid-sort, so it now reads two frames later, as the suite does; and
+the first C7 took "last enabled row", which after spending the budget was the reset
+button, so the check now runs before the points are spent and takes the list's actual
+last row. The product defect this section's C7 did find is separate: 14.18.
+
+**Evidence level.** Control rectangles and state, never rendered pixels: the run does
+not say the text is legible, unclipped in the drawn frame or free of overlap, and it is
+headless, so no window has shown the screen at either scale. No candidate was exported,
+no manual testing was requested and no backups were touched.
+
+### 14.18 The End key scrolls a modal body (defect, 2026-11-22)
+
+Found by C7 and recorded separately from the probe's own defects, because it is the
+product: `_scroll_modal_body` handled PageDown/PageUp and Up/Down but never `ui_end`, so
+14.5's promise that "PageDown/End scroll the body" held for PageDown only. On the
+Skills step the last row could be reached only by Tabbing through 46 rows.
+
+**Red**, from `tests/test_level_up_screen.gd` before the fix
+(`builds/qa/runs/2026-11-22_level_up_ui/red_end.log`, 20 tests collected, 19 passing):
+
+    [Failed]:  [38] expected to equal [1668]:  End takes the body to its last row at 1.0
+    [Failed]:  End reveals the last row at 1.0
+    [Failed]:  [49] expected to equal [2180]:  End takes the body to its last row at 1.6
+    [Failed]:  End reveals the last row at 1.6
+
+End moved the body by one row - 38 px at 100 %, 49 px at 160 % - instead of to its last
+row.
+
+**Fix**, in `_scroll_modal_body`: `ui_end` sets the body to
+`_modal_body_scroll_range()`, behind the same `_focused_control_needs_vertical_keys`
+guard the other keys use, so a control that owns End still keeps it.
+
+**Regression test**:
+`test_end_scrolls_the_skills_body_to_its_last_row_at_both_scales` opens the Skills step
+at 100 % and 160 %, asserts the travel is positive, presses End, and asserts
+`pane.scroll_vertical == travel` and that the last row is fully inside the pane. Green:
+that file 20/20 with 688 assertions, then the suite 877/877 and the probe's C7 at both
+scales.
+
+**What this changes for other modals.** Every modal body now answers End the way it
+already answered PageDown; that is the shared scroll path, not the level-up screen's.
+`Home` is deliberately not added: nothing in the plan promised it, and an untested key
+would be a second behavior with no evidence behind it.

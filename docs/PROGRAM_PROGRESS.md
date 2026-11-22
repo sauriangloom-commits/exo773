@@ -3048,3 +3048,28 @@ and the screen, and direct calls only for `new_game`, `start_encounter`, the end
 save/load and the tab select. It reads control rectangles and state, not rendered
 pixels. 4c (160 % and C1-C9) is still outstanding; no candidate was exported, no manual
 testing was requested and no backups were touched.
+
+### 4c: both scales, C1-C9 and the End key (2026-11-22)
+
+`--level-up-probe` runs 100 % and 160 % in one run now, each scale on its own receipt
+and the run summed up in one aggregate. Red was the 4b log: one receipt, no scale, and
+`PROBE SCOPE text_scale=1.0 only; the 160 % pass belongs to 4c`. Green is
+`PROBE RECEIPT scale=1.00 ... checks=172`, `scale=1.60 ... checks=173`,
+`PROBE AGGREGATE result=PASS ... checks=347 failures=0`, with the suite at 877/877
+tests, 9,343 assertions, 65 scripts, and both validators passing.
+
+Both passes keep the whole walk - victory and its once-only award, the button per page,
+the keyboard path, the refused Confirm, the draft surviving Back, apply, save/reload,
+the second apply refused, Cancel/Escape/Back-Escape writing nothing - and each adds the
+C1-C9 control-rectangle checks and a keyboard walk of the sorcerer's Spells step on her
+own page and save slot. Containment and reveal come from the shipped trap and walk;
+there is no second focus system.
+
+C7 found one product defect: no modal body answered the End key, though the plan
+promised it, so the last Skills row could only be reached by tabbing. It is fixed in
+`_scroll_modal_body` with a regression test at both scales (red `[38] expected to equal
+[1668]` / `[49] expected to equal [2180]`), recorded separately from the three probe
+defects 4c also fixed. `settings.cfg`'s modification time is unchanged by a probe-only
+run and the probe's save directory is gone at the end. Evidence is control rectangles
+and state, not rendered pixels; nothing was seen in a window, no candidate was
+exported, no manual testing was requested and no backups were touched.

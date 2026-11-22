@@ -291,18 +291,20 @@ control set, the refusal moving to the step that owns it and the `modal_on_close
 seam are recorded in `ADAPTATION_LOG.md` 54 and 55. No rule changes:
 `LevelUp.apply` remains the only path that changes a character.
 
-The 160 % layout has no probe yet: 4b walks 1.0 only (14.16), so 160 % is pinned by
-the suite's control-rectangle tests and has not been seen in a window.
+The 160 % layout is walked by `--level-up-probe` at 160 % (14.17) and pinned by the
+suite's control-rectangle tests. It has still not been seen in a window: the probe is
+headless and reads rectangles, not pixels.
 
 ### Level-up probe (batch 4b, 2026-11-22)
 
-4b is evidenced by `--level-up-probe` at 100 %: `PROBE RESULT PASS scenario=level_up`,
-137 passing checks, run `builds/qa/runs/2026-11-22_level_up_ui/probe5.log`. 4c - the
-160 % pass and the C1-C9 layout checks - is still planned and still unevidenced.
+4b is evidenced by `--level-up-probe` at 100 % (`probe5.log`, 137 checks) and 4c by the
+same flag at 160 % (`probe_4c_4.log`: a receipt per scale and 347 checks in all).
 
 | Behavior | Source | Implementation | Evidence |
 | --- | --- | --- | --- |
 | A real victory pays the XP that clears 6,000 exactly once, and the sheet's button follows | `game_state.gd` 1729-1738; `LEVEL_UP_PLAN.md` 14.8 | `_level_up_probe` steps 1-2 | `--level-up-probe`, steps 1-2 of the 137 checks |
 | The screen is walked by keyboard from the sheet to Apply, its numbers match the preview, and a refused Confirm stays open | `level_choices.gd`; `level_up.gd`; `level_up_screen.gd` | `_level_up_probe` steps 3-6 | same receipt, steps 3-6 |
 | A level-up round-trips through a save and a reload, a second apply refuses, and Cancel writes nothing | `game_state.gd` 488/532; `save_system.gd` 35/120 | `_level_up_probe` steps 7-9 | same receipt, steps 7-9 |
-| The layout checks C1-C9 hold at 160 % | `LEVEL_UP_PLAN.md` 14.6 | `_level_up_probe` per-step checks (4c) | not yet: no 1.6 receipt |
+| The layout checks C1-C9 hold at both scales | `LEVEL_UP_PLAN.md` 14.6 | `_level_up_probe_layout` and `_level_up_probe_skills_layout` | `PROBE RECEIPT scale=1.00 ... checks=172` and `scale=1.60 ... checks=173`, each with a `PROBE C1`-`C9` geometry line |
+| The sorcerer's Spells step is walked by keyboard, applied and saved on its own slot | `level_up_screen.gd`; `level_up.gd` | `_level_up_probe_sorcerer` | the same two receipts, `PROBE SORCERER` lines |
+| End scrolls a modal body to its last row | `LEVEL_UP_PLAN.md` 14.5; `main.gd` `_scroll_modal_body` | `ui_end` sets the body to its last row | `test_end_scrolls_the_skills_body_to_its_last_row_at_both_scales`, probe C7 at both scales |
