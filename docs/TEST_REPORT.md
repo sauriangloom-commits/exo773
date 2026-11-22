@@ -5210,3 +5210,13 @@ gained the verified `fighter_bonus` flag, `LevelUp` gained the public `stage` se
 and `required_choices`, and `LevelUp.apply` is still the only path that changes a
 character. Logs are in `builds/qa/runs/2026-11-22_level_choices/`. No candidate was
 exported, no manual testing was requested and no backups were touched.
+### Level-up screen and probe (batch 4, planned 2026-11-22)
+
+No run exists for this batch and none is claimed: the screen, its two test files and
+`--level-up-probe` are planned in `LEVEL_UP_PLAN.md` 14. The red sequence the record
+will quote is the logged parse error naming `LevelUpScreen` with the totals still at
+63 scripts / 850 tests / 8,562 assertions (GUT exits 0 either way), then the assertion
+messages listed in 14.9, then the absence of a `LEVEL UP PROBE` receipt line before
+the flag is dispatched. The green receipt will be the suite plus both validators for
+the screen, and `_probe_finish("level_up")` at 1.0 and at 1.6 for the probe. This
+subsection will be replaced by the run record when 4a-4c land.

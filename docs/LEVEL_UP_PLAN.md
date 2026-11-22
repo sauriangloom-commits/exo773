@@ -1253,3 +1253,448 @@ acceptance is batch 5.
   for validation.
 - **Evidence gaps:** no UI, probe, exported run or playtest for batch 3, so the choice
   data is unit-covered only and its ordering and reasons have not been seen on screen.
+## 14. Batch 4: `level_up_ui` and `--level-up-probe` (planned 2026-11-22, not implemented)
+
+### 14.1 Batch 3 is closed as accepted, within its limits
+
+Batch 3 and the content repair before it are closed as accepted on their recorded
+runs. Nothing was rebuilt for this closure and no check was repeated: the evidence
+below is the evidence those runs produced, read again from their logs.
+
+- `2b96b1c` content repair: aldric heal 4 / diplomacy 2 / sense_motive 3,
+  mira bluff 2 / diplomacy 3 / search 1 / spellcraft 2, ysolde search 3; authored
+  inconsistencies 13 -> 8, all eight recorded and accepted.
+- `bc4fc7d` batch-3 plan, `e20d55e` batch 3: `src/core/level_choices.gd`,
+  `LevelUp.stage` as the public seam, `LevelUp.required_choices`, `fighter_bonus`
+  on all 41 `Feats.CATALOG` entries (10 true), `tests/test_level_choices.gd` with
+  18 tests.
+- Recorded suite: 850/850 tests, 8,562 assertions, 63 scripts. Both validators
+  PASS, the diagnostics one ending
+  `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`.
+- Recorded red: `SCRIPT ERROR: Parse Error: Identifier "LevelChoices" not declared in the current scope.`
+  at `res://tests/test_level_choices.gd:57`, with totals still 62 scripts /
+  832 tests / 8,350 assertions and GUT exiting 0.
+
+The limits stay attached to the acceptance: nothing player-visible exists for any
+of the three batches, no candidate was exported, no export or playtest covers the
+level path, and no manual testing was requested. The UI, its keyboard path and the
+probe are this batch; exported acceptance stays batch 5.
+
+### 14.2 What this batch is, and what it is not
+
+This batch is the screen that spends the step the engine already validates, and the
+QA probe that walks it. It adds no rule:
+
+- **In:** a `Level up` button on an eligible party-sheet page; a modal whose steps
+  are Summary, Ability, Skills, Feat (a fighter's bonus feat), Spells (a spell
+  choice) and Confirm; Back, Cancel, Esc and a Confirm that can refuse; the keyboard
+  path; the 1280x720 layout at 100 % and 160 %; `--level-up-probe`.
+- **Out:** levels 5 and above, more than one level per step, NPC advancement,
+  a rules change of any kind, an export, a manual test pass, backups, and any
+  call from UI code into `LevelUp.stage`.
+
+Nothing in this batch is permitted to compute a rule differently from batch 2 and 3.
+Where the screen needs a number, it reads the number `LevelUp.preview` and
+`LevelChoices.choices` already return; where it needs a decision, it asks
+`LevelChoices.validate`; where a character changes, it calls `LevelUp.apply`.
+
+### 14.3 What I read, and the seams this plan reuses
+
+Read before writing this plan: the party sheet, the modal builder and its focus
+containment, the reveal walk, the two suites that already pin them, and the creator
+probe's control-rectangle checks.
+
+| Seam | Where | How batch 4 uses it |
+| --- | --- | --- |
+| `Panels.character_sheet(selected := 0)` | `src/ui/panels.gd:22` | One `Level up` button per page, above the page's scroll body. The page is the "card": the sheet is a `TabContainer` with one `MarginContainer` per party member, each holding a `ScrollContainer` and a `RichTextLabel` from `_character_text(ch)`, sized `Vector2(800, 500)`. There are no per-character card widgets to hang a button on, so the button goes in a header row inside each page. |
+| `ExplorationScreen._open_party(index)` | `src/ui/exploration_screen.gd:351` | Passes a callback into the sheet and opens the level-up modal at the same page. Siblings for reference: `_open_inventory` :357, `_open_journal` :363, `_open_pause` :369. |
+| `open_modal(title, builder, width, height, preserve_rebind, notice)` | `src/main.gd:7744` | The level-up modal is an ordinary modal: dim background, `CenterContainer`, header with the heading and `Close (Esc)` (`close.pressed.connect(close_modal)`), separator, optional notice, `modal_scroll` `ScrollContainer` with `follow_focus = true`, then `close.grab_focus()`. The panel scales with `Game.settings["text_scale"]`, clamped 1.0-1.6, and is capped to `viewport.size - Vector2(32, 32)`, so the same 900x620 call is 900x620 at 100 % and 1248x688 at 160 %. |
+| `refresh_modal()` | `src/main.gd:7834` | Rebuilds the body from the same `builder`. The draft therefore lives in a `LevelUpScreen` instance held by the exploration screen, never in builder-local variables, or every refresh would reset the step. |
+| `close_modal(restore_focus := true)`, `_restore_modal_focus()` | `src/main.gd:7843`, `:7862` | Cancel, Esc and a successful Apply all go through `close_modal()`. Focus returns to `modal_return_focus` when it still exists, else to the first usable control, which is exactly what a rebuilt sheet needs. |
+| `_modal_focusables()`, `_collect_focusables`, `_cycle_modal_focus(direction)` | `src/main.gd:7911`, `:7923`, `:7939` | Tab and Shift+Tab are already trapped inside the modal and wrap at both ends. The screen adds no key handling of its own; it only has to keep its controls focusable and in content order. |
+| `_reveal_focused_control()`, `_reveal_in_pane(container, control)` | `src/main.gd:7968`, `:7980-:8000` | The reveal walk climbs from the focus owner to the modal, collects every `ScrollContainer` pane and scrolls the target into view with an 8 px pad, clamped to `_scroll_travel`. The 160 % layout depends on it and the probe asserts it. |
+| `_scroll_modal_body(event)`, `_modal_owns_keyboard()`, `_modal_body_target`, `_scroll_travel`, `_modal_body_line_height`, `_modal_page_step` | `src/main.gd:8031`, `:8066`, `:8122-:8166` | Arrows, Page keys and Home/End scroll the modal body before the GUI sees them. This is a constraint on the design, not just a helper: **no control may need an arrow key**, because at 160 % the arrows scroll the body. |
+| `_input`, modal branch | `src/main.gd:8264` onwards (echo/scroll, Tab trap, `ui_accept` guard) and the `pause_menu`/Esc branch near the end (`:8361`) | Esc closes the level-up modal by the existing path. A held Esc does not: echoes are filtered above. |
+| `_probe_check(ok, label)`, `_probe_finish(scenario)`, `_probe_click`, `_probe_shot`, `_probe_buttons(root, text)`, `_find_button(root, text)` | `src/main.gd:2898`, `:2923`, `:2497`, `:2859`, `:3769`, `_find_button` | The probe is written with these and prints its receipt through `_probe_finish("level_up")`. `_probe_buttons` already dumps `BTN|"text"|x,y|WxH|enabled=...` rects, which the probe can log per step. |
+| Probe arguments and dispatch | allowlist `src/main.gd:60-:144`, parsing `:240-:253`, dispatch `:364-:376`; `probe_size := Vector2i(1280, 720)` at `:29` | `--level-up-probe` joins the allowlist alphabetically between `--layout-probe` and `--list-campaigns`; the probe reads `probe_size` and ignores `--text-scale`, because it walks both scales itself. |
+| Creator probe control-rect checks | `src/main.gd:1217` `_creator_focus_probe()`, `:1273-:1284`, `:1312-:1341`, `_creator_probe_check` | The pattern batch 4 copies: after each focus move, `viewport.encloses(control.get_global_rect())` and a printed reason. The suite side of the same pattern is `tests/test_campaign_creator.gd:1425-1431`. |
+| `tests/test_modal_focus.gd` | whole file | `_open_modal()`, `_send_key`, Tab/Shift+Tab wrap, Escape closes and restores the opener, body scrolling, `_fully_inside(control, pane)`. The new tests reuse these helpers instead of growing a second copy. |
+| `tests/test_party_layout.gd` | whole file | Card and label geometry at 1.6 scale, `_cards`, `_checks`, `_button(text)` through `main.call("_probe_buttons", main, text)`, Begin/Back inside the window. The sheet's new header row joins the same checks. |
+| Encounter victory pays XP once | `src/game_state.gd:1729-1738`, `encounter.xp_award` at `:26`, `Game.start_encounter` at `:1664` | The probe crosses 6,000 XP the way a player does: a real victory. Precedent for the assertions: `src/main.gd:3818-3823` ("victory pays XP once", "the same resolution cannot pay twice"). Fixture: `qa_victory` at `content/campaigns/ravenloft_demo/encounters.json:209`. |
+| Saves | `Game.save_game` `src/game_state.gd:488`, `Game.load_game` `:532`, `SaveSystem.path_for` `src/core/save_system.gd:35`, `SaveSystem.artifact_paths` `:120` | The probe saves, reloads and proves Cancel wrote nothing by comparing the slot's bytes and modification time and checking that no `.bak`/`.tmp` artifact appeared. |
+| Theme and scale | `ThemeBuilder.build(16)` at `src/ui/theme_builder.gd:38`, `ThemeBuilder.heading/body/separator` at `:76`, `:84`, `:104`; `main.theme = ThemeBuilder.build(16)` at `src/main.gd:254`; `Game.set_text_scale` at `src/game_state.gd:2216` | The screen builds its body from the same three primitives so it reads like the party sheet. The probe sets `Game.settings["text_scale"]` and calls the existing `_apply_theme()`; it must **not** call `Game.set_text_scale`, which writes the settings file. |
+
+### 14.4 Screen flow
+
+**Entry.** The sheet's page header carries a `Level up` button. It is built only when
+`LevelUp.eligibility(ch).ok` is true, so an ineligible page shows no button at all
+rather than a disabled one; when the reason is worth stating (`below_threshold`,
+`already_level_4`, `max_level`), the page keeps a muted line instead of the button.
+Pressing it opens `open_modal("Level up", ..., 900, 620)` for that character.
+
+**Steps.** The step list is data, not a constant: Summary and Ability and Skills and
+Confirm are always present; Feat is present when `LevelChoices.choices(...).feat_options`
+is non-empty (a fighter's bonus feat); Spells is present when the draft has a spell
+choice (a slot or `spell_options`). A rogue sees four steps, a fighter five, a
+sorcerer five. The strip at the top of the body lists the steps in order and marks
+the current one; it is a row of labels, never a focusable control.
+
+- **Summary** - read-only labels from `LevelUp.preview(ch, draft)`: level and XP,
+  current -> new HP, BAB, each save, the ability-increase budget, skill points,
+  feat slot, spell slots, plus any `notices` the preview carries (the authored
+  over-cap ranks do not block and are listed, not hidden). No focus stops beyond
+  the footer.
+- **Ability** - six rows, one per ability, each a `Button` in a `ButtonGroup` with
+  the score and the staged score (`16 -> 17`). Exactly one may be chosen; the draft
+  stores `ability`. `Continue` stays disabled until one is chosen when the budget
+  is 1, and the screen never offers more than the budget.
+- **Skills** - one row per skill in `choices.skills`, each a `Button` reading
+  `Search 3 -> 4 (1 point)`. Pressing spends one rank on that skill while
+  `spent + cost <= points` and the row is below its affordable ranks; the header
+  reads `Spent 1 of 2 points`, and a `Reset points` button clears the allocation.
+  Rows that would exceed the budget or the cap are disabled, with the reason in the
+  row text. Unspent points are discarded by `LevelUp.apply`, and the screen says so
+  under the header when `spent < points`.
+- **Feat** - one row per `feat_options` entry, a `Button` in a `ButtonGroup`
+  labelled with the option text and, when unavailable, its reason
+  (`Power Attack` offered; a row without the Strength prerequisite states why).
+  Selecting stores the option's id in `draft.feat`. Fighter only.
+- **Spells** - the same shape over `spell_options`, storing `draft.spell`. Present
+  only when the class has a spell choice; an empty pool is a blocker, so the step
+  is never shown empty.
+- **Confirm** - a read-only list of what will change, built from the draft and the
+  preview, then `Apply level up`.
+
+**Footer.** `Back` (disabled on the first step), `Cancel`, and the forward button
+(`Continue`, or `Apply level up` on Confirm). `Cancel` and the header's `Close (Esc)`
+are the same action; both are present because a keyboard player should not have to
+find the header.
+
+**Back / Cancel / Esc.**
+
+- `Back` moves one step back with the draft intact and focuses the control that was
+  chosen on that step. On Summary it is disabled, not hidden.
+- `Cancel` asks nothing, applies nothing, closes with `close_modal()` and leaves the
+  sheet open on the same character's page with the `Level up` button focused.
+- `Esc` is `Cancel`: it reaches `close_modal()` through the existing `pause_menu`
+  branch at the end of `_input` (`src/main.gd:8361`), so it is one press per action
+  and a held key does nothing. It never calls `validate` or `apply`.
+- Because the `modal` field is singular, opening the level-up modal replaces the
+  sheet's modal. `LevelUpScreen` therefore holds an `on_close` callback that reopens
+  the sheet at the same page, and the test asserts the observable result (sheet open,
+  same page, button focused), not which of the two mechanisms produced it.
+
+**Confirm, including a refusal.**
+
+1. `LevelChoices.validate(ch, draft)` runs first. It never mutates.
+2. On `{ok: false}` the modal **stays open on Confirm**: the returned `message` is
+   shown in an inline error label above the buttons, the step is not advanced, and
+   focus moves to the control of the first group named in `fields` (for a missing
+   feat, the feat list). `LevelUp.apply` is not called. The player can go Back,
+   change the answer and try again.
+3. On `{ok: true}` the screen calls `LevelUp.apply(ch, draft)` exactly once, closes
+   with `close_modal()`, asks the exploration screen to refresh the sheet, and does
+   not save: persistence stays the caller's existing path (`Game.save_game`), which
+   is what the probe exercises.
+
+The screen never previews a number it then sends: the draft it hands to `apply` is
+the same dictionary `validate` saw, and the Confirm list is rendered from
+`preview(ch, draft)`.
+
+### 14.5 Keyboard path
+
+The whole modal is operable with Tab, Shift+Tab, Enter, Space, Esc and the page keys.
+Nothing requires a mouse, an arrow key or typing. The arrow keys are deliberately
+excluded: `_scroll_modal_body` (`src/main.gd:8031`) consumes them before the GUI, so
+at 160 % they scroll the body; a control that needed them would behave differently at
+the two scales this batch must support. For the same reason there are no `SpinBox`
+or `OptionButton` rows: a popup's focus is not in `_modal_focusables()`, and a
+`SpinBox`'s value keys collide with body scrolling.
+
+The path, in order:
+
+1. On the sheet, Tab reaches the active page's `Level up` button (the trap already
+   walks the sheet's controls); Enter opens the modal.
+2. Focus lands on the step's first control, not on the header `Close`: the builder
+   defers one `grab_focus()` on the first body control after `open_modal()` has
+   focused `Close`. Tab from there follows content order - step rows, then `Back`,
+   `Cancel`, `Continue` - then the header `Close`, and wraps to the first row.
+3. On every step, Enter or Space activates the focused row. A row that cannot be
+   chosen is disabled, so the trap skips it.
+4. `Back` and `Continue` are ordinary tab stops; Confirm's `Apply level up` is the
+   last body stop.
+5. Esc closes from any step. PageDown/End scroll the body when the step is taller
+   than the panel; the reveal walk (`src/main.gd:7968`) brings the newly focused
+   control into view on its own, so Tab through a long Skills list never leaves a
+   control out of sight.
+
+The tests pin the order as a list, not as coordinates: the sequence of `get_focus_owner()`
+names produced by repeated Tab from the first row must equal the expected sequence
+for the step, and Shift+Tab must reverse it.
+
+### 14.6 The 1280x720 layout at 100 % and 160 %
+
+The window is 1280x720 (`project.godot:32-35`). The modal is requested at 900x620,
+the party sheet's size, and `open_modal` does the rest: at 100 % the panel is
+900x620; at 160 % the request becomes 1440x992 and is capped to the client area
+minus 32 px, i.e. 1248x688. The body is a single scrolling column at both scales: a
+`VBoxContainer` inside the existing `modal_scroll`, every row as wide as the body,
+long labels wrapping. There is no second column, no tab strip of controls and no
+horizontal scrolling at either scale.
+
+Layout is pinned by control-rectangle checks, the same shape as the creator probe
+(`src/main.gd:1273-1284`) and its suite copy (`tests/test_campaign_creator.gd:1425-1431`):
+each check is `viewport.encloses(control.get_global_rect())`, or
+`container.get_global_rect().encloses(control.get_global_rect())` for a control
+inside a scrolling pane after `_reveal_focused_control()`, with the failing rect
+printed.
+
+- **C1** the panel is inside the client area at both scales, with at least the 16 px
+  cap margin; at 160 % its height is the capped 688, not 992.
+- **C2** the header heading and `Close (Esc)` are inside the panel and inside the
+  client area.
+- **C3** the footer (`Back`, `Cancel`, forward) is inside the panel and is **not**
+  inside the scrolling body, so it never scrolls away.
+- **C4** every step-strip label is inside the strip and inside the panel; none is
+  clipped (`label.get_minimum_size().x <= label.size.x + 0.5`).
+- **C5** for every focusable in `_modal_focusables()`, after focusing it and running
+  the reveal walk, its rect is fully inside the body pane (`_fully_inside` from
+  `tests/test_modal_focus.gd`), at both scales.
+- **C6** the body has no horizontal scrollbar and no row is wider than the pane.
+- **C7** at 160 % the Skills step is taller than its pane (`_scroll_travel(pane) > 0`)
+  and End reveals the last row; at 100 % the same checks hold with whatever travel
+  the step needs.
+- **C8** Tab from the first row never leaves the modal: every visited focus owner is
+  a descendant of `modal` (the existing trap's own guarantee, re-pinned for this
+  screen's control set).
+- **C9** single column: each step container is a `VBoxContainer` whose rows each
+  span its width (`row.size.x == step.size.x` within 1 px) and whose `position.y`
+  increases with content order.
+
+No pixel value other than the requested 900x620 and the 16/32 px caps is asserted,
+so a theme change moves the layout without rewriting the test.
+
+### 14.7 The call surface, and the test that pins it
+
+`LevelUpScreen` may call exactly three things on the level-up engine:
+
+    LevelChoices.choices(ch, draft)     # what may be chosen, with costs and reasons
+    LevelChoices.validate(ch, draft)    # may this draft be applied, and why not
+    LevelUp.apply(ch, draft)            # the only mutation, called once
+
+Everything else is presentation or `LevelUp.preview` for read-only numbers. The
+screen must not call `LevelUp.stage`, `LevelUp.required_choices` or any staging
+helper: staging exists for validation and for the choice data, and a screen that
+staged would be a second authority on what a legal draft is.
+
+Two tests pin it, both in `tests/test_level_up_ui_surface.gd`:
+
+- `test_the_screen_calls_only_choices_validate_and_apply` reads
+  `res://src/ui/level_up_screen.gd` with `FileAccess.get_file_as_string` and asserts
+  it contains `LevelChoices.choices`, `LevelChoices.validate` and `LevelUp.apply`,
+  and that it contains neither `LevelUp.stage` nor `LevelUp.required_choices`.
+- `test_no_shipped_file_stages_a_level_outside_the_choice_module` walks `src/` and
+  `tools/`, collects every file whose text contains `LevelUp.stage`, and asserts the
+  set is exactly `src/core/level_choices.gd` - the module that implements staging -
+  so a later screen, probe or tool cannot quietly stage either.
+
+Both are source-text guards, and their limit is stated where they are recorded: they
+cannot see a call built from a string or reached through an alias. The behavioural
+guarantee is the other side of the same coin - `test_confirm_applies_through_validate_and_apply`
+asserts `validate` ran before `apply` and that `apply` did not run when validation
+refused - so a screen that went around the surface would fail on behaviour even if it
+passed the text guard.
+
+### 14.8 `--level-up-probe`
+
+`_level_up_probe()` in `src/main.gd`, dispatched like its siblings
+(`src/main.gd:364-376`) with the flag added to the allowlist at `:60-144`. It is
+headless-safe: `_probe_check` and `_probe_finish("level_up")` are the receipt, and
+`--capture-dir` only adds images when a window exists. Like every probe in this
+repository it exits 0 either way, so **the log line is the evidence, never the exit
+code**.
+
+Setup, once per run: `Game.load_campaign("ravenloft_demo")`, `Game.new_game(...)` with
+a fixed seed, `get_window().size = probe_size` (1280x720). The probe then loops the
+two scales, 1.0 and 1.6, and runs the same walk at each. Between passes it writes
+`Game.settings["text_scale"]` and calls `_apply_theme()`; it never calls
+`Game.set_text_scale`, which writes the user's settings file, and it restores 1.0
+before finishing.
+
+1. **A real victory crosses 6,000.** Set every party member's XP to 5,999 through the
+   character API (fixture state; the crossing itself is the engine's). Assert
+   `LevelUp.eligibility(ch).ok` is false for each, with the below-threshold reason.
+   Start `qa_victory` (`Game.start_encounter`, `src/game_state.gd:1664`), assert it
+   started, and drive it to a real victory through the encounter's own end check, as
+   the encounter-end probe does (`src/main.gd:3818-3823`). Assert: `finished` and
+   outcome `victory`; `xp_award > 0`; each character's XP equals 5,999 + the award
+   and is >= 6,000; a second `changed`/end check pays nothing more ("victory pays XP
+   once", "the same resolution cannot pay twice"). Then assert every character is
+   eligible.
+2. **The button appears only on eligible pages.** Open the sheet
+   (`_open_party(0)`), assert four pages, four `Level up` buttons, one per page. Set
+   one character back to 5,000, reopen, assert three buttons and that the fourth page
+   carries the below-threshold line instead; restore and reopen.
+3. **Walk by keyboard.** Tab to page 0's `Level up`, Enter. Assert the modal title,
+   the step list for the class (5 steps for the fighter, with `Feat`), and the
+   summary numbers: HP, BAB, each save, ability budget 1, skill points, feat slot and
+   spell slots must equal `LevelUp.preview` / `LevelChoices.choices` for the same
+   draft - compared as numbers, not as rendered text.
+4. Tab and Enter through Ability (choose Strength), Skills (spend the points on
+   search, assert `Spent 2 of 2`), Feat (choose Power Attack), Spells (when present,
+   choose the first offered spell) and Confirm. On Skills, press `Back` once and
+   assert the Ability step returns with its choice intact, then go forward again.
+   At each step run the layout checks for the current scale (14.6 C1-C9).
+5. **Confirm applies.** Assert `Apply level up` is enabled, Enter, assert the modal
+   closed, the character is level 4, XP unchanged by the level step, HP/BAB/saves
+   raised by the previewed amounts, the feat and spell recorded, and the skill rank
+   present. Assert the sheet was refreshed and that this page no longer offers
+   `Level up` while the other three still do.
+6. **Save and reload.** `Game.save_game("level_up_probe")` returns ok; record
+   `SaveSystem.path_for(...)`; `Game.load_game(...)` returns ok; assert the level-4
+   values survived: level, XP, HP, BAB, saves, feat, spell, ranks.
+7. **Idempotence.** After the reload, `LevelUp.apply(ch, same_draft)` refuses with the
+   `already_level_4` code, `JSON.stringify(ch.to_dict())` is unchanged by the attempt,
+   and the page still offers no button.
+8. **Cancel writes nothing.** On a second still-eligible character, snapshot
+   `JSON.stringify(ch.to_dict())`, the slot file's bytes and
+   `DirAccess.get_modified_time`, and the save directory listing. Open her modal, walk
+   to Skills, spend a point, press Esc. Assert the modal closed, focus is back on her
+   `Level up` button, the character's dictionary is byte-identical, the slot file's
+   bytes and modification time are unchanged, and no `.bak`/`.tmp` artifact
+   (`SaveSystem.artifact_paths`) appeared. Repeat with the body's `Cancel` button, and
+   once with a Back-then-Esc walk, for the same assertions.
+9. **Refusal stays open.** Force a draft the engine refuses (drop the feat choice on a
+   fighter's Confirm by clearing it through the screen's own Back path), press
+   `Apply level up`, and assert: modal still open, the engine's message visible, focus
+   on the refused group, character unchanged, XP unchanged, no save written.
+10. **Receipt.** `_probe_finish("level_up")` prints the scenario's check count and
+    result; with `--capture-dir` the per-step images land beside it. The record quotes
+    that line for each scale, plus the `_probe_check` lines that name the step.
+
+The probe is functional QA, not acceptance: it proves a real victory can be spent
+through the UI at both scales and that the save round-trips. It does not replace the
+exported acceptance run in batch 5, and it does not stand in for a person playing it.
+
+### 14.9 Failing-first tests
+
+Written before the screen exists, so the first log is a parse error and the later
+reds are assertions. As in batch 3, GUT exits 0 on an unparseable file: the quoted
+log line is the evidence, and the totals staying put is the proof the file was never
+collected.
+
+Red #1, the whole new suite before `src/ui/level_up_screen.gd` exists:
+
+    SCRIPT ERROR: Parse Error: Identifier "LevelUpScreen" not declared in the current scope.
+       at: GDScript::reload (res://tests/test_level_up_screen.gd:41)
+
+with the totals unchanged (63 scripts / 850 tests / 8,562 assertions) and GUT
+exiting 0. The same run collects `tests/test_level_up_ui_surface.gd` unless it too
+names the class; that file only reads text, so its red is the assertion
+`[Failed]: the screen file exists` until the file lands.
+
+Red #2, per test, is the assertion message listed here - the record quotes the
+message and the expected/actual pair GUT prints beneath it:
+
+| Test | Assertion messages (the logged failure text) |
+| --- | --- |
+| `test_the_sheet_offers_level_up_only_on_eligible_pages` | `an eligible page offers Level up` / `a page below the threshold offers none` / `one button per eligible character` |
+| `test_the_steps_follow_the_class` | `a fighter sees Summary, Ability, Skills, Feat, Confirm` / `a sorcerer sees Spells and no Feat` / `a rogue sees neither Feat nor Spells` |
+| `test_summary_matches_the_preview` | `the summary repeats the preview HP` / `... BAB` / `... each save` / `... the ability budget` / `... the skill points` / `... the feat slot` / `... the spell slots` |
+| `test_back_returns_to_the_previous_step_with_the_draft` | `Back shows the Ability step` / `the chosen ability is still selected` / `Back is disabled on Summary` |
+| `test_cancel_returns_to_the_sheet_without_applying` | `the modal is closed` / `the character is unchanged` / `the sheet is open on the same page` / `focus returns to the Level up button` |
+| `test_escape_closes_without_applying` | `Escape closes the modal` / `the character is unchanged` / `a held Escape does nothing` |
+| `test_confirm_applies_through_validate_and_apply` | `validate ran before apply` / `apply ran once` / `the level is 4` / `the applied values match the preview` |
+| `test_a_refused_confirm_keeps_the_modal_open_and_changes_nothing` | `the modal is still open` / `the refusal message is shown` / `the character is unchanged` / `focus moved to the refused group` |
+| `test_apply_is_not_called_when_validate_refuses` | `apply was not reached` |
+| `test_the_skills_step_cannot_overspend` | `the fourth point is refused` / `the header reads Spent 2 of 2` / `rows disable at their cap` |
+| `test_the_fighter_feat_rows_carry_their_reasons` | `Power Attack is offered` / `a row without its prerequisite is disabled` / `the row states why` |
+| `test_the_modal_traps_focus_at_both_scales` | `Tab wraps inside the modal at 1.0` / `Tab wraps inside the modal at 1.6` / `focus never leaves the modal` |
+| `test_every_focusable_is_revealed_in_the_body_at_160_percent` | `the focused row is fully inside the body` |
+| `test_the_panel_and_footer_fit_the_window_at_160_percent` | `the panel fits the client area` / `the footer fits the panel` / `the footer is outside the scrolling body` / `no horizontal scrollbar` |
+| `test_the_strip_and_rows_wrap_without_clipping` | `the step label is not clipped` / `the skill row is not wider than the body` |
+| `test_the_body_scrolls_for_the_skills_step_at_160_percent` | `the Skills step is taller than its body` / `End reveals the last row` |
+| `test_the_screen_calls_only_choices_validate_and_apply` | `the screen calls LevelChoices.choices` / `... validate` / `... LevelUp.apply` / `the screen never stages` |
+| `test_no_shipped_file_stages_a_level_outside_the_choice_module` | `only the choice module stages` / `src/ui/level_up_screen.gd does not stage` |
+
+Red #3, the probe: before the flag is dispatched, the run prints no
+`LEVEL UP PROBE` receipt and exits 0. The record states that as the red - "no receipt
+line" - rather than claiming a failure the tool reported.
+
+### 14.10 Commit split
+
+Batch 4 is larger than one reviewable change, so it lands as three commits, each
+acceptable on its own with its own red text and its own green receipt. 4a is not
+split further: a sheet button with no modal, or a modal with no button, is not
+player-meaningful and would be an untestable intermediate.
+
+- **4a - the screen (player-visible).** `src/ui/level_up_screen.gd` (new, plus its
+  tracked `.uid`), the header row and `Level up` button in `Panels.character_sheet`,
+  the callback from `ExplorationScreen._open_party`, the open/close helpers in
+  `src/main.gd`, `tests/test_level_up_screen.gd` (16 tests) and
+  `tests/test_level_up_ui_surface.gd` (2). One `--import` run registers the new
+  `class_name`, as batch 3 needed. Red: the parse error above. Green: the suite with
+  18 new tests, plus both validators.
+- **4b - the probe's functional pass at 100 %.** The flag, the dispatch line and
+  `_level_up_probe()` steps 1-9 at scale 1.0 only. Red: no receipt line. Green: the
+  `_probe_finish("level_up")` line at 1.0 in `builds/qa/runs/<date>_level_up_ui/`.
+  No source outside `src/main.gd` changes; if the probe finds a defect, it is fixed
+  here or split into its own commit with the defect recorded.
+- **4c - the probe at 160 % and the control-rect checks.** The second pass of the
+  loop, the per-step C1-C9 checks and any layout fix they force. Red: the 1.6 receipt
+  is absent from 4b's log. Green: both receipts, 1.0 and 1.6, in the same run log.
+
+Docs follow each commit: `LEVEL_UP_PLAN.md` gains each record, `PROGRAM_PROGRESS.md`
+the batch line, `TRACEABILITY.md` the row that flips from planned to evidenced,
+`TEST_REPORT.md` the run. No commit in this batch exports a candidate, requests manual
+testing or touches a backup.
+
+### 14.11 Kept separate
+
+**Defects.** None known entering this batch. The one known trap is recorded as debt
+below, not as a defect: the singular `modal` field means a level-up modal replaces
+the sheet's modal rather than stacking on it, so the cancel path has to reopen the
+sheet.
+
+**Deferred features.** Levels 5 and above; more than one level in a step; NPC
+advancement; the printed fighter bonus feats this slice does not implement (Weapon
+Specialization, Improved Bull Rush, Quick Draw, Two-Weapon Fighting and others); a
+content check that keeps a 2nd-level arcane spell in the sorcerer's pool; exported
+acceptance (batch 5); any play-path autosave after a level-up; a keyboard shortcut
+that opens the sheet directly on an eligible character.
+
+**Maintenance debt.**
+
+- The modal rebuilds its body from the builder on every `refresh_modal()`, so the
+  draft must live in the screen instance. A later refactor that makes the builder
+  stateless would silently reset the step on every redraw.
+- Arrow keys belong to the body scroll, so the screen cannot use `SpinBox`,
+  `OptionButton` or any control whose value keys are arrows. The skill rows as
+  buttons are a consequence of that constraint, not a preference.
+- `Panels.character_sheet` gains a fourth optional parameter; its two existing call
+  sites and the tests stay source-compatible, but the sheet is now a place where a
+  character can change, which it was not before.
+- The source-text guards cannot see a call assembled from a string. They are backed
+  by the behavioural test, and the limit is stated in the test's own comment.
+
+**Evidence gaps.** Everything in this section is a plan: no screen, probe, export or
+playtest exists yet. The 160 % layout has not been seen, only specified; the probe's
+numbers are `preview`'s, so a preview bug would be reproduced faithfully rather than
+caught. No manual testing is requested here, and none of these tests substitutes for
+the exported acceptance run in batch 5.
+
+### 14.12 Risks
+
+- **Focus order drift.** Adding a header button to every page changes the sheet's Tab
+  order, which `tests/test_party_layout.gd` and the sheet's own focus test may pin.
+  The first run of 4a will say; if a test fails, the fix is in the test's expected
+  order with the reason, never a weakened trap.
+- **The 160 % cap is tight.** 1248x688 leaves about 600 px of body once the strip,
+  footer and padding are placed, so the Skills step will scroll. That is intended and
+  C7 pins it; a layout that tried to fit would have to shrink rows below the 42 px the
+  rest of the UI uses.
+- **Two closers.** The header `Close (Esc)` and the body `Cancel` do the same thing.
+  The test asserts both, so a later change to one is caught as a divergence.
+- **Probe cost.** Two full walks with layout checks at 1280x720 is a few seconds of
+  headless run; it stays out of the suite, which is why the suite's 18 tests cover the
+  behavior and the probe covers the real victory and the save round-trip.

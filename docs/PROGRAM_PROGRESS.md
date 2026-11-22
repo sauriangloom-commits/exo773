@@ -2931,3 +2931,28 @@ spells open to the class minus the known list, with an empty pool forcing
 error naming `LevelChoices`; final suite 850/850 tests, 8,562 assertions, 63 scripts,
 both validators passing. No scene, probe or export path calls the module, so no
 candidate was exported; no manual testing was requested and no backups were touched.
+### Batch 3 accepted, batch 4 planned (2026-11-22)
+
+Batch 3 and the content repair are closed as accepted within their recorded limits.
+Nothing was rebuilt for the closure and no check was repeated; the evidence is the
+recorded runs: 850/850 tests, 8,562 assertions, 63 scripts, both validators passing
+with `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`, and a red that
+was the logged parse error naming `LevelChoices`, not the exit code. The limits stay
+attached: nothing player-visible exists for batches 1-3, no candidate was exported and
+no playtest covers the level path.
+
+Batch 4 is planned in `LEVEL_UP_PLAN.md` 14 and not implemented. It adds the screen
+and the probe only: a `Level up` button on an eligible party-sheet page, a modal whose
+steps are Summary, Ability, Skills, Feat (fighter), Spells (caster) and Confirm, Back,
+Cancel and Esc, and a Confirm that keeps the modal open and shows the engine's refusal
+instead of applying. The keyboard path uses Tab, Shift+Tab, Enter, Space, Esc and the
+page keys only - arrows stay with the modal body's scrolling, which is why the screen
+has no popup or spin-box rows. Layout is pinned at 1280x720 for 100 % and 160 % by
+control-rectangle checks in the creator probe's shape, and the UI may call only
+`LevelChoices.choices`, `LevelChoices.validate` and `LevelUp.apply`, with two tests
+pinning that no shipped file stages a level outside the choice module.
+`--level-up-probe` crosses 6,000 XP through a real victory, walks every step by
+keyboard at both scales, checks the summary numbers, applies, saves, reloads, proves
+a second apply refuses and that Cancel and Esc write nothing. It lands as three
+commits - screen, probe at 100 %, probe at 160 % - each with its own red text. No
+candidate was exported, no manual testing was requested and no backups were touched.

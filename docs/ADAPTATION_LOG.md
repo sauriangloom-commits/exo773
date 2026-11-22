@@ -727,3 +727,23 @@ presentation choices are omitted; nothing here changes a rule silently.
     Weapon Proficiency with the reason `Feats` already returns. The choice data is
     a second reader of `LevelUp.stage`, and `apply` remains the only path that
     changes a character.
+54. **The level-up screen presents the existing choices; it decides nothing.** Three
+    presentation decisions are recorded here so a later reader does not mistake them
+    for rules. First, the button lives on a party-sheet *page*, not on a card: the
+    sheet is a `TabContainer` with one scrolling page per party member
+    (`src/ui/panels.gd:22`), so "one button per character" means one button in each
+    page's header, built only when `LevelUp.eligibility` says yes - an ineligible page
+    shows the reason instead of a disabled button. Second, the step list is derived
+    from the choice data, not fixed: Summary, Ability, Skills and Confirm always, Feat
+    when the character has a fighter bonus-feat slot, Spells when there is a spell
+    choice, so a rogue sees four steps and a fighter or sorcerer five. The printed
+    rules do not prescribe a dialog; the steps only group the choices `LevelChoices`
+    already returns, and no step can offer something the module does not. Third, the
+    keyboard path is Tab, Shift+Tab, Enter, Space, Esc and the page keys only: the
+    modal's arrow keys scroll its body (`src/main.gd:8031`), so a `SpinBox` or
+    `OptionButton` row would change meaning between 100 % and 160 %. Skill points are
+    therefore spent one rank per row press, with a reset, and unspent points are
+    discarded by `LevelUp.apply` - the engine's existing rule (`LEVEL_UP_PLAN.md` 12.5),
+    not a new one. Confirm is the only place that changes a character, it asks
+    `LevelChoices.validate` first, and on a refusal it keeps the dialog open with the
+    engine's own message. `LevelUp.stage` stays out of the UI entirely.
