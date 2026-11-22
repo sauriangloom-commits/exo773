@@ -3106,12 +3106,12 @@ checks were run. Reading the records against the implementation found no open
 defect. The sorcerer's 2nd-level spell-pool gap is a content gate - the engine
 refuses the step rather than writing half of it, and no authored character is in
 the blocked state - and the missing level-up autosave is not a defect either: the
-victory autosave already holds the XP that makes the step available, so a reload
-re-offers it, and only the choice work is lost by quitting straight after
-applying.
+victory autosave already holds the paid XP that makes the step available, so a
+reload re-offers it; an unsaved applied level and its choices do not survive.
 
-What the review did find is reachability. The party starts at 3,000 XP and all the
-content together awards 2,900, so the best a demo party can reach is 5,200 against
+What the review did find is reachability. The party starts at 3,000 XP, and the
+demo's best single ordinary route earns 1,850 - the 2,200 inventory counts a
+mutually exclusive pact and a QA-only encounter - so a party reaches 4,850 against
 a 6,000 threshold; every acceptance run so far crossed it from a fixture. The
 recommended next task is therefore planning only - a short note deciding the
 campaign XP model, the total, pacing, the author-facing reachable-XP line and the
@@ -3119,3 +3119,17 @@ probe that would reach eligibility from authored awards - with implementation to
 follow once the numbers are chosen. Levels 5 and above and Improved Bull Rush stay
 deferred: both would still be unreachable. No code, content, schema or save was
 changed; this commit is documentation only.
+
+### Planning note: how the demo reaches 4th level (2026-11-22)
+
+`DEMO_ADVANCEMENT_PLAN.md` is written and nothing in it is implemented. It
+verifies the demo's award ledger (authored 2,200; one ordinary route 1,850; the
+completion floor 700), chooses a completion milestone on the bell of 2,300 XP so
+that completing `drowned_bell` lands exactly on 6,000, and names the town square
+fight as the play left at 4th level. It also defines the static-only diagnostics
+line, a completability check that stages a completed draft rather than checking
+pools, and a probe that earns eligibility through authored awards without
+assigning XP. It corrects the review's 5,200 route figure to 4,850 and its save
+sentence: paid XP and eligibility survive the autosave, an unsaved applied level
+and its choices do not. No checks were run for this note and no code, content,
+schema, save or threshold changed.

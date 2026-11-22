@@ -640,10 +640,11 @@ than by defect.
   (`src/game_state.gd:1729-1738`), recovers ground items, returns to explore and
   only then writes `save_game("auto")` (`:1756`). The write therefore already
   holds the paid XP, before the level-up is offered.
-- **What that guarantees.** Reloading that autosave re-offers the step: the
-  character is still eligible, the draft starts empty, and the same choices can be
-  made again. What a player loses by quitting straight after applying is the
-  choice work, not the level, and it is reproducible in the same screen.
+- **What that guarantees.** Paid XP and eligibility survive the recorded autosave:
+  reloading it re-offers the step, the draft starts empty, and the same choices
+  can be made again. An unsaved applied level and its choices do not survive;
+  they reach disk at the next manual save or auto boundary, so quitting straight
+  after applying loses that work, never the entitlement.
 - **Where the applied step reaches disk.** The next manual save, or any auto
   boundary: a world-changing interaction (`_autosave_after_interaction`), the end
   of a dialogue (`on_dialogue_finished`), an encounter's start and its victory.
@@ -663,15 +664,20 @@ than by defect.
   encounters (`qa_turn_undead` 0 and `qa_victory` 150 are QA fixtures),
   `ashwick_ferry` 500 across two, `hollow_lantern` 200 across one. Effect XP adds
   700 (`ravenloft_demo/dungeon.json` 500, `dialogue/corvin.json` 200).
-- The best a demo party can reach is 3,000 + 1,500 + 500 + 200 = 5,200, or 5,050
-  without the QA fixture. Every campaign's content together would total 5,900.
-  None reaches 6,000.
+- Those figures are an inventory, not a route: `ravenloft_demo`'s pact (200) and
+  crypt fight (450) are mutually exclusive, and `qa_victory` has no content
+  trigger. One ordinary route earns at most 1,850 (300 + 450 + 500 + 600), so a
+  party starting at 3,000 reaches **4,850**; a player who completes `drowned_bell`
+  has a floor of 3,700. The other campaigns' 700 is not available either: XP
+  cannot carry between campaigns, because `new_game` rebuilds every character
+  from content and saves are pinned per campaign.
 - Every acceptance run so far crosses the threshold from a fixture - the probe
   sets XP near it and lets one victory pay the rest - which the records state as
   fixture setup. The crossing is therefore evidenced in a test, not in play.
 - This is a **content gap, not a code defect**: the engine does what it says, and
   the premise in this file's own planning brief ("the XP table for levels 3-4 only
-  (the demo's reachable range)") is short by 800 XP.
+  (the demo's reachable range)") is short by 1,150 XP on the best ordinary route,
+  and by 2,300 XP for a player who completes the quest.
 
 ### Four lists, kept separate
 
@@ -741,11 +747,20 @@ actually complete the step.
 new spells or feats; no UI, schema or save change; no other campaign's content;
 no manual testing.
 
+**Plan written: [DEMO_ADVANCEMENT_PLAN.md](DEMO_ADVANCEMENT_PLAN.md) (2026-11-22).**
+It verifies the award ledger and corrects this review's arithmetic: the demo's
+authored 2,200 is an inventory, not a route; one ordinary route earns 1,850; and
+a completing player's floor is 700. It chooses a completion milestone on the bell
+sized to that floor - 2,300 XP, taking the floor to exactly 6,000 - and names the
+route, the play left at 4th level (the town square fight), the exact `dungeon.json`
+change, the informational diagnostics line, the completability check, the tests
+and the probe. Nothing was implemented; no checks were run.
+
 ### Not recommended now
 
 - **Levels 5 and above.** Even if built they would be unreachable: 10,000 XP
-  against 5,200 available, and no 3rd-level spell exists in content for the
-  casters' step.
+  against 4,850 available on one ordinary route, and no 3rd-level spell exists in
+  content for the casters' step.
 - **Improved Bull Rush.** Still unreachable after the accepted feature: the step
   grants one feat slot at 4th level, and the feat needs Power Attack first, so no
   character can hold both before 6th level without a content edit.
