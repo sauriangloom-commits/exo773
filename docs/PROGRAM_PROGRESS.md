@@ -2996,3 +2996,20 @@ probe has walked it and no window has shown it, so C1-C9 are not evidenced.
 has already taken the step; both refuse, the test pins the refusal, and the
 disagreement is recorded as an open defect rather than repaired in 4a. No candidate
 was exported, no manual testing was requested and no backups were touched.
+
+### Batch 4a accepted, and its call surface reconciled (2026-11-22)
+
+4a is accepted on its recorded run - 871/871 tests, 9,236 assertions, 65 scripts, both
+validators passing - and nothing was rebuilt for the closure. The 160 % layout is
+still pinned by the suite's control-rectangle checks only and has not been seen in a
+window, and the `LevelChoices.validate` / `LevelUp.apply` refusal-code defect stays
+open and recorded; it is repaired in its own bounded commit before 4b.
+
+Section 14.7 of `LEVEL_UP_PLAN.md` was reconciled with the shipped code. The screen
+names four reads and one writer (`LevelChoices.choices`, `LevelChoices.validate`,
+`LevelUp.preview`, `LevelUp.ABILITIES`, `LevelUp.apply`) and the party sheet asks
+`LevelUp.eligibility`. The guards now assert those as closed lists, so a new engine
+call fails the suite rather than passing unnoticed, and no wrapper API was added to
+keep the old "exactly three things" sentence true. 872/872 tests, 9,238 assertions,
+65 scripts, both validators passing; logs in
+`builds/qa/runs/2026-11-22_level_up_contract/`.

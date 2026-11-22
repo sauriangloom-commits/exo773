@@ -5249,6 +5249,19 @@ The 160 % layout is not covered by a probe: the suite's control-rectangle tests 
 at 1.6, but no `--level-up-probe` run exists, so the screen has not been seen in a
 window at that scale.
 
+### Call-surface contract reconciled (2026-11-22)
+
+`tests/test_level_up_ui_surface.gd` now holds three tests instead of two. The screen's
+engine names are a closed list - `LevelChoices.choices`, `LevelChoices.validate`,
+`LevelUp.preview`, `LevelUp.apply`, `LevelUp.ABILITIES` - the party sheet's is exactly
+`LevelUp.eligibility`, and the staging guard is unchanged. The lists were taken from
+the shipped source before they were written down, and they matched, so no wrapper API
+was added to keep the plan's old "exactly three things" wording true. Run: 872/872
+tests, 9,238 assertions, 65 scripts; `--validate-campaigns` PASS;
+`--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_level_up_contract/`.
+
 ### Level-up probe (batch 4b-4c, planned 2026-11-22)
 
 No run exists for the probe and none is claimed: `--level-up-probe` is not

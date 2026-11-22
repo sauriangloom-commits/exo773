@@ -1474,36 +1474,64 @@ printed.
 No pixel value other than the requested 900x620 and the 16/32 px caps is asserted,
 so a theme change moves the layout without rewriting the test.
 
-### 14.7 The call surface, and the test that pins it
+### 14.7 The call surface, and the tests that pin it
 
-`LevelUpScreen` may call exactly three things on the level-up engine:
+Checked against the shipped source in 4a, not against the wording this section first
+used. The screen names exactly five engine members, and every one of them is
+read-only except `LevelUp.apply`:
 
-    LevelChoices.choices(ch, draft)     # what may be chosen, with costs and reasons
-    LevelChoices.validate(ch, draft)    # may this draft be applied, and why not
-    LevelUp.apply(ch, draft)            # the only mutation, called once
+| Member | Kind | Why the screen names it |
+| --- | --- | --- |
+| `LevelChoices.choices(ch, draft)` | read-only function | the rows, their costs and their reasons, and whether the step has a Feat or Spells step at all |
+| `LevelChoices.validate(ch, draft)` | read-only function | the message and code Confirm shows when the draft is refused, before `apply` is called |
+| `LevelUp.preview(ch, draft)` | read-only function | every number the Summary and Confirm steps print |
+| `LevelUp.apply(ch, draft)` | the only writer | called once, after `validate` returns ok |
+| `LevelUp.ABILITIES` | constant | the six ability keys the Ability step lists |
 
-Everything else is presentation or `LevelUp.preview` for read-only numbers. The
-screen must not call `LevelUp.stage`, `LevelUp.required_choices` or any staging
-helper: staging exists for validation and for the choice data, and a screen that
-staged would be a second authority on what a legal draft is.
+The party sheet names one:
 
-Two tests pin it, both in `tests/test_level_up_ui_surface.gd`:
+| Member | Kind | Why the sheet names it |
+| --- | --- | --- |
+| `LevelUp.eligibility(ch)` | read-only function | whether the page carries a `Level up` button or the engine's reason instead |
 
-- `test_the_screen_calls_only_choices_validate_and_apply` reads
-  `res://src/ui/level_up_screen.gd` with `FileAccess.get_file_as_string` and asserts
-  it contains `LevelChoices.choices`, `LevelChoices.validate` and `LevelUp.apply`,
-  and that it contains neither `LevelUp.stage` nor `LevelUp.required_choices`.
+`LevelUp.preview` was missing from this section's first wording ("exactly three
+things"), which would have made the accurate screen a violation of its own plan. No
+wrapper API was added to satisfy the old sentence: a pass-through around `preview`
+would have been a new surface whose only purpose was to keep a stale list true. The
+list is corrected instead.
+
+Nothing in `src/ui/` may call `LevelUp.stage` or `LevelUp.required_choices`. Staging
+exists for validation and for the choice data, and a screen that staged would be a
+second authority on what a legal draft is; `required_choices` is the choice module's
+own vocabulary, and a screen that kept its own copy of the required groups could
+drift from `validate`.
+
+Three tests pin it, all in `tests/test_level_up_ui_surface.gd`:
+
+- `test_the_screen_names_only_the_read_only_surface_and_apply` reads
+  `res://src/ui/level_up_screen.gd` with `FileAccess.get_file_as_string`, collects
+  every `LevelUp.<member>` and `LevelChoices.<member>` on a non-comment line, and
+  asserts the sorted set equals the five above. The list is closed, so a new engine
+  call fails the test rather than passing unnoticed; it is not "these three strings
+  must appear".
+- `test_the_party_sheet_only_asks_for_eligibility` does the same for
+  `res://src/ui/panels.gd` and asserts the set is exactly `LevelUp.eligibility`.
 - `test_no_shipped_file_stages_a_level_outside_the_choice_module` walks `src/` and
   `tools/`, collects every file whose text contains `LevelUp.stage`, and asserts the
   set is exactly `src/core/level_choices.gd` - the module that implements staging -
   so a later screen, probe or tool cannot quietly stage either.
 
-Both are source-text guards, and their limit is stated where they are recorded: they
-cannot see a call built from a string or reached through an alias. The behavioural
-guarantee is the other side of the same coin - `test_confirm_applies_through_validate_and_apply`
-asserts `validate` ran before `apply` and that `apply` did not run when validation
-refused - so a screen that went around the surface would fail on behaviour even if it
-passed the text guard.
+All three are source-text guards, and their limit is stated where they are recorded:
+they read names on non-comment lines, so a call built from a string, reached through
+an alias, or written on a comment's line is invisible to them; strings are counted,
+which only makes the list stricter. The behavioural guarantee is the other side of the
+same coin - `test_confirm_applies_through_validate_and_apply` asserts `validate` ran
+before `apply`, `test_apply_is_not_called_when_validate_refuses` asserts `apply` did
+not run when validation refused, and
+`test_a_confirm_writes_only_the_intended_character_fields` asserts `apply` changed
+nothing but the fields the step owns - so a screen that went around the surface fails
+on behaviour even if it passes the text guards.
+
 
 ### 14.8 `--level-up-probe`
 
@@ -1614,7 +1642,8 @@ message and the expected/actual pair GUT prints beneath it:
 | `test_the_panel_and_footer_fit_the_window_at_160_percent` | `the panel fits the client area` / `the footer fits the panel` / `the footer is outside the scrolling body` / `no horizontal scrollbar` |
 | `test_the_strip_and_rows_wrap_without_clipping` | `the step label is not clipped` / `the skill row is not wider than the body` |
 | `test_the_body_scrolls_for_the_skills_step_at_160_percent` | `the Skills step is taller than its body` / `End reveals the last row` |
-| `test_the_screen_calls_only_choices_validate_and_apply` | `the screen calls LevelChoices.choices` / `... validate` / `... LevelUp.apply` / `the screen never stages` |
+| `test_the_screen_names_only_the_read_only_surface_and_apply` | `the screen names only the read-only surface and apply` / `the screen never names LevelUp.stage` |
+| `test_the_party_sheet_only_asks_for_eligibility` | `the sheet only asks LevelUp.eligibility` |
 | `test_no_shipped_file_stages_a_level_outside_the_choice_module` | `only the choice module stages` / `src/ui/level_up_screen.gd does not stage` |
 
 Red #3, the probe: before the flag is dispatched, the run prints no
@@ -1783,3 +1812,26 @@ control-rectangle tests. No probe has walked the screen at either scale, so the
 are not evidenced. Nothing player-visible was exported, no manual testing was
 requested and no backups were touched. 4b and 4c remain outstanding, and one defect
 in batch 3's `validate` is recorded above rather than repaired here.
+
+**The call surface was reconciled after the fact.** Section 14.7 first said the
+screen may call "exactly three things"; the shipped screen also reads
+`LevelUp.preview` for every number it prints and lists `LevelUp.ABILITIES`, and the
+party sheet asks `LevelUp.eligibility`. That section now states the boundary the code
+actually has, and its guards assert it as a closed list, with no wrapper API added to
+keep the old sentence literally true.
+
+### 14.14 4a is accepted, within its limits (2026-11-22)
+
+Batch 4a is accepted on its recorded run - 871/871 tests, 9,236 assertions, 65
+scripts, both validators passing - and nothing was rebuilt for this closure. The
+limits stay attached to the acceptance: the 160 % layout is pinned by the suite's
+control-rectangle checks only, and has not been seen in a window or walked by a probe;
+no candidate was exported; no export or playtest covers the level path; no manual
+testing was requested and no backups were touched.
+
+The acceptance does not cover the open defect. `LevelChoices.validate` and
+`LevelUp.apply` disagree on a character who has already taken the step, so `validate`
+is not yet the "same refusal code `LevelUp.apply` would return" its own comment
+promises. It stays open, recorded in 14.11, and is repaired in its own bounded commit
+before 4b starts. Until then a stale screen still refuses and writes nothing, which is
+what `test_a_stale_page_cannot_apply_after_the_character_has_leveled` pins.
