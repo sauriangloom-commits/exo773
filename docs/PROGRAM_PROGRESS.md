@@ -3073,3 +3073,27 @@ defects 4c also fixed. `settings.cfg`'s modification time is unchanged by a prob
 run and the probe's save directory is gone at the end. Evidence is control rectangles
 and state, not rendered pixels; nothing was seen in a window, no candidate was
 exported, no manual testing was requested and no backups were touched.
+
+### Batch 4 accepted at 84d8fb7, and batch 5 exported acceptance (2026-11-22)
+
+Batch 4 is accepted at `84d8fb7`, on the run 4c recorded and nothing else - no rebuild,
+no repeat. The level-up feature is now also accepted on an exported candidate:
+`builds/qa/candidates/level_up_ui_2026-11-22/RavenloftFoundationEdit.exe`, 110,832,568
+bytes, SHA-256 `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff`,
+exported from `84d8fb7` with a clean tree through `tools/qa/build_candidate.sh`.
+
+The hash was checked before the probe, after it and after both validator runs, and
+matches `BUILD.txt`. The windowed exported run at 1280x720 printed
+`PROBE RECEIPT scale=1.00 ... checks=172`, `scale=1.60 ... checks=173`,
+`PROBE AGGREGATE result=PASS ... checks=347 failures=0`, and its 211 passing labels are
+the same set the source run produced, so the exported binary covers the victory XP
+crossing and once-only award, the fighter flow, the refused Confirm, draft preservation,
+apply/save/reload/idempotence, the sorcerer's Spells step, the Cancel/Esc no-write cases
+and C1-C9. Both validators passed from the exe; the pack audit lists 201 paths with no
+excluded tree.
+
+`settings.cfg` was never created and no probe save remains in the profile. Limits stay
+attached: geometric containment only, no rendered-pixel or visual acceptance, the
+sorcerer not walked end to end, one window size on Windows, and no human playtest. No
+feature or rule changed in this batch, no manual testing was requested and no backup was
+touched.

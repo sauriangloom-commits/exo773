@@ -2121,3 +2121,138 @@ scales.
 already answered PageDown; that is the shared scroll path, not the level-up screen's.
 `Home` is deliberately not added: nothing in the plan promised it, and an untested key
 would be a second behavior with no evidence behind it.
+
+### 14.19 Batch 4 is accepted at 84d8fb7 (2026-11-22)
+
+Batch 4 - 4a's screen and its reconciled call surface, the validate/apply repair, 4b's
+probe at 100 % and 4c's two-scale pass with C1-C9 - is accepted at
+`84d8fb7eff036f7a1e37c424747704569a47b093`, on the run recorded in 14.17 and nothing
+else. No test, probe or validator was re-run for this closure and no artifact was
+rebuilt for it: the acceptance is that recorded run (877/877 tests, 9,343 assertions,
+65 scripts, both validators, `PROBE RECEIPT` at 1.00 and 1.60 and `PROBE AGGREGATE
+result=PASS ... checks=347`).
+
+The limits travel with the acceptance: the probe reads control rectangles and state,
+not rendered pixels; the source runs are headless; the sorcerer is walked through
+Spells rather than end to end; no human playtest. The "no candidate was exported"
+sentences in 14.16 and 14.17 describe those records' own moments; section 15 is where
+an artifact is exported and accepted, and it changes no source.
+
+## 15. Batch 5: exported acceptance of the level-up feature (2026-11-22)
+
+**What the plan asked for.** 14.8 and 14.13-14.17 defer exactly one thing to batch 5:
+the level-up path demonstrated on an *exported* candidate rather than on the source,
+with the artifact's identity bound to the result so no other binary can inherit it. No
+feature, content or rules change belongs to this batch, and none was made.
+
+**Source identity.** `84d8fb7eff036f7a1e37c424747704569a47b093` (batch 4's last
+commit), clean tree: `worktree_entries=0`, `untracked_files=0`, and both
+`worktree_diff_sha256` and `untracked_source_sha256` equal to
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` - the hash of no
+input at all. Export preset `Windows Desktop` from `export_presets.cfg` (product name
+"Ravenloft Foundation (Edit Copy)"), built with
+`tools/qa/build_candidate.sh level_up_ui_2026-11-22`, the supported path that writes
+the exe and `BUILD.txt` into this copy's own `builds/qa/candidates/<id>/`.
+
+**The artifact.**
+
+| Field | Value |
+| --- | --- |
+| Candidate | `builds/qa/candidates/level_up_ui_2026-11-22/RavenloftFoundationEdit.exe` |
+| Bytes | 110,832,568 |
+| SHA-256 | `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff` |
+| Source | `84d8fb7`, clean tree, no untracked source |
+| Preset | `Windows Desktop`, Godot 4.7.2.stable templates |
+| Hash check | identical before the probe, after the probe, and after both validator runs; equals `BUILD.txt`'s `exe_sha256` |
+
+No earlier candidate's acceptance is reused: `level_up_ui_2026-11-22` is the only
+binary any line below refers to.
+
+**Pack hygiene.** `tools/qa/pck_paths.py` lists 201 packed paths: 71 under `src/`, 36
+`.godot/`, 20 `placeholder_art/`, 16 `assets/`, the three campaigns (`ravenloft_demo`
+12, `ashwick_ferry` 10, `hollow_lantern` 8), and `project.godot`/`project.binary`.
+Zero paths under `docs/`, `tests/`, `tools/`, `addons/gut/` or `builds/`, and zero
+`.md` or `.pdf` files, so the preset's exclusions held for this export.
+
+**The exported run** (`builds/qa/runs/2026-11-22_level_up_export/probe_export.log`),
+windowed in its own profile (`builds/qa/appdata_batch5`):
+
+    PROBE PASS BEGIN scale=1.00 viewport=(1280.0, 720.0)
+    PROBE RECEIPT scale=1.00 result=PASS checks=172 failures=0
+    PROBE PASS BEGIN scale=1.60 viewport=(1280.0, 720.0)
+    PROBE RECEIPT scale=1.60 result=PASS checks=173 failures=0
+    PROBE AGGREGATE result=PASS scenario=level_up scales=1.00,1.60 checks=347 failures=0
+    PROBE RESULT PASS scenario=level_up elapsed_ms=21676
+
+The viewport line is the exported window's own client rect, so both passes ran at the
+1280x720 the plan requires rather than at an editor default, and the run took 21.7 s
+against the source's 10.7 s - consistent with a real window rendering each frame.
+
+**The same checks ran, measured rather than asserted.** The exported log's passing
+labels were reduced to a sorted unique set and compared with the source run's
+(`builds/qa/runs/2026-11-22_level_up_ui/probe_final.log`): 211 labels each, and `diff`
+empty. So the candidate exercises, at both scales:
+
+- the real `qa_victory` crossing 6,000 XP, one award per character (5,999 -> 6,149 each)
+  and a second `changed` paying nothing (24 award lines);
+- the fighter's `Level up` per page, and its absence plus the engine's reason below the
+  threshold;
+- the keyboard path from the sheet's button to Apply, summary numbers compared with
+  `LevelUp.preview` as numbers;
+- the refused Confirm - `The fighter gains a feat at 4th level; choose one.` - with the
+  modal staying open, moving to the Feat step and changing neither character nor save;
+- the draft surviving Back, the apply, the save/reload round-trip, and a second apply
+  refused with `already_level_4` leaving `to_dict()` deep-equal;
+- the sorcerer's Spells step on her own page and slot: `spell_scorching_ray` selected by
+  Enter, `known` holding it, slots equal to the preview's, the fighter untouched;
+- Cancel, Escape and Back-then-Escape writing nothing to the character, the slot's
+  bytes, its modification time, the directory listing or the `.bak`/`.tmp` list;
+- C1-C9 geometry at both scales, e.g. C5 46 of 46 row focusables visited with none
+  hidden, C7 travel 1668/2180 reached by End, C9 9 of 9 rows spanning the column.
+
+**Inputs, as in source.** Keyboard: every action inside the party sheet and the
+level-up screen (Tab, Shift+Tab, Enter, End, Escape). Direct calls: `new_game`,
+`start_encounter`, the encounter's own end check, `changed.emit`, `_open_party`,
+`refresh_modal`, the sheet's tab select, `save_game`, `load_game`. Fixture setup: the
+5,999 XP before the victory, the text scale, and C7's scroll reset - all named in the
+run's own `PROBE INPUT` line.
+
+**Isolation, cleanup and settings, in the exported run.** Saves went to
+`user://qa_level_up_probe` under the batch-5 profile. After the runs, `find` over that
+profile returns zero `*level_up_probe*` paths, and the run's own last two checks are
+`the save directory is restored` and `the probe's save directory is gone`. The text
+scale is written into `Game.settings` with `_apply_theme()`, never
+`Game.set_text_scale`: `settings.cfg` was absent before the probe and absent after it
+and after both validators, so the player's settings file was never written - in a
+fresh profile, at both scales, in the exported build.
+
+**What ran where.**
+
+| Check | Ran from |
+| --- | --- |
+| `--level-up-probe`, 100 % and 160 % in one run | the candidate (`probe_export.log`) |
+| `--validate-campaigns` | the candidate: PASS (`validate_campaigns_export.log`) |
+| `--validate-diagnostics` | the candidate: PASS, `CLASS PROGRESSION PASS, 8 accepted authored inconsistencies` (`validate_diagnostics_export.log`) |
+| Pack-path audit | the candidate's exe (`pck_paths.py`, 201 paths, `packed_paths.txt`) |
+| Hash before and after | the candidate |
+| Full GUT suite, 877/877, 9,343 assertions | source at `84d8fb7`, recorded in 14.17; not re-run here, because batch 5 changes no source |
+
+**Limits, kept separate.**
+
+- **Confirmed defects:** none found in this batch. The two batch-4 defects (the
+  validate/apply refusal codes, 14.15; End not scrolling a modal body, 14.18) were
+  fixed before this artifact was built, and the exported run's checks include both.
+- **Deferred features:** levels 5 and above, more than one level in a step, NPC
+  advancement, the printed fighter feats this slice does not implement, a content check
+  keeping a 2nd-level arcane spell in the sorcerer's pool, and any play-path autosave
+  after a level-up.
+- **Maintenance debt:** the singular `modal` field (14.11), the rebuild-owned draft, the
+  arrow keys reserved for scrolling, and the call-surface guards' blindness to calls
+  built from strings.
+- **Evidence gaps:** the sorcerer is walked through Spells and its confirmation, not
+  step by step through Summary and Ability as a separate end-to-end run; the probe reads
+  control rectangles and state and never rendered pixels, so C1-C9 are geometric
+  containment only and say nothing about legibility, clipping in the drawn frame or
+  overlap; no screenshot was taken and no person looked at the window; one window size
+  (1280x720) on Windows only; no human playtest. Geometric containment is not rendered
+  appearance, and this record claims only the former.

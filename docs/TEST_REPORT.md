@@ -4126,6 +4126,7 @@ the acceptance log records the exe hash at its start and end.
 | `bull_rush_2026-11-21` | `12ecb76` | `0946289c0240c902b4f1b98875a666862d59ef203035072db4e99c0b382c8c40` | 110,733,240 | **Not accepted.** Its 100 % layout run was measured without `--demo-combat`, and the corrected 160 % run failed six reachability checks because the layout probe only scrolled the innermost `ScrollContainer`. Superseded by `-b`, which carries the probe fix | no |
 | `defensive_actions_2026-11-21c` | `58cb1a7` | `e53a62656eadb0765384898de492524e76dbc3f78c323ed5caa5454afd11fb25` | 110,708,296 | Superseded by `-c`. Accepted for the defensive-actions scope, but ships the stance-leak defect: a stance active when the fight ended survived into exploration and the victory autosave | no |
 | `defensive_actions_2026-11-21` | `a8c8189` | `f6bb00f21a4765e1014fcdc8f16beba9fc219548678cc68f5bff01f3a2d5de6b` | 110,708,264 | Superseded by `-b`; same scope, before the stance-specific attack refusal | no |
+| `level_up_ui_2026-11-22` | `84d8fb7` | `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff` | 110,832,568 | Both validators from the exe, `--level-up-probe` at 100 %/160 % inside the exe (172/173 checks, 347 in all, 0 failures), 211 passing check labels identical to the source run, pack audit 201 paths with no excluded tree | yes |
 
 `defensive_actions_2026-11-21c` supersedes `-b`: it is exported from clean source
 `58cb1a7` (which contains `7fae8d1`, the combat-scope cleanup) and keeps the same
@@ -5355,3 +5356,43 @@ is `LEVEL_UP_PLAN.md` 14.18.
 
 Not covered: rendered pixels (the probe reads control rectangles and state), any window
 at either scale (the runs are headless), an exported build, and any human playtest.
+
+### Exported acceptance of the level-up feature (batch 5, 2026-11-22)
+
+Candidate `builds/qa/candidates/level_up_ui_2026-11-22/`, built by
+`tools/qa/build_candidate.sh` from `84d8fb7` with a clean tree (0 worktree entries, 0
+untracked files, both tree hashes the empty-input hash). Preset `Windows Desktop`,
+templates 4.7.2.stable.
+
+| Field | Value |
+| --- | --- |
+| exe | `builds/qa/candidates/level_up_ui_2026-11-22/RavenloftFoundationEdit.exe` |
+| Bytes | 110,832,568 |
+| SHA-256 | `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff` |
+| Bound | hash identical before the probe, after the probe, and after both validators; equals `BUILD.txt` |
+| Packed paths | 201; none under `docs/`, `tests/`, `tools/`, `addons/gut/`, `builds/`; no `.md` or `.pdf` |
+
+The run is windowed, in its own profile (`builds/qa/appdata_batch5`), and its log is
+`builds/qa/runs/2026-11-22_level_up_export/probe_export.log`:
+
+    PROBE RECEIPT scale=1.00 result=PASS checks=172 failures=0
+    PROBE RECEIPT scale=1.60 result=PASS checks=173 failures=0
+    PROBE AGGREGATE result=PASS scenario=level_up scales=1.00,1.60 checks=347 failures=0
+    PROBE RESULT PASS scenario=level_up elapsed_ms=21676
+
+with `PROBE PASS BEGIN ... viewport=(1280.0, 720.0)` at both scales. The 211 unique
+passing labels are the same set as the source run's `probe_final.log` (empty `diff`), so
+the candidate covers the victory XP crossing and once-only award, the fighter's flow,
+the refused Confirm, draft preservation, apply/save/reload/idempotence, the sorcerer's
+Spells step, the Cancel/Esc no-write cases and the C1-C9 geometry at both scales.
+
+Both validators ran from the exe and passed (`validate_campaigns_export.log`:
+`CAMPAIGN VALIDATION PASS`; `validate_diagnostics_export.log`: `CLASS PROGRESSION PASS,
+8 accepted authored inconsistencies`, `CAMPAIGN DIAGNOSTICS PASS`). `settings.cfg` was
+absent before and after, and no `*level_up_probe*` path remains in the profile.
+
+Superseded limits: the 4c section above says "any window at either scale (the runs are
+headless), an exported build" - those two points now have an exported, windowed run, for
+this scope only. Still not covered: rendered pixels (no screenshot, no visual check),
+the sorcerer end to end through every step, one window size, one OS, and any human
+playtest.

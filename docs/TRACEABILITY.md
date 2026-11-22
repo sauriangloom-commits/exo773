@@ -292,8 +292,9 @@ seam are recorded in `ADAPTATION_LOG.md` 54 and 55. No rule changes:
 `LevelUp.apply` remains the only path that changes a character.
 
 The 160 % layout is walked by `--level-up-probe` at 160 % (14.17) and pinned by the
-suite's control-rectangle tests. It has still not been seen in a window: the probe is
-headless and reads rectangles, not pixels.
+suite's control-rectangle tests, and batch 5 ran it in an exported window at 1280x720
+(15). No pass has read pixels: the probe reports rectangles and state, and no screenshot
+was taken, so nothing here is a claim about rendered appearance.
 
 ### Level-up probe (batch 4b, 2026-11-22)
 
@@ -308,3 +309,10 @@ same flag at 160 % (`probe_4c_4.log`: a receipt per scale and 347 checks in all)
 | The layout checks C1-C9 hold at both scales | `LEVEL_UP_PLAN.md` 14.6 | `_level_up_probe_layout` and `_level_up_probe_skills_layout` | `PROBE RECEIPT scale=1.00 ... checks=172` and `scale=1.60 ... checks=173`, each with a `PROBE C1`-`C9` geometry line |
 | The sorcerer's Spells step is walked by keyboard, applied and saved on its own slot | `level_up_screen.gd`; `level_up.gd` | `_level_up_probe_sorcerer` | the same two receipts, `PROBE SORCERER` lines |
 | End scrolls a modal body to its last row | `LEVEL_UP_PLAN.md` 14.5; `main.gd` `_scroll_modal_body` | `ui_end` sets the body to its last row | `test_end_scrolls_the_skills_body_to_its_last_row_at_both_scales`, probe C7 at both scales |
+
+### Exported acceptance (batch 5, 2026-11-22)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| The whole level-up path runs in an exported candidate, at 100 % and 160 %, with the same checks as source | `LEVEL_UP_PLAN.md` 15 | `--level-up-probe` inside candidate `level_up_ui_2026-11-22` | `PROBE RECEIPT` at 1.00 (172 checks) and 1.60 (173), `PROBE AGGREGATE result=PASS ... checks=347 failures=0`, from `RavenloftFoundationEdit.exe`, 110,832,568 bytes, SHA-256 `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff`, source `84d8fb7` |
+| The exported package ships content, scripts and assets only | `docs/SETUP.md` export section | the `Windows Desktop` preset's exclusions | `pck_paths.py`: 201 packed paths, none under `docs/`, `tests/`, `tools/`, `addons/gut/` or `builds/`, no `.md` or `.pdf` |
