@@ -2,10 +2,11 @@ extends GutTest
 
 ## Level-up core, batch 2 of docs/LEVEL_UP_PLAN.md section 12.
 ##
-## The tests use the authored, still-unrepaired level-3 characters on purpose:
-## aldric's sense motive 4, ysolde's search 4 and mira's diplomacy 4 are above the
-## level-3 cross-class cap and must not block the step, and their point totals stay
-## over budget until the separate content repair. Nothing here asserts that repair.
+## The tests use the authored level-3 characters after the separate content repair:
+## every rank is inside its level-3 cap and every block fits the class budget. The
+## rule that level-up never audits an existing over-cap rank is therefore exercised
+## on an in-memory copy, and one test pins that the repaired content produces no
+## over-cap notice.
 ##
 ## Skill caps at 4th level: class 7; cross-class printed 3.5, enforced as 3 whole
 ## ranks because the engine stores whole ranks and buys a cross-class rank for two
@@ -265,14 +266,32 @@ func test_class_and_cross_class_caps_are_enforced_on_new_ranks() -> void:
 
 # 19
 func test_existing_over_cap_ranks_do_not_block_level_up() -> void:
-	var ch := _character("aldric")
-	assert_eq(int(ch.skill_ranks.get("sense_motive", 0)), 4, "the authored rank is still unrepaired")
+	# The repair left no authored rank above its cap, so the rule is exercised on an
+	# in-memory copy: level-up never audits, clamps or deletes an existing rank.
+	var data: Dictionary = content.characters["aldric"].duplicate(true)
+	Dictionary(data["skill_ranks"])["sense_motive"] = 4
+	var ch := Character.from_content(data, content.items)
+	ch.xp = XP
+	assert_eq(int(ch.skill_ranks.get("sense_motive", 0)), 4, "the staged rank is above the cap")
 	var preview := LevelUp.preview(ch, {"ability": "wis"})
 	assert_true(bool(preview["ok"]), String(preview.get("message", "")))
 	assert_true(String(" ".join(PackedStringArray(preview["notices"]))).contains("sense_motive"))
 	var result := _result(ch, {"ability": "wis", "skills": {"heal": 1}})
 	assert_true(bool(result["ok"]), String(result.get("message", "")))
 	assert_eq(int(ch.skill_ranks.get("sense_motive", 0)), 4, "level-up never audits existing ranks")
+
+
+func test_repaired_content_has_no_over_cap_rank_notice() -> void:
+	for id in ["aldric", "ysolde", "mira"]:
+		var ch := _character(id)
+		var preview := LevelUp.preview(ch, {"ability": "wis"})
+		assert_true(bool(preview["ok"]), String(preview.get("message", "")))
+		var notices := " ".join(PackedStringArray(preview["notices"]))
+		for raw_skill in ch.skill_ranks.keys():
+			assert_false(
+				notices.contains(String(raw_skill)),
+				"%s has no over-cap notice for %s" % [id, String(raw_skill)]
+			)
 
 
 # 20

@@ -173,11 +173,9 @@
 		"size_category": "medium",
 		"ac_misc": 0,
 		"skill_ranks": {
-			"heal": 6,
-			"diplomacy": 4,
-			"sense_motive": 4,
-			"listen": 2,
-			"spot": 2
+			"diplomacy": 2,
+			"heal": 4,
+			"sense_motive": 3
 		},
 		"feats": [
 			"Iron Will"
@@ -281,7 +279,7 @@
 		"size_category": "medium",
 		"ac_misc": 0,
 		"skill_ranks": {
-			"search": 4,
+			"search": 3,
 			"spot": 2,
 			"listen": 2,
 			"diplomacy": 2
@@ -381,10 +379,10 @@
 		"size_category": "medium",
 		"ac_misc": 0,
 		"skill_ranks": {
-			"search": 2,
-			"spot": 2,
-			"listen": 2,
-			"diplomacy": 4
+			"bluff": 2,
+			"diplomacy": 3,
+			"search": 1,
+			"spellcraft": 2
 		},
 		"feats": [
 			"Dodge"

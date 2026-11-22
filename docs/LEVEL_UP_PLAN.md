@@ -569,6 +569,51 @@ would also be over the cap.
   no feat or spell change.
 - **Order:** after batch 2 is accepted, before batch 3 starts.
 
+### 11.5 Content repair record (2026-11-21)
+
+The five skill findings are repaired in `content/shared/characters.json`; the eight
+accepted differences stay. Before and after, with the points the engine charges
+(class rank 1, cross-class rank 2) and the level-3 budget
+`(class points + Int modifier) x 6`:
+
+| Character | Before (ranks -> points) | Spent | Budget | After (ranks -> points) | Spent |
+| --- | --- | ---: | ---: | --- | ---: |
+| aldric | heal 6 -> 6, diplomacy 4 -> 4, sense motive 4 -> 8, listen 2 -> 4, spot 2 -> 4 | 26 | 12 | diplomacy 2 -> 2, heal 4 -> 4, sense motive 3 -> 6 | 12 |
+| mira | search 2 -> 4, spot 2 -> 4, listen 2 -> 4, diplomacy 4 -> 8 | 20 | 12 | bluff 2 -> 2, diplomacy 3 -> 6, search 1 -> 2, spellcraft 2 -> 2 | 12 |
+| ysolde | search 4 -> 8, spot 2 -> 4, listen 2 -> 4, diplomacy 2 -> 4 | 20 | 30 | search 3 -> 6, spot 2 -> 4, listen 2 -> 4, diplomacy 2 -> 4 | 18 |
+
+- **Aldric.** Sense motive 3 is the rank the decision asked for, and at two points a
+  rank it costs half his twelve points. With heal and diplomacy funded first as
+  class skills (4 and 2), exactly twelve are spent, so listen 2 and spot 2 cannot
+  stay; they are dropped rather than left in a block that does not fit. Party
+  perception stays with Sera (listen 6, spot 6) and Ysolde (2, 2). His check totals
+  move to heal +7, diplomacy +3 and sense motive +6, each one lower than before.
+- **Mira.** Diplomacy 3 is the requested rank (6 points). Bluff 2 and spellcraft 2
+  are sorcerer class skills, which 11.2 required the rebuild to include, and search
+  1 is the only cross-class rank that fits beside them; spot and listen are dropped.
+  Her diplomacy total becomes +6, search +1, bluff +5, spellcraft +2.
+- **Ysolde.** Only search moves, 4 -> 3, down to the cross-class cap; the rest of her
+  block was already inside the 30-point budget, so nothing else changed and her
+  search total becomes +6.
+- **No other field moved.** The diff touches the three `skill_ranks` blocks only
+  (8 lines inserted, 10 deleted). HP, base attack, saves, feats, equipment, spells,
+  notes and XP are untouched; there is no save migration, and an existing save keeps
+  the ranks it stored.
+- **Tests.** `test_class_progression.gd` now expects the eight that remain, and a new
+  `test_repaired_skill_blocks_fit_the_level_three_budget` pins each repaired block's
+  spend and every rank against its cap. In `test_level_up_core.gd`, test 19 injects
+  the over-cap rank in memory (the rule it covers is unchanged) and a new
+  `test_repaired_content_has_no_over_cap_rank_notice` pins that the repaired content
+  produces no notice.
+- **Evidence.** Suite 832/832 tests, 8,350 assertions, 62 scripts (batch 2: 830 /
+  8,326 / 62). `--validate-campaigns` PASS. `--validate-diagnostics` PASS with
+  `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`, down from 13: the
+  four feat counts, Ysolde's two Int bonus slots, Mira's 1st-level slot reading and
+  Mira's short known list. Logs are in
+  `builds/qa/runs/2026-11-21_content_repair/`.
+- **Limit.** No engine line and nothing in the UI changed, so no candidate was
+  exported. No manual testing was requested and no backup was touched.
+
 ## 12. Batch 2: `level_up_core` (planned and implemented 2026-11-21)
 
 ### 12.1 Scope

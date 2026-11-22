@@ -175,16 +175,11 @@ func test_authored_level_three_characters_report_their_accepted_inconsistencies(
 		keys,
 		[
 			"aldric/feats",
-			"aldric/skill_points",
-			"aldric/skill_ranks.sense_motive",
 			"kaelen/feats",
 			"mira/feats",
-			"mira/skill_points",
-			"mira/skill_ranks.diplomacy",
 			"mira/spells.known",
 			"mira/spells.slots.1",
 			"ysolde/feats",
-			"ysolde/skill_ranks.search",
 			"ysolde/spells.slots.1",
 			"ysolde/spells.slots.2",
 		],
@@ -192,8 +187,37 @@ func test_authored_level_three_characters_report_their_accepted_inconsistencies(
 	)
 
 
-func test_no_character_has_a_wrong_base_attack_save_or_hit_points() -> void:
-	for entry in ClassProgression.authored_inconsistencies(Game.content.characters):
+func test_repaired_skill_blocks_fit_the_level_three_budget() -> void:
+	# The content repair rebuilt aldric's and mira's blocks inside 12 points and
+	# lowered ysolde's search to the cross-class cap; this pins the arithmetic.
+	var expected := {
+		"aldric": {"spent": 12, "budget": 12},
+		"ysolde": {"spent": 18, "budget": 30},
+		"mira": {"spent": 12, "budget": 12},
+	}
+	for id in expected:
+		var data: Dictionary = Game.content.characters[id]
+		var class_key := String(data["class"]).to_lower()
+		var level := int(data["level"])
+		var int_modifier := Rules.ability_mod(int(Dictionary(data["abilities"]).get("int", 10)))
+		var per_level := int(ClassProgression.class_data(class_key)["skill_points"]) + int_modifier
+		var budget := per_level * (level + 3)
+		var class_skills: Array = Skills.CLASS_SKILLS.get(class_key, [])
+		var spent := 0
+		var ranks := Dictionary(data["skill_ranks"])
+		for raw_skill in ranks.keys():
+			var skill := String(raw_skill)
+			var value := int(ranks[raw_skill])
+			var is_class := class_skills.has(skill)
+			var cap := level + 3 if is_class else (level + 3) / 2
+			assert_lte(value, cap, "%s %s %d is within the level-%d cap %d" % [id, skill, value, level, cap])
+			spent += value if is_class else value * 2
+		assert_eq(budget, int(expected[id]["budget"]), "%s earns the class budget at level %d" % [id, level])
+		assert_eq(spent, int(expected[id]["spent"]), "%s spends exactly these points" % id)
+		assert_lte(spent, budget, "%s spends no more than the class earns" % id)
+
+
+func test_no_character_has_a_wrong_base_attack_save_or_hit_points() -> void:	for entry in ClassProgression.authored_inconsistencies(Game.content.characters):
 		var field := String(entry["field"])
 		assert_false(
 			field == "base_attack" or field.begins_with("base_saves.") or field == "max_hp",

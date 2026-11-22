@@ -688,3 +688,21 @@ presentation choices are omitted; nothing here changes a rule silently.
     cap are shown as a notice and are never audited or clamped. XP is a gate and is
     never spent; a second apply refuses and changes nothing; old saves load without
     migration and never level on load.
+
+52. **The five authored skill findings are repaired in content, not by
+    migration.** The separate repair commit rebuilds aldric's and mira's rank
+    blocks inside the level-3 budget and lowers ysolde's search to the
+    cross-class cap; no other field moves and no save is rewritten. Aldric goes
+    from heal 6, diplomacy 4, sense motive 4, listen 2, spot 2 (26 of 12
+    points) to diplomacy 2, heal 4, sense motive 3 (12 of 12). Sense motive 3
+    costs six of his twelve points at two per cross-class rank, so keeping heal
+    at 6 and diplomacy at 4 as well was arithmetically impossible; the two
+    class skills are funded first and listen and spot are dropped, with party
+    perception left to Sera and Ysolde. Mira goes from search 2, spot 2,
+    listen 2, diplomacy 4 (20 of 12) to bluff 2, diplomacy 3, search 1,
+    spellcraft 2 (12 of 12), which adds the sorcerer class skills the decision
+    asked for. Ysolde only moves search 4 -> 3 (20 -> 18 of 30). The accepted
+    inconsistency set falls from thirteen to eight; the four feat counts, the
+    two Int bonus-slot readings and Mira's slot and known-list readings stay
+    accepted. Existing saves keep their stored ranks, so no character is
+    rewritten mid-campaign.

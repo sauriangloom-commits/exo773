@@ -5161,3 +5161,30 @@ one-time `--import` refresh was needed so the new `class_name` entered the globa
 class cache; it changed no source or content. Nothing in play calls `LevelUp` yet.
 No candidate was exported because nothing player-visible changed, no manual testing
 was performed or requested, and no backups were touched.
+
+### Content repair: the five skill findings (2026-11-21)
+
+The scheduled content commit rebuilt the two skill-point overspends and lowered
+the three over-cap cross-class ranks, touching `skill_ranks` on aldric, mira and
+ysolde only (8 lines inserted, 10 deleted). Before and after, with the points
+charged:
+
+| Character | Before | Spent | Budget | After | Spent |
+| --- | --- | ---: | ---: | --- | ---: |
+| aldric | heal 6, diplomacy 4, sense motive 4, listen 2, spot 2 | 26 | 12 | diplomacy 2, heal 4, sense motive 3 | 12 |
+| mira | search 2, spot 2, listen 2, diplomacy 4 | 20 | 12 | bluff 2, diplomacy 3, search 1, spellcraft 2 | 12 |
+| ysolde | search 4, spot 2, listen 2, diplomacy 2 | 20 | 30 | search 3, spot 2, listen 2, diplomacy 2 | 18 |
+
+`test_class_progression.gd` now expects the eight inconsistencies that remain,
+and `test_repaired_skill_blocks_fit_the_level_three_budget` recomputes each
+block's spend and every rank against its cap. `test_level_up_core.gd` keeps the
+"level-up never audits an existing rank" rule by injecting the over-cap rank in
+memory, and `test_repaired_content_has_no_over_cap_rank_notice` pins that the
+repaired content raises no notice.
+
+Suite 832/832 tests, 8,350 assertions, 62 scripts (batch 2: 830 / 8,326 / 62).
+`--validate-campaigns` PASS. `--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`, down from 13.
+Logs are in `builds/qa/runs/2026-11-21_content_repair/`. No engine line changed,
+nothing player-visible in the UI moved, so no candidate was exported; no manual
+testing was requested and no backups were touched.

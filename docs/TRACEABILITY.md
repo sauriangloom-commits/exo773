@@ -224,11 +224,13 @@ multi-square creatures and terrain effects.
 | Hit points per level (maximum at 1st, fixed average after) | PHB p. 9; class tables | `ClassProgression.expected_hp` | `test_expected_hp_matches_every_authored_character` |
 | Printed spell slots and sorcerer spells known | Table 3-6 p. 31; Table 3-16 p. 52; Table 3-17 p. 54; Table 3-18 p. 55 | `ClassProgression.spell_slots`, `ClassProgression.spells_known` | `test_spell_slots_match_the_printed_tables` |
 | Validator rejects missing, backwards and inconsistent rows | Batch 1 contract in `LEVEL_UP_PLAN.md` | `ClassProgression.validate` | `test_validate_rejects_*` |
-| Authored level-3 differences reported, not repaired | `content/shared/characters.json` | `ClassProgression.authored_inconsistencies` | `test_authored_level_three_characters_report_their_accepted_inconsistencies` |
+| Authored level-3 differences reported; the eight that remain after the content repair are accepted | `content/shared/characters.json` | `ClassProgression.authored_inconsistencies` | `test_authored_level_three_characters_report_their_accepted_inconsistencies`; `--validate-diagnostics` |
+| The five authored skill findings repaired: three over-cap cross-class ranks and two point overspends | PHB p. 62 (rank caps and costs); Table 3-2 p. 22 (skill points per level) | `content/shared/characters.json` (aldric, mira, ysolde skill ranks) | `test_repaired_skill_blocks_fit_the_level_three_budget`; `test_level_up_core.gd` `test_repaired_content_has_no_over_cap_rank_notice` |
 
 Adaptations: the code-not-content storage choice and the thirteen accepted authored
-inconsistencies are recorded in `ADAPTATION_LOG.md` 49. The table is data only; no
-XP, level, save, UI or rules behaviour reads it yet.
+inconsistencies are recorded in `ADAPTATION_LOG.md` 49; the five skill findings were
+repaired in `ADAPTATION_LOG.md` 52, leaving eight. The table is data only; no XP,
+level, save, UI or rules behaviour reads it yet.
 
 ### Level-up core (batch 2, 2026-11-21)
 
