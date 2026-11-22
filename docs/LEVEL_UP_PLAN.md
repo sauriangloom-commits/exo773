@@ -1253,7 +1253,7 @@ acceptance is batch 5.
   for validation.
 - **Evidence gaps:** no UI, probe, exported run or playtest for batch 3, so the choice
   data is unit-covered only and its ordering and reasons have not been seen on screen.
-## 14. Batch 4: `level_up_ui` and `--level-up-probe` (planned 2026-11-22, not implemented)
+## 14. Batch 4: `level_up_ui` and `--level-up-probe` (planned 2026-11-22; 4a implemented, 4b-4c not)
 
 ### 14.1 Batch 3 is closed as accepted, within its limits
 
@@ -1651,10 +1651,26 @@ testing or touches a backup.
 
 ### 14.11 Kept separate
 
-**Defects.** None known entering this batch. The one known trap is recorded as debt
-below, not as a defect: the singular `modal` field means a level-up modal replaces
-the sheet's modal rather than stacking on it, so the cancel path has to reopen the
-sheet.
+**Defects.** None entered the batch. Three were found in 4a; two were the tests'
+own mistakes and are fixed in place (the reveal check included the header and the
+footer, which sit outside the scrolling body by design; the panel lookup used a
+default node name that carries a counter once several panels have existed in one
+run). One is fixed in the screen: a refusal on Confirm had no control of its own
+on screen, because the refused group's rows live on another step, so the modal now
+moves to that step (`ADAPTATION_LOG.md` 55).
+
+One defect is open and deferred, in batch 3's module: `LevelChoices.validate`
+returns the staging code (`feat_already_owned` and so on) where `LevelUp.apply`
+returns `already_level_4` for a character who has already taken the step, against
+`validate`'s own comment that it returns "the same refusal code `LevelUp.apply`
+would return". Both refuse and neither writes anything, so 4a ships with the
+behaviour pinned by `test_a_stale_page_cannot_apply_after_the_character_has_leveled`
+and the disagreement recorded rather than repaired here; repairing it changes a
+batch-3 refusal code, which 14.2 rules out for this batch.
+
+The singular `modal` field is still recorded as debt below, not as a defect: the
+level-up modal replaces the sheet's modal rather than stacking on it, so the close
+path reopens the sheet.
 
 **Deferred features.** Levels 5 and above; more than one level in a step; NPC
 advancement; the printed fighter bonus feats this slice does not implement (Weapon
@@ -1676,12 +1692,21 @@ that opens the sheet directly on an eligible character.
   character can change, which it was not before.
 - The source-text guards cannot see a call assembled from a string. They are backed
   by the behavioural test, and the limit is stated in the test's own comment.
+- The `modal` field is singular, so the level-up modal replaces the party sheet's
+  rather than stacking on it, and the close path reopens the sheet instead. A later
+  screen that wanted to return to a level-up step would have to re-create it.
+- `close_modal` gained a second parameter and a one-shot `modal_on_close` callback,
+  and `open_modal` replaces a modal with `notify = false`. A later modal that sets
+  the callback owns its own focus after closing; `close_modal` clears it for that
+  reason, so a stale callback cannot outlive its modal.
 
-**Evidence gaps.** Everything in this section is a plan: no screen, probe, export or
-playtest exists yet. The 160 % layout has not been seen, only specified; the probe's
-numbers are `preview`'s, so a preview bug would be reproduced faithfully rather than
-caught. No manual testing is requested here, and none of these tests substitutes for
-the exported acceptance run in batch 5.
+**Evidence gaps.** 4a has run (14.13); 4b and 4c have not. The 160 % layout is
+pinned only by the suite's control-rectangle checks: no probe has walked the
+screen, and no window has shown it at either scale, so C1-C9 are specified and
+partly asserted, not evidenced. The probe's numbers will be `preview`'s, so a
+preview bug would be reproduced faithfully rather than caught. No manual testing is
+requested here, and none of these tests substitutes for the exported acceptance run
+in batch 5.
 
 ### 14.12 Risks
 
@@ -1698,3 +1723,63 @@ the exported acceptance run in batch 5.
 - **Probe cost.** Two full walks with layout checks at 1280x720 is a few seconds of
   headless run; it stays out of the suite, which is why the suite's 18 tests cover the
   behavior and the probe covers the real victory and the save round-trip.
+
+### 14.13 4a is implemented and accepted, and the plan is closed (2026-11-22)
+
+Section 14 is accepted as written and closed as a plan. 4a - the screen, the sheet's
+button and their tests - is implemented; 4b and 4c, `--level-up-probe` at 100 % and
+at 160 %, are not. This subsection is the record of 4a and the only part of
+section 14 that has run.
+
+**What landed.** `src/ui/level_up_screen.gd` (new, with its tracked `.uid`);
+`Panels.character_sheet(selected, on_level_up)` with a header row per page carrying
+a `Level up` button or a muted reason line; `ExplorationScreen._open_level_up` and
+`_leave_level_up`; and one seam in `src/main.gd`, `modal_on_close`, which
+`close_modal` runs once and the replacement `open_modal` does never runs. That seam
+is how Cancel, the header `Close (Esc)` and Esc all put the sheet back on the same
+page with the button focused. Tests: `tests/test_level_up_screen.gd` (19) and
+`tests/test_level_up_ui_surface.gd` (2) - 21, not the 18 planned, because the three
+extra acceptance tests the batch asked for live in the first file.
+
+**Red, quoted from the log rather than the exit code.** The first run collected 64
+scripts and 852 tests: the new screen suite was never collected because it could
+not be parsed, while the surface suite ran and failed its first assertion.
+
+    SCRIPT ERROR: Parse Error: Could not find type "LevelUpScreen" in the current scope.
+       at: GDScript::reload (res://tests/test_level_up_screen.gd:54)
+    [Failed]:  [""] expected to not equal [""]:  the screen file exists
+
+The plan predicted `Identifier "LevelUpScreen" not declared in the current scope`;
+the engine's wording for a missing `class_name` is `Could not find type ... in the
+current scope`, and that is the text recorded. GUT exited 1 on that run because the
+surface suite had a failing test, which is the second reason the log text is the
+evidence and the exit code is not.
+
+The second run collected all 21 and failed four, each for a real reason:
+
+    [Failed]:  focus moved to the refused group
+    [Failed]:  the focused row is fully inside the body      (four times)
+    [Failed]:  Expected [<null>] to be anything but NULL:  the panel exists
+    [Failed]:  the refusal is the engine's
+
+The first was a defect in the screen: a refusal on Confirm left focus on the
+footer, because the refused group's rows are on another step. The modal now moves
+to the step that owns the refusal (`ADAPTATION_LOG.md` 55). The other three were
+the tests' own mistakes, corrected in place and not by weakening the checks: the
+reveal check included the header and footer, which are outside the scrolling body
+by design; the panel lookup matched a node name that carries a counter once
+several panels have existed; and the stale-page refusal is `feat_already_owned`
+rather than `already_level_4`, because `LevelChoices.validate` stages instead of
+applying.
+
+**Green.** 871/871 tests, 9,236 assertions, 65 scripts (batch 3: 850 / 8,562 / 63);
+`--validate-campaigns` PASS; `--validate-diagnostics` PASS ending
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_level_up_ui/`.
+
+**What 4a does not prove.** The 160 % layout is checked only by the suite's
+control-rectangle tests. No probe has walked the screen at either scale, so the
+1280x720 layout at 160 % has not been seen in a window and the C1-C9 checks in 14.6
+are not evidenced. Nothing player-visible was exported, no manual testing was
+requested and no backups were touched. 4b and 4c remain outstanding, and one defect
+in batch 3's `validate` is recorded above rather than repaired here.

@@ -267,26 +267,38 @@ Adaptations: the printed markers living in Table 5-1, the catalog as the selecti
 surface and the content-id skill parameter are recorded in `ADAPTATION_LOG.md` 53.
 The module is engine-only: no scene, probe, export or play path calls it, and
 `LevelUp.apply` remains the only thing that changes a character.
-### Level-up screen and probe (batch 4, planned 2026-11-22, not implemented)
+### Level-up screen, button and tests (batch 4a, 2026-11-22)
 
-Every row below is planned, not evidenced: the screen, the probe and their tests do
-not exist yet. The implementation column names the symbol the plan puts there.
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| The sheet offers a level-up only for a character the engine calls eligible, and states the reason instead when it does not | `LEVEL_UP_PLAN.md` 14.4 | `Panels.character_sheet`, `Panels._level_up_header`, `LevelUp.eligibility` | `test_the_sheet_offers_level_up_only_on_eligible_pages` |
+| The steps follow the class: Feat for a fighter's bonus feat, Spells only when there is a spell choice | `LEVEL_UP_PLAN.md` 14.4; 13.2-13.3 | `LevelUpScreen.steps_for` from `LevelChoices.choices` | `test_the_steps_follow_the_class` |
+| The summary repeats the preview's numbers rather than recomputing them | `LEVEL_UP_PLAN.md` 12.4, 14.4 | `LevelUpScreen._fill_summary` from `LevelUp.preview` | `test_summary_matches_the_preview` |
+| Back keeps the draft, Cancel and Esc apply nothing and return to the same sheet page, and a held Esc does nothing | `LEVEL_UP_PLAN.md` 14.4; `main.gd` `close_modal`, `_restore_modal_focus`, `_input` | `LevelUpScreen._back`, `_cancel`, `on_close`; `main.modal_on_close` | `test_back_returns_to_the_previous_step_with_the_draft`, `test_cancel_returns_to_the_sheet_without_applying`, `test_escape_closes_without_applying` |
+| Confirm validates first, keeps the modal open on a refusal with the engine's message and focus on the refused group, and applies exactly once on success | `LEVEL_UP_PLAN.md` 14.4 | `LevelChoices.validate`, `LevelUp.apply`, `LevelUpScreen.confirm` | `test_confirm_applies_through_validate_and_apply`, `test_a_refused_confirm_keeps_the_modal_open_and_changes_nothing`, `test_apply_is_not_called_when_validate_refuses` |
+| The UI may call only `choices`, `validate` and `apply`; no shipped file stages a level outside the choice module | `LEVEL_UP_PLAN.md` 14.7 | `src/ui/level_up_screen.gd`, `src/core/level_choices.gd` | `test_the_screen_calls_only_choices_validate_and_apply`, `test_no_shipped_file_stages_a_level_outside_the_choice_module` |
+| Every control is reachable and operable with Tab, Shift+Tab, Enter, Space, Esc and the page keys, and Tab wraps inside the modal at both scales | `LEVEL_UP_PLAN.md` 14.5; `main.gd` `_cycle_modal_focus`, `_scroll_modal_body` | `LevelUpScreen` control order | `test_the_modal_traps_focus_at_both_scales` |
+| Skill points cannot be overspent, and a row at its cap is disabled with the reason in the row | `LEVEL_UP_PLAN.md` 14.4; PHB p. 62 | `LevelUpScreen._spend_skill` on `LevelChoices` `max_new_ranks` | `test_the_skills_step_cannot_overspend` |
+| The fighter's feat rows carry their prerequisites' own reasons | PHB p. 38; Table 5-1 pp. 90-91 | `LevelUpScreen._fill_feat` on the `Feats` row data | `test_the_fighter_feat_rows_carry_their_reasons` |
+| At 1280x720 the single-column body keeps the header and footer outside the scrolling pane, wraps the strip, and scrolls at 160 % | `LEVEL_UP_PLAN.md` 14.6 | `LevelUpScreen` body layout | `test_the_panel_and_footer_fit_the_window_at_160_percent`, `test_the_strip_and_rows_wrap_without_clipping`, `test_the_body_scrolls_for_the_skills_step_at_160_percent`, `test_every_focusable_is_revealed_in_the_body_at_160_percent` |
+| A rebuild of the modal body keeps the step, the draft and the focus | `LEVEL_UP_PLAN.md` 14.3, 14.11 | `LevelUpScreen` instance state, `_chosen_control_name`, `_grab` | `test_the_draft_survives_a_modal_rebuild_and_focus_restore` |
+| A page that went stale cannot apply a second step | `LEVEL_UP_PLAN.md` 14.4 | `LevelUpScreen.confirm` through `LevelChoices.validate` | `test_a_stale_page_cannot_apply_after_the_character_has_leveled` |
+| A confirmed level writes only the character fields the step owns, and no other character changes | `LEVEL_UP_PLAN.md` 14.11; `level_up.gd` `_commit` | `LevelUp.apply` | `test_a_confirm_writes_only_the_intended_character_fields` |
+
+Adaptations: the per-page button, the class-dependent step list, the keyboard-only
+control set, the refusal moving to the step that owns it and the `modal_on_close`
+seam are recorded in `ADAPTATION_LOG.md` 54 and 55. No rule changes:
+`LevelUp.apply` remains the only path that changes a character.
+
+The 160 % layout has no probe yet: it is pinned by the suite's control-rectangle
+tests only, and it has not been seen in a window.
+
+### Level-up probe (batch 4b-4c, planned 2026-11-22, not implemented)
+
+Every row below is planned, not evidenced: no `--level-up-probe` exists.
 
 | Behavior | Source | Implementation (planned) | Evidence (planned) |
 | --- | --- | --- | --- |
-| The sheet offers a level-up only for a character the engine calls eligible, and states the reason instead when it does not | `LEVEL_UP_PLAN.md` 14.4 | `Panels.character_sheet` header row, `LevelUp.eligibility` | `test_the_sheet_offers_level_up_only_on_eligible_pages` |
-| The steps follow the class: Feat for a fighter's bonus feat, Spells only when there is a spell choice | `LEVEL_UP_PLAN.md` 14.4; `LEVEL_UP_PLAN.md` 13.2-13.3 | `LevelUpScreen` step list from `LevelChoices.choices` | `test_the_steps_follow_the_class` |
-| The summary repeats the preview's numbers rather than recomputing them | `LEVEL_UP_PLAN.md` 12.4, 14.4 | `LevelUpScreen` summary from `LevelUp.preview` | `test_summary_matches_the_preview` |
-| Back keeps the draft, Cancel and Esc apply nothing and return to the same sheet page, and a held Esc does nothing | `LEVEL_UP_PLAN.md` 14.4; `main.gd` `close_modal` 7843, `_restore_modal_focus` 7862, `_input` 8264/8361 | `LevelUpScreen` footer and `on_close` | `test_back_returns_to_the_previous_step_with_the_draft`, `test_cancel_returns_to_the_sheet_without_applying`, `test_escape_closes_without_applying` |
-| Confirm validates first, keeps the modal open on a refusal with the engine's message and focus on the refused group, and applies exactly once on success | `LEVEL_UP_PLAN.md` 14.4 | `LevelChoices.validate`, `LevelUp.apply` | `test_confirm_applies_through_validate_and_apply`, `test_a_refused_confirm_keeps_the_modal_open_and_changes_nothing`, `test_apply_is_not_called_when_validate_refuses` |
-| The UI may call only `choices`, `validate` and `apply`; no shipped file stages a level outside the choice module | `LEVEL_UP_PLAN.md` 14.7 | `src/ui/level_up_screen.gd`, `src/core/level_choices.gd` | `test_the_screen_calls_only_choices_validate_and_apply`, `test_no_shipped_file_stages_a_level_outside_the_choice_module` |
-| Every control is reachable and operable with Tab, Shift+Tab, Enter, Space, Esc and the page keys, and Tab wraps inside the modal at both scales | `LEVEL_UP_PLAN.md` 14.5; `main.gd` `_cycle_modal_focus` 7939, `_scroll_modal_body` 8031 | `LevelUpScreen` control order | `test_the_modal_traps_focus_at_both_scales` |
-| At 1280x720 the single-column body fits at 100 % and scrolls at 160 %, with the footer and header pinned outside the body | `LEVEL_UP_PLAN.md` 14.6; `main.gd` `open_modal` 7744, `_reveal_*` 7968/7980 | `LevelUpScreen` body layout | `test_every_focusable_is_revealed_in_the_body_at_160_percent`, `test_the_panel_and_footer_fit_the_window_at_160_percent`, `test_the_strip_and_rows_wrap_without_clipping`, `test_the_body_scrolls_for_the_skills_step_at_160_percent` |
 | A real victory pays the XP that clears 6,000 exactly once, and the sheet's button follows | `game_state.gd` 1729-1738; `LEVEL_UP_PLAN.md` 14.8 | `_level_up_probe` steps 1-2 | `--level-up-probe` receipt 1.0/1.6 |
 | A level-up round-trips through a save and a reload, a second apply refuses, and Cancel writes nothing | `LEVEL_UP_PLAN.md` 14.8; `game_state.gd` 488/532; `save_system.gd` 35/120 | `_level_up_probe` steps 6-8 | `--level-up-probe` receipt 1.0/1.6 |
-
-Adaptations: the per-page button (the sheet is a `TabContainer` of pages, not a row of
-cards), the class-dependent step list and the keyboard-only control set are recorded in
-`ADAPTATION_LOG.md` 54. No rule changes: the screen reads `LevelUp.preview` and
-`LevelChoices.choices`, asks `LevelChoices.validate`, and `LevelUp.apply` remains the
-only path that changes a character.
+| The layout checks C1-C9 hold at 160 % | `LEVEL_UP_PLAN.md` 14.6 | `_level_up_probe` per-step checks | `--level-up-probe` receipt 1.6 |

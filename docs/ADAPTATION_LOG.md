@@ -747,3 +747,26 @@ presentation choices are omitted; nothing here changes a rule silently.
     not a new one. Confirm is the only place that changes a character, it asks
     `LevelChoices.validate` first, and on a refusal it keeps the dialog open with the
     engine's own message. `LevelUp.stage` stays out of the UI entirely.
+
+55. **The level-up refusal lands on the step that owns it, and the modal owns its
+    own close.** Two decisions taken while implementing 4a, recorded because they
+    are not in the plan's first wording. First, `LEVEL_UP_PLAN.md` 14.4 said a
+    refused Confirm *stays on Confirm* and moves focus to the refused group; in
+    practice a refused group's rows live on another step, so a missing fighter feat
+    had no control to focus on Confirm at all. The modal now moves to the step that
+    owns the refusal - Feat, Spells, Skills or Ability - keeps the engine's message
+    in the refusal line above the footer, and focuses the first row of that group
+    the player can actually choose. The modal stays open, the draft is untouched and
+    `LevelUp.apply` is still not reached, which is what the plan's own test pins.
+    Second, the `modal` field is singular, so the level-up modal replaces the party
+    sheet's modal instead of stacking on it. `src/main.gd` gained one one-shot
+    callback, `modal_on_close`, which `close_modal` runs once and which
+    `open_modal`'s replacement path never runs, so Cancel, the header `Close (Esc)`
+    and Esc all put the sheet back on the same page with the `Level up` button
+    focused without a second dismissal path. The stale-page test also showed that
+    `LevelChoices.validate` reports the staging code (`feat_already_owned` and so
+    on) rather than `already_level_4` for a character who has already taken the
+    step, because it stages instead of applying. The screen still refuses and
+    writes nothing; the disagreement with `validate`'s own doc comment is recorded
+    as an open defect in `LEVEL_UP_PLAN.md` 14.11 rather than repaired in 4a,
+    because repairing it changes a batch-3 refusal code.

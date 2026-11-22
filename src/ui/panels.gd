@@ -19,7 +19,11 @@ const REBIND_ACTIONS := [
 ]
 
 
-static func character_sheet(selected := 0) -> Control:
+## `on_level_up` is optional: a sheet that cannot spend a level (the combat view)
+## passes none and then shows neither a button nor a refusal line. The page is the
+## card - the sheet is a TabContainer with one page per party member - so the
+## button lives in a header row above that page's own scroll body.
+static func character_sheet(selected := 0, on_level_up := Callable()) -> Control:
 	var tabs := TabContainer.new()
 	tabs.custom_minimum_size = Vector2(800, 500)
 	for i in Game.party.size():
@@ -31,6 +35,11 @@ static func character_sheet(selected := 0) -> Control:
 		page.add_theme_constant_override("margin_top", 6)
 		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var body := VBoxContainer.new()
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		page.add_child(body)
+		body.add_child(_level_up_header(i, ch, on_level_up))
 		var scroll := ScrollContainer.new()
 		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -40,11 +49,46 @@ static func character_sheet(selected := 0) -> Control:
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text.text = _character_text(ch)
 		scroll.add_child(text)
-		page.add_child(scroll)
+		body.add_child(scroll)
 		tabs.add_child(page)
 	if tabs.get_tab_count() > 0:
 		tabs.current_tab = clampi(selected, 0, tabs.get_tab_count() - 1)
 	return tabs
+
+
+## The page's header row: a `Level up` button when the step is open, a muted
+## reason line when it is not, and nothing at all when the caller cannot open the
+## level-up screen. A disabled button would read as "almost available"; a page
+## that does not offer the step offers no control for it.
+static func _level_up_header(index: int, ch: Character, on_level_up: Callable) -> Control:
+	var header := HBoxContainer.new()
+	header.name = "PageHeader"
+	header.add_theme_constant_override("separation", 8)
+	var state := LevelUp.eligibility(ch)
+	if bool(state.get("eligible", false)):
+		if not on_level_up.is_valid():
+			return header
+		var button := Button.new()
+		button.name = "LevelUpButton"
+		button.text = "Level up"
+		button.custom_minimum_size = Vector2(0, 34)
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var captured := index
+		button.pressed.connect(func() -> void: on_level_up.call(captured))
+		header.add_child(button)
+		var hint := ThemeBuilder.body(
+			"This character has enough experience to advance to 4th level.", true, 12
+		)
+		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		header.add_child(hint)
+		return header
+	var message := String(state.get("message", ""))
+	if message != "":
+		var reason := ThemeBuilder.body(message, true, 12)
+		reason.name = "LevelUpReason"
+		reason.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		header.add_child(reason)
+	return header
 
 
 static func _character_text(ch: Character) -> String:

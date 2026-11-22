@@ -5210,13 +5210,48 @@ gained the verified `fighter_bonus` flag, `LevelUp` gained the public `stage` se
 and `required_choices`, and `LevelUp.apply` is still the only path that changes a
 character. Logs are in `builds/qa/runs/2026-11-22_level_choices/`. No candidate was
 exported, no manual testing was requested and no backups were touched.
-### Level-up screen and probe (batch 4, planned 2026-11-22)
+### Level-up screen (batch 4a, 2026-11-22)
 
-No run exists for this batch and none is claimed: the screen, its two test files and
-`--level-up-probe` are planned in `LEVEL_UP_PLAN.md` 14. The red sequence the record
-will quote is the logged parse error naming `LevelUpScreen` with the totals still at
-63 scripts / 850 tests / 8,562 assertions (GUT exits 0 either way), then the assertion
-messages listed in 14.9, then the absence of a `LEVEL UP PROBE` receipt line before
-the flag is dispatched. The green receipt will be the suite plus both validators for
-the screen, and `_probe_finish("level_up")` at 1.0 and at 1.6 for the probe. This
-subsection will be replaced by the run record when 4a-4c land.
+21 tests written before the screen: `tests/test_level_up_screen.gd` (19) and
+`tests/test_level_up_ui_surface.gd` (2). Red #1, quoted from the log because the exit
+code is not the evidence:
+
+    SCRIPT ERROR: Parse Error: Could not find type "LevelUpScreen" in the current scope.
+       at: GDScript::reload (res://tests/test_level_up_screen.gd:54)
+    [Failed]:  [""] expected to not equal [""]:  the screen file exists
+
+The screen suite was never collected (`Scripts 64`, `Tests 852`, `Asserts 8566/8570`;
+batch 3 recorded 63 / 850 / 8,562) and the surface suite ran and failed. The plan
+predicted `Identifier "LevelUpScreen" not declared in the current scope`; the
+engine's wording for a missing `class_name` is the text above, and that is what is
+recorded. Red #2, once the screen existed, collected all 21 and failed four:
+
+    [Failed]:  focus moved to the refused group
+    [Failed]:  the focused row is fully inside the body
+    [Failed]:  Expected [<null>] to be anything but NULL:  the panel exists
+    [Failed]:  the refusal is the engine's
+
+The first was a screen defect - a refusal on Confirm left focus on the footer because
+the refused group's rows are on another step - and the modal now moves to that step
+(`ADAPTATION_LOG.md` 55). The other three were the tests' own mistakes, corrected in
+place: the reveal check included controls outside the scrolling body, the panel
+lookup matched a default node name that carries a counter, and the stale-page refusal
+is `feat_already_owned` rather than `already_level_4` because
+`LevelChoices.validate` stages instead of applying.
+
+Final: 871/871 tests, 9,236 assertions, 65 scripts. `--validate-campaigns` PASS;
+`--validate-diagnostics` PASS with
+`CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_level_up_ui/`. No candidate was exported, no manual
+testing was requested and no backups were touched.
+
+The 160 % layout is not covered by a probe: the suite's control-rectangle tests pass
+at 1.6, but no `--level-up-probe` run exists, so the screen has not been seen in a
+window at that scale.
+
+### Level-up probe (batch 4b-4c, planned 2026-11-22)
+
+No run exists for the probe and none is claimed: `--level-up-probe` is not
+implemented, so there is no `LEVEL UP PROBE` receipt line at either scale. Its red
+will be that missing line; its green must be `_probe_finish("level_up")` at 1.0 and
+at 1.6 with the C1-C9 checks, in the same log.

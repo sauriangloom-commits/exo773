@@ -17,6 +17,10 @@ var modal_notice := ""
 ## The modal size a caller asked for at 100 % text, kept so `refresh_modal()`
 ## re-applies the same request instead of resetting every modal to 760x540.
 var modal_base_size := Vector2(760, 540)
+## Set by a modal body that has to act after the modal is gone (the level-up
+## screen reopens the party sheet it replaced). Called once by `close_modal`,
+## whichever path closed it, and never by the replacement `open_modal` does.
+var modal_on_close: Callable = Callable()
 var awaiting_rebind := ""
 var party_selection: Array[String] = []
 var party_error: Label
@@ -7757,7 +7761,7 @@ func open_modal(title: String, builder: Callable, width := 760, height := 540, p
 				var remembered := talk.return_target()
 				if remembered != null:
 					opener = remembered
-	close_modal(false)
+	close_modal(false, false)
 	if preserve_rebind:
 		awaiting_rebind = pending_rebind
 	modal_title = title
@@ -7840,7 +7844,7 @@ func refresh_modal() -> void:
 		)
 
 
-func close_modal(restore_focus := true) -> void:
+func close_modal(restore_focus := true, notify := true) -> void:
 	if modal != null:
 		var focus_owner := get_viewport().gui_get_focus_owner()
 		if focus_owner != null and modal.is_ancestor_of(focus_owner):
@@ -7852,6 +7856,14 @@ func close_modal(restore_focus := true) -> void:
 	modal_title = ""
 	modal_notice = ""
 	awaiting_rebind = ""
+	var closed := modal_on_close
+	modal_on_close = Callable()
+	if notify and closed.is_valid():
+		# The callback owns the result of this close: it opens what replaces the
+		# modal and focuses it, so the generic restore would first send focus to
+		# a control that is about to be freed with the modal.
+		closed.call()
+		return
 	if restore_focus:
 		_restore_modal_focus()
 

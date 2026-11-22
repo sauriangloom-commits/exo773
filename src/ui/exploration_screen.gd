@@ -16,6 +16,9 @@ var header: HBoxContainer
 var status_label: Label
 var gold_label: Label
 var dialogue_panel: DialoguePanel = null
+## The level-up controller while its modal is open. The draft lives there, not in
+## the modal builder, so a rebuild of the modal cannot reset the step.
+var level_up_screen: LevelUpScreen = null
 
 
 func _ready() -> void:
@@ -349,9 +352,42 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _open_party(index: int) -> void:
+	var page := clampi(index, 0, maxi(0, Game.party.size() - 1))
 	main.open_modal("Party & Character Sheet", func() -> Control:
-		return Panels.character_sheet(index)
+		return Panels.character_sheet(page, func(chosen: int) -> void: _open_level_up(chosen))
 	, 900, 620)
+
+
+## Opens the level-up screen for one page of the sheet. The `modal` field is
+## singular, so this replaces the sheet's modal rather than stacking on it; the
+## screen's close callback puts the sheet back on the same page.
+func _open_level_up(page: int) -> void:
+	if page < 0 or page >= Game.party.size():
+		return
+	var screen := LevelUpScreen.new()
+	screen.main = main
+	screen.ch = Game.party[page]
+	screen.page = page
+	screen.on_close = func(applied: bool) -> void: _leave_level_up(page, applied)
+	level_up_screen = screen
+	screen.open()
+
+
+func _leave_level_up(page: int, applied: bool) -> void:
+	level_up_screen = null
+	_open_party(page)
+	if applied:
+		# The page no longer offers the step, so there is no button to return to
+		# and the reopened sheet keeps the focus it gave its own Close control.
+		return
+	var root: Control = main.get("modal")
+	if root == null:
+		return
+	for node in root.find_children("LevelUpButton", "Button", true, false):
+		var button := node as Button
+		if button.is_visible_in_tree() and not button.disabled:
+			button.grab_focus()
+			return
 
 
 func _open_inventory() -> void:

@@ -2956,3 +2956,43 @@ keyboard at both scales, checks the summary numbers, applies, saves, reloads, pr
 a second apply refuses and that Cancel and Esc write nothing. It lands as three
 commits - screen, probe at 100 %, probe at 160 % - each with its own red text. No
 candidate was exported, no manual testing was requested and no backups were touched.
+
+
+### Batch 4a implemented and accepted (2026-11-22)
+
+The batch-4 plan (section 14 of `LEVEL_UP_PLAN.md`) is accepted as written and closed
+as a plan. 4a, the screen and its tests, is implemented; 4b and 4c, `--level-up-probe`
+at 100 % and at 160 %, are not.
+
+`src/ui/level_up_screen.gd` is new. `Panels.character_sheet` gained an optional
+`on_level_up` callback and a header row on every page: a `Level up` button when
+`LevelUp.eligibility` says yes, the engine's own reason as a muted line when it says
+no, and nothing at all when the caller cannot spend a step (the combat view).
+The modal is 900x620 and its steps are Summary, Ability, Skills, Feat (a fighter's
+bonus feat), Spells (a spell choice) and Confirm, derived from
+`LevelChoices.choices` rather than fixed, so a rogue sees four and a fighter or
+sorcerer five. It reads `LevelUp.preview` for every number, asks
+`LevelChoices.validate` before it applies, calls `LevelUp.apply` once, and never
+stages; two surface tests pin that from the source text and the behavioural tests pin
+it from the character's serialization. `src/main.gd` gained one seam,
+`modal_on_close`, so Cancel, `Close (Esc)` and Esc all put the sheet back on the same
+page with the button focused, because the `modal` field is singular and the level-up
+modal therefore replaces the sheet's rather than stacking on it.
+
+Tests: `tests/test_level_up_screen.gd` (19) and `tests/test_level_up_ui_surface.gd`
+(2), written before the screen existed. The first red is the log, not the exit code:
+`Could not find type "LevelUpScreen" in the current scope` at
+`res://tests/test_level_up_screen.gd:54`, with the screen suite never collected (64
+scripts, 852 tests, 8,566 assertions) and the surface suite failing
+`the screen file exists`. The second run collected all 21 and failed four, each for a
+real reason recorded in `LEVEL_UP_PLAN.md` 14.13. Final: 871/871 tests, 9,236
+assertions, 65 scripts, `--validate-campaigns` PASS, `--validate-diagnostics` PASS
+ending `CLASS PROGRESSION PASS | 8 accepted authored inconsistencies`. Logs are in
+`builds/qa/runs/2026-11-22_level_up_ui/`.
+
+Limits: the 160 % layout is pinned by the suite's control-rectangle checks only - no
+probe has walked it and no window has shown it, so C1-C9 are not evidenced.
+`LevelChoices.validate` and `LevelUp.apply` return different codes for a character who
+has already taken the step; both refuse, the test pins the refusal, and the
+disagreement is recorded as an open defect rather than repaired in 4a. No candidate
+was exported, no manual testing was requested and no backups were touched.
