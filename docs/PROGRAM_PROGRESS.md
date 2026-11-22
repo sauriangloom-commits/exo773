@@ -3097,3 +3097,25 @@ attached: geometric containment only, no rendered-pixel or visual acceptance, th
 sorcerer not walked end to end, one window size on Windows, and no human playtest. No
 feature or rule changed in this batch, no manual testing was requested and no backup was
 touched.
+
+### Roadmap review after the level-up closure (2026-11-22)
+
+The level-up workstream is closed as accepted within the limits recorded at
+`9216ced`, and nothing was rebuilt, re-exported or re-checked for this review. No
+checks were run. Reading the records against the implementation found no open
+defect. The sorcerer's 2nd-level spell-pool gap is a content gate - the engine
+refuses the step rather than writing half of it, and no authored character is in
+the blocked state - and the missing level-up autosave is not a defect either: the
+victory autosave already holds the XP that makes the step available, so a reload
+re-offers it, and only the choice work is lost by quitting straight after
+applying.
+
+What the review did find is reachability. The party starts at 3,000 XP and all the
+content together awards 2,900, so the best a demo party can reach is 5,200 against
+a 6,000 threshold; every acceptance run so far crossed it from a fixture. The
+recommended next task is therefore planning only - a short note deciding the
+campaign XP model, the total, pacing, the author-facing reachable-XP line and the
+probe that would reach eligibility from authored awards - with implementation to
+follow once the numbers are chosen. Levels 5 and above and Improved Bull Rush stay
+deferred: both would still be unreachable. No code, content, schema or save was
+changed; this commit is documentation only.

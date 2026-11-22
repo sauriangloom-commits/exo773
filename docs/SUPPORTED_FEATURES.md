@@ -45,7 +45,10 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   says so in the round-1 combat-log line, so the reading is visible rather than
   implicit.
 - HP, temporary damage, healing, dying, stable, dead and undead destruction.
-- XP total per character (no advancement).
+- XP total per character, and advancement from 3rd to 4th level: one ability
+  increase, skill points, the fighter's bonus feat and the sorcerer's new
+  known spell, applied only on Confirm and persisted by the normal save
+  path. Levels 5 and above are not supported.
 
 ### Feats and skills
 
@@ -398,13 +401,15 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Only the 41 feats listed above are selectable. Every other PHB feat in
   [FEATS_SKILLS_COVERAGE.md](FEATS_SKILLS_COVERAGE.md) is deferred behind the
   dependency named there (combat actions, full attacks, cover, spell schools,
-  spell resistance, item creation, mounts, advancement, wild shape).
+  spell resistance, item creation, mounts, advancement past 4th level, wild
+  shape).
 - Full D&D 3.5 rules: grapple, disarm, sunder, bull rush, overrun, mounted
   combat, two-weapon fighting, player iterative/full attacks, readied/delayed actions,
   rebuking/commanding/bolstering undead, spontaneous casting outside
   Mira's fixed sorcerer list, domains, familiars, animal companions,
-  multiclassing, prestige classes, level advancement, crafting, shops, traps,
-  diseases, poisons, environmental hazards, swimming/climbing, flight.
+  multiclassing, prestige classes, advancement past 4th level, crafting,
+  shops, traps, diseases, poisons, environmental hazards, swimming/climbing,
+  flight.
 - Cover, concealment, area-of-effect spells, spell resistance,
   spell penetration, counterspells, readied and delayed actions, casting while
   grappled, weather or ongoing-damage interruptions. Combat Casting's +4 applies

@@ -154,9 +154,9 @@ and a windowed 1280×720 / 1.6× external-input check. See `docs/TEST_REPORT.md`
 
 Grapple, trip, disarm, sunder, bull rush, two-weapon fighting, player iterative/full
 attacks, readied or delayed actions, turn undead, cover/concealment,
-area-of-effect templates, encumbrance, multiclassing, level-up
-choices, crafting, shops, diseases/poisons, mounted/flying combat, and the full
-spell list. See [docs/SUPPORTED_FEATURES.md](docs/SUPPORTED_FEATURES.md) for the
+area-of-effect templates, encumbrance, multiclassing, advancement past 4th
+level, crafting, shops, diseases/poisons, mounted/flying combat, and the
+full spell list. See [docs/SUPPORTED_FEATURES.md](docs/SUPPORTED_FEATURES.md) for the
 exact scope.
 
 ## Tests

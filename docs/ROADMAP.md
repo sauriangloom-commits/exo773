@@ -587,6 +587,176 @@ listed, not scheduled.
   pins Tab order only over the map-cell stretch; no human playtest was run or
   requested.
 
+## Next bounded task — roadmap review after the level-up closure (2026-11-22)
+
+Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this
+section, and no manual testing was requested. It reads `PROGRAM_PROGRESS.md`,
+`TRACEABILITY.md`, `TEST_REPORT.md`, `LEVEL_UP_PLAN.md` 14.11 and
+`FEATS_SKILLS_COVERAGE.md`, then the implementation behind the two recorded
+level-up deferrals.
+
+**The workstream is closed.** The level-up feature is accepted within the limits
+recorded at `9216ced`: source `84d8fb7`, suite 877/877 (9,343 assertions, 65
+scripts, 0 failed), both validators PASS, `--level-up-probe` 172 + 173 = 347
+checks with 0 failures at 100 % and 160 %, and the same 211 passing check labels
+inside candidate `level_up_ui_2026-11-22` (110,832,568 bytes, SHA-256
+`2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff`, unchanged
+before and after). The evidence is control rectangles and state. The boundary
+line at the top of this file (778/778) predates it; the numbers above are the
+current ones.
+
+The confirmed-defect list is empty, so this review ranks by player value rather
+than by defect.
+
+### Deferral 1 - the sorcerer's 2nd-level spell pool is a content gate, not a defect
+
+- **What the engine does.** `LevelChoices.choices` adds `"spell"` to the blockers
+  when a sorcerer has no legal 2nd-level option (`src/core/level_choices.gd:48`),
+  `LevelUp.apply` refuses on that blocker, and nothing is written. The pool is
+  every authored spell whose `level` is the new spell level and whose class list
+  includes `sorcerer`, minus the ones the character already knows
+  (`_spell_rows`, `level_choices.gd:266-292`). `content/shared/spells.json`
+  holds exactly one such spell: `scorching_ray`.
+- **What content holds.** One sorcerer exists in all content - Mira, 3rd level,
+  knowing `magic_missile` and `mage_armor` - so her single step offers exactly
+  one legal spell, which is the one the accepted probe chooses.
+- **What the gap would be.** A sorcerer authored with `scorching_ray` already
+  known, or authored after that spell is renamed, would show a Spells step with
+  an empty list; the sheet still offers the button, because eligibility is level
+  and XP only (`LevelUp.eligibility`), so Confirm could never succeed. That is an
+  authoring dead end; no player meets one today.
+- **What checks it.** Nothing: `ContentDiagnostics` has no spell or feat rows, and
+  neither validator reads the choice pools. The same shape exists for the
+  fighter's bonus feat - ten catalog entries carry `fighter_bonus`, and a fighter
+  who owned all of them would have an empty feat list with the group still
+  required.
+- **Verdict.** Not a defect, and not a batch of its own. Fold "every required
+  group has at least one legal option" into the next content-diagnostics work,
+  where it costs one pass and one fixture.
+
+### Deferral 2 - the level survives without a level-up autosave
+
+- **Order in the victory path.** `_resolve_encounter` grants the XP
+  (`src/game_state.gd:1729-1738`), recovers ground items, returns to explore and
+  only then writes `save_game("auto")` (`:1756`). The write therefore already
+  holds the paid XP, before the level-up is offered.
+- **What that guarantees.** Reloading that autosave re-offers the step: the
+  character is still eligible, the draft starts empty, and the same choices can be
+  made again. What a player loses by quitting straight after applying is the
+  choice work, not the level, and it is reproducible in the same screen.
+- **Where the applied step reaches disk.** The next manual save, or any auto
+  boundary: a world-changing interaction (`_autosave_after_interaction`), the end
+  of a dialogue (`on_dialogue_finished`), an encounter's start and its victory.
+  The level-up screen itself deliberately writes nothing (`LEVEL_UP_PLAN.md` 14.4).
+- **Evidence gap, not a defect.** No probe reloads the pre-level-up autosave and
+  applies again; the probe's save/reload steps cover the post-apply state. Each
+  piece is tested; the recovery path is not walked as one.
+- **Verdict.** Not a defect, and a dedicated level-up autosave would add a second
+  save policy rather than repair a loss. Keep it deferred; if a later save batch
+  lands, add the reload-then-reapply case there.
+
+### New finding: no shipped campaign awards enough XP to reach the threshold
+
+- All five party members are authored at 3,000 XP
+  (`content/shared/characters.json`) and `LevelUp.XP_THRESHOLD` is 6,000.
+- Authored encounter XP totals 2,200: `ravenloft_demo` 1,500 across five
+  encounters (`qa_turn_undead` 0 and `qa_victory` 150 are QA fixtures),
+  `ashwick_ferry` 500 across two, `hollow_lantern` 200 across one. Effect XP adds
+  700 (`ravenloft_demo/dungeon.json` 500, `dialogue/corvin.json` 200).
+- The best a demo party can reach is 3,000 + 1,500 + 500 + 200 = 5,200, or 5,050
+  without the QA fixture. Every campaign's content together would total 5,900.
+  None reaches 6,000.
+- Every acceptance run so far crosses the threshold from a fixture - the probe
+  sets XP near it and lets one victory pay the rest - which the records state as
+  fixture setup. The crossing is therefore evidenced in a test, not in play.
+- This is a **content gap, not a code defect**: the engine does what it says, and
+  the premise in this file's own planning brief ("the XP table for levels 3-4 only
+  (the demo's reachable range)") is short by 800 XP.
+
+### Four lists, kept separate
+
+**Confirmed defects.** None open. Two were found and fixed inside batch 4 and are
+pinned by tests: the validate/apply refusal code (14.15) and the modal body's End
+key (14.18). This review produced no failing case, and neither deferral above is
+promoted to one.
+
+**Deferred features.** Levels 5 and above; more than one level per step; NPC
+advancement; the printed fighter bonus feats this slice does not implement
+(Weapon Specialization, Improved Bull Rush, Quick Draw, Two-Weapon Fighting); the
+sorcerer pool content check; any play-path autosave after a level-up; a keyboard
+shortcut straight to the sheet; and, newly, nothing makes the level-up reachable
+in the shipped content (above). Also open from the wider roadmap: grapple, disarm
+and sunder; concealment and hard cover; AoE templates; conditions beyond the
+current set; encumbrance; the content-pipeline items; a save shortcut; the
+campaign layer.
+
+**Maintenance debt.** The singular `modal` field; the draft living in the screen
+because the builder rebuilds the body; arrows reserved for body scrolling;
+`follow_focus` beside the reveal walk; source-text guards that cannot see a
+string-built call; `Panels.character_sheet` now a place where a character
+changes; acceptance not repeated per batch; the empty save-migration table;
+shallow UI suite coverage; probe-heavy `main.gd`; the placeholder renderer; no
+content hot reload. One record inconsistency was found and is fixed in this
+commit: `TRACEABILITY.md` rows 3 and 22, `SUPPORTED_FEATURES.md` and `README.md`
+still said there was no advancement at all.
+
+**Evidence gaps.** Control rectangles, not pixels, at both scales; the sorcerer
+walked through Spells but not end to end; the cleric and wizard not walked at all
+(fighter end-to-end, rogue no-write only); no window seen; no human playtest; one
+window size and one OS; held-key and Enter activation need a person; no
+reload-then-reapply probe for an unapplied level-up.
+
+### Recommendation: a planning-only batch - how the demo reaches 4th level
+
+The largest player-facing feature in the project cannot be reached by playing it.
+Before any number moves, one short design note should settle:
+
+1. **The XP model.** Printed DMG by-CR awards per encounter, a campaign XP
+   budget, or a quest award at the climax. Encounter XP here is already an
+   adaptation, so the note has to pick one and cite it.
+2. **The total.** At least 800 XP above the demo's current 2,200, from the
+   authored 3,000 start, so one step is reachable without a fixture.
+3. **Pacing.** Whether the level-up lands at the campaign's climax or earlier; it
+   is one step per character, so it happens once.
+4. **The QA fixtures.** Whether `qa_victory` and `qa_turn_undead` count as story
+   awards or stay test-only.
+5. **The author-facing line.** Each campaign's reachable XP against 6,000 in
+   `--validate-diagnostics`, informational rather than a failure, because a short
+   campaign legitimately ends below it.
+6. **The probe change.** Reach eligibility from authored awards only, then reuse
+   the accepted level-up probe; no fixture.
+7. **Test churn.** Which tests assert XP totals and would move.
+
+**Why planning rather than code.** The numbers are a pacing decision the
+repository has no printed authority for, and changing them without that decision
+would trade an unreachable feature for a different balance. It is also where
+deferral 1's completability check belongs, since both ask whether a player can
+actually complete the step.
+
+**Dependencies.** `LevelUp.XP_THRESHOLD`, the five authored characters, three
+`encounters.json` files, two effect awards, the probe's fixture step, and
+`--validate-diagnostics`.
+
+**Exclusions.** No threshold change (6,000 is printed); no levels 5 and above; no
+new spells or feats; no UI, schema or save change; no other campaign's content;
+no manual testing.
+
+### Not recommended now
+
+- **Levels 5 and above.** Even if built they would be unreachable: 10,000 XP
+  against 5,200 available, and no 3rd-level spell exists in content for the
+  casters' step.
+- **Improved Bull Rush.** Still unreachable after the accepted feature: the step
+  grants one feat slot at 4th level, and the feat needs Power Attack first, so no
+  character can hold both before 6th level without a content edit.
+- **The completability guard alone.** No current player impact; it rides along
+  with the reachability work for one pass.
+- **`follow_focus` beside the reveal walk.** Still unconfirmed - 4c's walk
+  revealed all 46 rows at both scales - and it remains the best small code batch
+  if a rules batch is not wanted.
+- **Grapple, disarm and sunder.** Larger than one batch each, but reachable in
+  play, which makes them the strongest rules alternative to this recommendation.
+
 ## P0 — Verify and harden the current slice
 
 1. **Finish the manual UI interaction pass.** **Done:** Restore Default Controls
