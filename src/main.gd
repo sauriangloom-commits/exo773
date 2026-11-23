@@ -4065,10 +4065,40 @@ func _advancement_probe() -> void:
 		% ["REACHED" if reached else "NOT REACHED", paid, LevelUp.XP_THRESHOLD, ",".join(eligible_names)]
 	)
 
-	# 6. The accepted walk, unchanged, on the state the route earned.
+	# 6. The accepted walk on the state the route earned, with the fighter's
+	# 4th-level feat set to the one this batch adds: the walk selects it by
+	# keyboard, and the damage it grants is read afterwards through the same
+	# combat path an attack uses.
 	print("PROBE STEP 06 accepted walk")
 	_probe_check(current_screen is ExplorationScreen, "exploration is back before the walk")
-	await _level_up_probe_walk(1.0, 6550)
+	var longsword: Dictionary = Game.content.items["masterwork_longsword"]
+	var dagger: Dictionary = Game.content.items["dagger"]
+	var longsword_before := Rules.damage_bonus(Game.party[0], longsword)
+	var dagger_before := Rules.damage_bonus(Game.party[0], dagger)
+	var strength_before := Rules.ability_mod(int(Game.party[0].abilities.get("str", 10)))
+	await _level_up_probe_walk(1.0, 6550, "Weapon Specialization (masterwork_longsword)")
+	print("PROBE STEP 10 specialization damage")
+	var leveled: Character = Game.party[0]
+	var strength_gain := (
+		Rules.ability_mod(int(leveled.abilities.get("str", 10))) - strength_before
+	)
+	_probe_check(int(leveled.level) == 4, "the fighter is 4th level after the walk")
+	_probe_check(
+		leveled.feats.has("Weapon Specialization (masterwork_longsword)"),
+		"the walk selected Weapon Specialization for the longsword",
+	)
+	_probe_check(
+		int(Feats.modifier(leveled, "damage", {"weapon": longsword}).get("total", 0)) == 2,
+		"Feats.modifier reports the printed +2 for the selected weapon",
+	)
+	_probe_check(
+		Rules.damage_bonus(leveled, longsword) == longsword_before + 2 + strength_gain,
+		"Rules.damage_bonus carries the +2 into the longsword's damage",
+	)
+	_probe_check(
+		Rules.damage_bonus(leveled, dagger) == dagger_before + strength_gain,
+		"and no specialization damage reaches another weapon",
+	)
 	close_modal()
 	for i in 4:
 		await get_tree().process_frame
@@ -4288,7 +4318,7 @@ func _level_up_probe_pass(scale: float) -> void:
 ## exploration. Setup belongs to the caller: the level-up probe earns eligibility
 ## from a fixture, the advancement probe earns it from the campaign's own awards.
 ## Every step, label and key from here on is identical in both probes.
-func _level_up_probe_walk(scale: float, crossed: int) -> void:
+func _level_up_probe_walk(scale: float, crossed: int, feat_text := "Power Attack") -> void:
 	# 2. The button appears only on eligible pages.
 	print("PROBE STEP 02 pages")
 	current_screen._open_party(0)
@@ -4479,8 +4509,12 @@ func _level_up_probe_walk(scale: float, crossed: int) -> void:
 	_probe_check(_probe_save_dir_files() == files_before_refusal, "the refused Confirm wrote no save")
 
 	# Now answer it, and walk on to Confirm for real.
-	var feat_row := await _probe_tab_until("feat_power_attack")
-	_probe_check(feat_row != null, "Tab reaches the Power Attack row")
+	var parsed_feat := Feats.parse(feat_text)
+	var feat_control := "feat_" + String(parsed_feat.get("key", ""))
+	if String(parsed_feat.get("param", "")) != "":
+		feat_control += "_" + String(parsed_feat.get("param", ""))
+	var feat_row := await _probe_tab_until(feat_control)
+	_probe_check(feat_row != null, "Tab reaches the %s row" % feat_text)
 	await _probe_key(KEY_ENTER)
 	for i in 2:
 		await get_tree().process_frame
@@ -4534,7 +4568,7 @@ func _level_up_probe_walk(scale: float, crossed: int) -> void:
 		== int(Dictionary(confirm_preview["base_saves"])["fort"]["after"]),
 		"the new fortitude save is the previewed one",
 	)
-	_probe_check(ch.feats.has("Power Attack"), "the chosen feat is recorded")
+	_probe_check(ch.feats.has(feat_text), "the chosen feat is recorded")
 	_probe_check(int(ch.skill_ranks.get("climb", 0)) == 6, "the two skill ranks are recorded")
 	_probe_check(_probe_level_up_buttons() == 3, "the leveled page no longer offers the step")
 	_probe_check(_probe_level_up_reasons() == 1, "and states why instead")
@@ -4560,7 +4594,7 @@ func _level_up_probe_walk(scale: float, crossed: int) -> void:
 		int(ch.base_attack) == int(confirm_preview["base_attack"]["after"]),
 		"the base attack survived the reload",
 	)
-	_probe_check(ch.feats.has("Power Attack"), "the feat survived the reload")
+	_probe_check(ch.feats.has(feat_text), "the feat survived the reload")
 	_probe_check(int(ch.skill_ranks.get("climb", 0)) == 6, "the skill ranks survived the reload")
 
 	# 8. A second apply refuses and changes nothing.

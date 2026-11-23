@@ -243,7 +243,7 @@ interactions only).
 | Greater Two-Weapon Fighting | Dex 19, Improved Two-Weapon Fighting, Two-Weapon Fighting, BAB +11 | Third off-hand attack | Deferred | two-weapon fighting |
 | Weapon Finesse | Proficiency with weapon, BAB +1 | Dex instead of Str on light melee attacks | Integrated and verified | exact weapon/proficiency checks |
 | Weapon Focus | Proficiency with weapon, BAB +1 | +1 attack with selected weapon | Integrated and verified | parameterised, exact weapon matching |
-| Weapon Specialization | Proficiency, Weapon Focus, fighter level 4 | +2 damage with selected weapon | Deferred | fighter bonus-feat/level subsystem |
+| Weapon Specialization | Proficiency, Weapon Focus with the same weapon, fighter level 4 | +2 damage with selected weapon | Integrated and verified | `Feats.CATALOG` (`weapon_specialization`); the Weapon Focus prerequisite is a weapon match (`has_feat_for_weapon`), the class prerequisite is the new `class_level` type, and the +2 is a weapon-parameterised `damage` modifier read by `Rules.damage_bonus`; `test_weapon_specialization.gd`, `--advancement-probe` |
 | Greater Weapon Focus | Proficiency, Weapon Focus, fighter level 8 | +2 attack with selected weapon | Deferred | level/class subsystem |
 | Greater Weapon Specialization | Proficiency, Greater Weapon Focus, Weapon Focus, Weapon Specialization, fighter level 12 | +4 damage with selected weapon | Deferred | level/class subsystem |
 

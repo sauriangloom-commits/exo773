@@ -407,6 +407,23 @@ const CATALOG := {
 			{"target": "attack", "value": 1, "type": "untyped", "weapon_parameter": true}
 		],
 	},
+	"weapon_specialization": {
+		"name": "Weapon Specialization",
+		"fighter_bonus": true,
+		"page": 102,
+		"benefit": "+2 bonus on damage rolls with the selected weapon",
+		"parameter": "weapon",
+		"prereqs": [
+			{"type": "proficient", "parameter": true},
+			{"type": "feat", "value": "weapon_focus", "same_weapon": true},
+			{"type": "class_level", "class": "fighter", "value": 4},
+		],
+		"repeatable": true,
+		"stacks": false,
+		"modifiers": [
+			{"target": "damage", "value": 2, "type": "untyped", "weapon_parameter": true}
+		],
+	},
 	"weapon_finesse": {
 		"name": "Weapon Finesse",
 		"fighter_bonus": true,
@@ -588,6 +605,41 @@ static func has_feat(ch: Character, key: String) -> bool:
 	return false
 
 
+## True when the character owns the feat for this specific weapon. The authored
+## parameter and the screen's parameter can differ in form - "longsword" against
+## the item id "masterwork_longsword" - so the match uses the same weapon matcher
+## the weapon-parameterised modifier uses. A copy whose own prerequisites no longer
+## hold does not count.
+static func has_feat_for_weapon(ch: Character, key: String, weapon_id: String) -> bool:
+	var selected := _selected_weapon(weapon_id)
+	for feat_text in ch.feats:
+		var parsed := parse(String(feat_text))
+		if String(parsed["key"]) != key:
+			continue
+		var parameter := String(parsed["param"])
+		if parameter == "":
+			continue
+		var matches := (
+			_weapon_matches(parameter, selected)
+			if not selected.is_empty()
+			else parameter.to_lower() == weapon_id.to_lower()
+		)
+		if not matches:
+			continue
+		if bool(prereqs(ch, key, parameter)["ok"]):
+			return true
+	return false
+
+
+static func _selected_weapon(weapon_id: String) -> Dictionary:
+	if Game.content == null:
+		return {}
+	var item: Variant = Game.content.items.get(weapon_id)
+	if item == null:
+		return {}
+	return Dictionary(item)
+
+
 ## True when the character has the feat and still meets its prerequisites.
 static func has_active(ch: Character, key: String, parameter := "") -> bool:
 	for feat_text in ch.feats:
@@ -647,8 +699,25 @@ static func _check_requirement(ch: Character, req: Dictionary, parameter: String
 				return "requires character level %d (has %d)" % [needed_level, ch.level]
 		"feat":
 			var needed_feat := String(req.get("value", ""))
-			if not has_active(ch, needed_feat):
+			if bool(req.get("same_weapon", false)):
+				if not has_feat_for_weapon(ch, needed_feat, parameter):
+					return "requires %s with the selected weapon" % display_name(needed_feat)
+			elif not has_active(ch, needed_feat):
 				return "requires the %s feat" % display_name(needed_feat)
+		"class_level":
+			# `char_class` is free text and `ch.level` is the character's one level;
+			# there is no multiclass model, so the class must match exactly (case
+			# aside) and nothing is parsed out of a composite string.
+			var needed_class := String(req.get("class", "")).to_lower()
+			var needed_class_level := int(req.get("value", 1))
+			if ch.char_class.to_lower() != needed_class:
+				return "requires %s level %d (this character is '%s')" % [
+					needed_class, needed_class_level, ch.char_class
+				]
+			if ch.level < needed_class_level:
+				return "requires %s level %d (has %d)" % [
+					needed_class, needed_class_level, ch.level
+				]
 		"turn_undead":
 			if ch.cleric_level() <= 0:
 				return "requires the ability to turn or rebuke undead"

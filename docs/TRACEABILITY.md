@@ -351,3 +351,12 @@ or save.
 | A fighter owning every fighter-bonus feat is reported too | plan §10 | same | `test_a_fighter_owning_every_fighter_bonus_feat_has_no_draft` (group=feat, one failure) |
 | Only the choice module stages a level | the batch-3 guard in `tests/test_level_up_ui_surface.gd` | `LevelChoices.stage_completed` / `skill_budget` | that guard passes with `advancement_check.gd` in the tree |
 | Batch 6b is closed as accepted | plan §13; the 6b records | implementation `dd965fc` | the evidence recorded in `f552371`; no check repeated |
+### Weapon Specialization and the class-level prerequisite (batch 7, 2026-11-23)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| A 4th-level fighter with Weapon Focus for the weapon may take Weapon Specialization: proficiency, Weapon Focus with that weapon, fighter level 4 | PHB 3.5 p. 102 | `Feats.CATALOG.weapon_specialization`; `_check_requirement` `proficient`, `feat` (same weapon) and `class_level` | `test_the_catalog_entry_carries_the_printed_rules`, `test_a_fourth_level_fighter_with_matching_weapon_focus_is_accepted`, `test_a_third_level_fighter_is_refused` |
+| `class_level` compares the required class with the character's one class string, case-insensitively, then `ch.level`; a composite string is refused rather than parsed | the repository has no multiclass model | `_check_requirement` `class_level` | `test_a_non_fighter_is_refused`, `test_a_composite_class_string_is_not_parsed` |
+| The +2 reaches damage only for the selected weapon | PHB 3.5 p. 102 | a `damage` modifier of 2 with `weapon_parameter`, read by `Feats.modifier` and `Rules.damage_bonus` | `test_the_bonus_reaches_damage_only_for_the_selected_weapon`; `--advancement-probe` step 10 reads both weapons |
+| The prerequisite is re-checked at every use, so a character who no longer qualifies gets nothing | engine convention | `Feats.modifier` re-evaluates `Feats.prereqs` | `test_the_bonus_is_suspended_when_the_class_prerequisite_is_lost` |
+| The feat is offered in the level-up screen and accepted by a completed draft | ROADMAP batch 7 | `LevelChoices._feat_rows` picks up `fighter_bonus`; `LevelUp._stage_feat` re-checks | `test_the_level_up_screen_offers_it_for_the_selected_weapon`, `test_a_completed_draft_stages_with_the_feat` |

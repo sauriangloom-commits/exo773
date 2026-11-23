@@ -855,3 +855,16 @@ presentation choices are omitted; nothing here changes a rule silently.
     and keep the inconsistency recorded; if a content-accuracy batch is wanted it is a
     one-value change plus its pins, independent of the milestone, and it must not be
     used to resize 2,300.
+62. **A class level is an exact class string, and "the same weapon" is a weapon match
+    (batch 7, 2026-11-23).** Weapon Specialization prints "fighter level 4", but a
+    character stores one free-text class and one level. The new `class_level`
+    prerequisite compares the requirement's class with `char_class` case-insensitively
+    and then tests `ch.level`; a different class, an empty string or a composite such
+    as "Fighter/Rogue" is refused and named in the reason, because the repository has
+    no multiclass model and none is invented. Its Weapon Focus prerequisite compares
+    weapons rather than parameter strings: the screen offers item ids
+    ("masterwork_longsword") while the authored feat says "longsword", so
+    `has_feat_for_weapon` uses the same matcher the weapon modifier uses, and a Weapon
+    Focus whose own prerequisites are suspended does not count. The +2 is the existing
+    mechanism, a weapon-parameterised `damage` modifier, so it reaches combat through
+    `Feats.modifier` and `Rules.damage_bonus` without a second damage path.
