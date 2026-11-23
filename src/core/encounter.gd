@@ -7,11 +7,12 @@ extends RefCounted
 ## movement with attacks of opportunity, 5-ft steps, melee and ranged attacks
 ## with range increments, critical threats and confirmation, damage reduction,
 ## combat-start flat-footedness, sneak attack when flanking/helpless/flat-footed,
-## paralysis, dying/stabilization, undead "single actions only", and a bounded
-## spell set.
+## paralysis, dying/stabilization, undead "single actions only", a bounded
+## spell set, trip, bull rush, soft cover from creatures in the line, and turn
+## undead.
 ##
-## Deferred: grapple, bull rush, trip, disarm, sunder, two-weapon fighting,
-## readied/delayed actions, cover/concealment, turn undead, iterative attacks.
+## Deferred: grapple, disarm, sunder, two-weapon fighting, readied/delayed
+## actions, concealment and hard cover, iterative attacks.
 ## See docs/SUPPORTED_FEATURES.md.
 
 signal changed

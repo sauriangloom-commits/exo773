@@ -3291,3 +3291,21 @@ save-touching work. The `encounter.gd` header still lists implemented features a
 deferred; that is maintenance debt for the next batch that edits the file, not a
 defect. This commit is documentation only: no code, content, schema or save changed,
 and the README edit stays out.
+
+### Grapple plan; encounter header corrected (2026-11-23)
+
+`docs/GRAPPLE_PLAN.md` records the planning-only note for the special-attack family:
+the printed grapple rules verified against the SRD with PHB page citations, the engine
+surface it will reuse (trip and bull rush action shapes, `Rules.opposed_ability_check`,
+`touch` attacks, the AI turn loop, the four-column action grid and its text-keyed
+enable map), seven labelled adaptations, the initiation and escape sequences, the
+grappled state's allowed and forbidden actions, the death/turn/finish cleanup, an
+AI that never initiates and only escapes, and the UI path with no new focus system or
+keyboard binding. The first batch is 8a: grapple and escape only, no pin. No checks
+were run; this commit is documentation plus one comment correction.
+
+Maintenance debt resolved, not a defect: `encounter.gd`'s header comment listed bull
+rush, trip, cover and turn undead as deferred although all four are implemented. The
+comment now lists them as supported and keeps grapple, disarm, sunder, two-weapon
+fighting, readied/delayed actions, concealment and hard cover, and iterative attacks
+as deferred. Only the comment changed — no executable line in the file is different.
