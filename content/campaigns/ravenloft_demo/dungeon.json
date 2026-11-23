@@ -87,6 +87,8 @@
 					"effects": [
 						{"type": "set_flag", "flag": "bell_rung", "value": true},
 						{"type": "xp", "amount": 500},
+						{"type": "xp", "amount": 2300},
+						{"type": "narration", "text": "(MILESTONE - PROJECT ADAPTATION) The gatehouse's debt is answered. The vigil is kept; every adventurer gains the experience of a completed charge."},
 						{"type": "narration", "text": "(EXAMPLE) You fit the clapper and pull. The bell speaks once — a low, carrying note that rolls out over the mist and the dead road beyond the gate. Answering lights kindle in the village below."}
 					]
 				}

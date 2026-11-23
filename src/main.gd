@@ -60,6 +60,7 @@ const UNKNOWN_ARG_EXIT_CODE := 2
 ## no engine option can appear here and none is ever rejected by this list.
 ## Keep it in step with the dispatch in `_ready()` and docs/SETUP.md.
 const APP_FLAGS: Array[String] = [
+	"--advancement-probe",
 	"--campaign-list-probe",
 	"--cleave-probe",
 	"--concentration-probe",
@@ -382,6 +383,8 @@ func _ready() -> void:
 		_intro_layout_probe()
 	if "--training-probe" in args:
 		_training_probe()
+	if "--advancement-probe" in args:
+		_advancement_probe()
 	if "--level-up-probe" in args:
 		_level_up_probe()
 	if "--list-campaigns" in args:
@@ -2922,11 +2925,11 @@ func _probe_log_contains(e: Encounter, needle: String) -> bool:
 
 ## Bounds the run. A hung await would otherwise sit until the external
 ## --quit-after, which cannot report a scenario failure.
-func _probe_watchdog() -> void:
-	await get_tree().create_timer(90.0).timeout
+func _probe_watchdog(seconds := 90.0) -> void:
+	await get_tree().create_timer(seconds).timeout
 	if probe_done:
 		return
-	print("PROBE FAIL: scenario '%s' exceeded the 90 s bound" % probe_scenario)
+	print("PROBE FAIL: scenario '%s' exceeded the %d s bound" % [probe_scenario, int(seconds)])
 	get_tree().quit(1)
 
 
@@ -3834,6 +3837,285 @@ func _encounter_end_probe() -> void:
 	_probe_finish("encounter_end")
 
 
+# ------------------------------------------------ advancement probe (batch 6a)
+
+## `--advancement-probe`: the demo's own awards carry an authored party from 3,000 XP
+## to 6,550, and the accepted level-up walk then runs on that state.
+##
+## Input split, stated up front. Direct calls: `load_campaign` and `new_game` (a probe
+## cannot pick a campaign or a party from the menu), `turn_left`/`turn_right`/
+## `move_forward`, `interact`, `interact_with_take` (one deterministic route through
+## the shipped dungeon), `dialogue_choose` (the index is chosen only after the
+## option's label is asserted), `apply_nonlethal` plus the encounter's own
+## `_check_end` (a victory without turn-by-turn combat input), and the party sheet's
+## `_open_party`, `refresh_modal` and tab select the accepted walk already discloses.
+## Keyboard events: every action inside the party sheet and the level-up screen,
+## pushed as real `InputEventKey` down/up pairs.
+##
+## No XP is assigned anywhere: no `member.xp = ...`, no injected award and no QA
+## encounter. Every point comes from `storeroom_dead`, `crypt_warden` and the bell's
+## own effect list. The only fixture inputs are the seed, the party list and the
+## isolated save directory.
+##
+## Forced combat resolution proves that the victory path pays its award and sets its
+## flags. It is not a claim that the fight is winnable by a player taking turns, and
+## no attack roll is made.
+##
+## Evidence level: state and control rectangles. Nothing here speaks to rendered
+## pixels, ordinary combat success or human playtesting.
+func _advancement_probe() -> void:
+	probe_scenario = "advancement"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog(240.0)
+	var previous_save_dir := SaveSystem.save_dir
+	var previous_scale := float(Game.settings.get("text_scale", 1.0))
+	SaveSystem.save_dir = "user://qa_advancement_probe"
+	DirAccess.make_dir_recursive_absolute(SaveSystem.save_dir)
+	Game.settings["text_scale"] = 1.0
+	_apply_theme()
+	get_window().size = probe_size
+	print(
+		"PROBE INPUT keyboard=Tab,Shift+Tab,Enter,End,Escape direct=load_campaign,new_game,turn,move_forward,interact,interact_with_take,dialogue_choose,apply_nonlethal,check_end,open_party,refresh_modal,tab_select,save_game,load_game fixture=seed,party_list,save_dir (no XP write, no injected award, no QA encounter)"
+	)
+	print(
+		"PROBE SCOPE route=gatehouse_quest party=kaelen,sera,aldric,ysolde seed=4242 viewport=%s evidence=state and control rectangles, not rendered pixels"
+		% str(probe_size)
+	)
+	var loaded := Game.load_campaign("ravenloft_demo")
+	_probe_check(bool(loaded.get("ok", false)), "the demo campaign loads")
+	var started := Game.new_game(["kaelen", "sera", "aldric", "ysolde"], 4242)
+	_probe_check(
+		bool(started.get("ok", false)), "the four-character party starts from authored content"
+	)
+	if not bool(started.get("ok", false)):
+		_level_up_probe_cleanup(previous_save_dir, previous_scale)
+		_probe_finish("advancement")
+		return
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(current_screen is ExplorationScreen, "the exploration screen is up")
+	_probe_check(Game.position == Vector2i(5, 10), "the party starts at the authored entry")
+	_probe_check(Game.facing == 3, "the party starts facing the authored way")
+	_probe_check(Game.party.size() == 4, "four characters carry the route")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 3000, "%s starts at the authored 3,000" % member.display_name
+		)
+
+	# 1. Miruna: the quest's first objective, 0 XP.
+	print("PROBE STEP 01 miruna")
+	await _probe_face(3)
+	await _probe_walk([Vector2i(4, 10)])
+	await _probe_face(0)
+	await _probe_walk([Vector2i(4, 9)])
+	await _probe_face(3)
+	await _probe_walk([Vector2i(3, 9)])
+	var talk := Game.interact()
+	_probe_check(bool(talk.get("ok", false)) and Game.mode == "dialogue", "Miruna's dialogue starts")
+	var accept_index := _probe_choice_index(Game.dialogue_choices(), "We will find the clapper")
+	_probe_check(accept_index >= 0, "Miruna offers the bell errand")
+	if accept_index >= 0:
+		var accepted := Game.dialogue_choose(accept_index)
+		_probe_check(bool(accepted.get("ok", false)), "accepting the errand succeeds")
+		_probe_check(bool(Game.flags.get("met_miruna", false)), "met_miruna is set")
+	var close_index := _probe_choice_index(Game.dialogue_choices(), "Stay here")
+	_probe_check(close_index >= 0, "the accept node offers a closing line")
+	if close_index >= 0:
+		Game.dialogue_choose(close_index)
+	for i in 4:
+		await get_tree().process_frame
+	_probe_check(Game.mode == "explore", "Miruna's dialogue closes back to exploration")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 3000, "%s earned no XP for the conversation" % member.display_name
+		)
+
+	# 2. The storeroom: 300 XP from the encounter's own award.
+	print("PROBE STEP 02 storeroom")
+	await _probe_face(1)
+	await _probe_walk([Vector2i(4, 9)])
+	await _probe_face(0)
+	await _probe_walk([Vector2i(4, 8), Vector2i(4, 7)])
+	await _probe_face(1)
+	await _probe_walk([Vector2i(5, 7)])
+	var door := Game.interact()
+	_probe_check(bool(door.get("ok", false)), "the unlocked store door opens")
+	await _probe_walk([Vector2i(6, 7), Vector2i(7, 7)])
+	_probe_check(Game.mode == "combat", "the storeroom trigger starts its encounter")
+	_probe_check(
+		String(Game.active_encounter_id) == "storeroom_dead", "the encounter is storeroom_dead"
+	)
+	await _probe_win_encounter("storeroom_dead")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 3300, "%s is paid 300 once by the storeroom" % member.display_name
+		)
+
+	# 3. The crate: the clapper and the key, no XP.
+	print("PROBE STEP 03 crate")
+	await _probe_face(0)
+	await _probe_walk([Vector2i(7, 6)])
+	await _probe_face(1)
+	var search := Game.interact_with_take(10)
+	_probe_check(bool(search.get("ok", false)), "Take 10 finds the clapper at DC 12")
+	_probe_check(bool(Game.flags.get("found_clapper", false)), "found_clapper is set by the search")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 3300, "the crate awards no XP to %s" % member.display_name
+		)
+
+	# 4. Corvin: 450 XP from the crypt encounter the dialogue starts.
+	print("PROBE STEP 04 warden")
+	await _probe_face(2)
+	await _probe_walk([Vector2i(7, 7)])
+	_probe_check(Game.mode == "explore", "the cleared storeroom trigger does not fire again")
+	await _probe_face(3)
+	await _probe_walk([Vector2i(6, 7), Vector2i(5, 7), Vector2i(4, 7)])
+	await _probe_face(0)
+	await _probe_walk([Vector2i(4, 6), Vector2i(4, 5), Vector2i(4, 4), Vector2i(4, 3)])
+	await _probe_face(3)
+	await _probe_walk([Vector2i(3, 3)])
+	await _probe_face(0)
+	await _probe_walk([Vector2i(3, 2), Vector2i(3, 1)])
+	await _probe_face(3)
+	var warden := Game.interact()
+	_probe_check(
+		bool(warden.get("ok", false)) and Game.mode == "dialogue", "Corvin's dialogue starts"
+	)
+	var destroy_index := _probe_choice_index(Game.dialogue_choices(), "Destroy it.")
+	_probe_check(destroy_index >= 0, "Corvin offers Destroy it.")
+	if destroy_index >= 0:
+		var destroyed := Game.dialogue_choose(destroy_index)
+		_probe_check(bool(destroyed.get("ok", false)), "choosing Destroy it. succeeds")
+	for i in 4:
+		await get_tree().process_frame
+	_probe_check(Game.mode == "combat", "the choice starts the crypt encounter")
+	await _probe_win_encounter("crypt_warden")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 3750, "%s is paid 450 once by the warden" % member.display_name
+		)
+	_probe_check(bool(Game.flags.get("warden_resolved", false)), "warden_resolved is set")
+
+	# 5. The bell: 500 + the 2,300 milestone, and the quest completes.
+	print("PROBE STEP 05 bell")
+	await _probe_face(2)
+	await _probe_walk([Vector2i(3, 2), Vector2i(3, 3)])
+	await _probe_face(1)
+	await _probe_walk([Vector2i(4, 3)])
+	var unlocked := Game.interact()
+	_probe_check(bool(unlocked.get("ok", false)), "the crypt door opens with the crate's key")
+	await _probe_walk([Vector2i(5, 3), Vector2i(6, 3)])
+	await _probe_face(0)
+	await _probe_walk([Vector2i(6, 2)])
+	await _probe_face(1)
+	var ring := Game.interact()
+	_probe_check(bool(ring.get("ok", false)), "the bell rings")
+	_probe_check(bool(Game.flags.get("bell_rung", false)), "bell_rung is set")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == 6550,
+			"%s is paid 300 + 450 + 500 + 2,300 by the route" % member.display_name,
+		)
+		_probe_check(
+			bool(LevelUp.eligibility(member).get("eligible", false)),
+			"%s is eligible for 4th level" % member.display_name,
+		)
+	_probe_check(Game.quests.is_complete("drowned_bell"), "the quest completes at the bell")
+	var milestone_logged := false
+	for line in Game.log_lines:
+		if String(line).contains("MILESTONE"):
+			milestone_logged = true
+	_probe_check(milestone_logged, "the milestone narration is in the log")
+	var paid := int(Game.party[0].xp)
+	var again := Game.interact()
+	_probe_check(not bool(again.get("ok", false)), "a second ring is refused")
+	for member in Game.party:
+		_probe_check(
+			int(member.xp) == paid, "%s cannot be paid twice by the bell" % member.display_name
+		)
+	var eligible_names: Array[String] = []
+	for member in Game.party:
+		if bool(LevelUp.eligibility(member).get("eligible", false)):
+			eligible_names.append(String(member.id))
+	# "Reached" is printed only by a run that walked the route and finished it.
+	var reached := paid >= LevelUp.XP_THRESHOLD and Game.quests.is_complete("drowned_bell")
+	print(
+		"ADVANCEMENT %s campaign=ravenloft_demo route=gatehouse_quest awards=storeroom_dead:300,crate:0,corvin_destroy:450,bell:500+2300 xp=%d threshold=%d eligible=%s"
+		% ["REACHED" if reached else "NOT REACHED", paid, LevelUp.XP_THRESHOLD, ",".join(eligible_names)]
+	)
+
+	# 6. The accepted walk, unchanged, on the state the route earned.
+	print("PROBE STEP 06 accepted walk")
+	_probe_check(current_screen is ExplorationScreen, "exploration is back before the walk")
+	await _level_up_probe_walk(1.0, 6550)
+	close_modal()
+	for i in 4:
+		await get_tree().process_frame
+	_level_up_probe_cleanup(previous_save_dir, previous_scale)
+	_probe_finish("advancement")
+
+
+## Turns in place to `direction` (0 N, 1 E, 2 S, 3 W) with the shipped turn calls.
+func _probe_face(direction: int) -> void:
+	var guard := 0
+	while Game.facing != direction and guard < 4:
+		Game.turn_left()
+		guard += 1
+	await get_tree().process_frame
+
+
+## Steps forward through `steps`, asserting each move landed on the named tile, so a
+## blocked door or a wrong turn fails at the step that caused it.
+func _probe_walk(steps: Array) -> void:
+	for raw in steps:
+		var expected := Vector2i(raw)
+		var moved := Game.move_forward()
+		_probe_check(
+			bool(moved.get("ok", false)) and Game.position == expected,
+			"step to %s (at %s)" % [str(expected), str(Game.position)],
+		)
+		await get_tree().process_frame
+
+
+## The content index of the first available choice whose label contains `needle`,
+## or -1. `DialogueRunner.choose` takes the content index, which the available list
+## carries as `index`.
+func _probe_choice_index(choices: Array, needle: String) -> int:
+	for raw in choices:
+		var entry: Dictionary = raw
+		if (
+			String(entry.get("text", "")).contains(needle)
+			and bool(entry.get("available", false))
+		):
+			return int(entry.get("index", -1))
+	return -1
+
+
+## Forces a victory through the encounter's own end check: nonlethal damage above
+## each enemy's hit points, then `_check_end`. A direct call, disclosed as such: it
+## proves the award and flag plumbing, not that the fight is winnable by hand.
+func _probe_win_encounter(expected_id: String) -> void:
+	var e := Game.encounter
+	_probe_check(e != null, "an encounter is running")
+	if e == null:
+		return
+	_probe_check(String(e.encounter_id) == expected_id, "the running encounter is %s" % expected_id)
+	var enemies := 0
+	for entry in e.combatants:
+		if int(entry["team"]) == Encounter.TEAM_ENEMY:
+			var enemy: Character = entry["char"]
+			if enemy != null:
+				enemies += 1
+				enemy.apply_nonlethal(enemy.hp + 1)
+	_probe_check(enemies > 0, "the encounter has at least one enemy")
+	e._check_end()
+	for i in 6:
+		await get_tree().process_frame
+	_probe_check(e.finished and String(e.outcome) == "victory", "the forced resolution is a victory")
+	_probe_check(Game.mode == "explore", "victory returns the game to exploration")
+
+
 # ----------------------------------------------------- level-up probe (4b-4c)
 
 ## `--level-up-probe`: the whole batch-4 walk at 100 % and 160 % in one run, each
@@ -3977,7 +4259,16 @@ func _level_up_probe_pass(scale: float) -> void:
 	if not current_screen is ExplorationScreen:
 		return
 	var crossed := int(Game.party[0].xp)
+	await _level_up_probe_walk(scale, crossed)
+	await _level_up_probe_sorcerer(scale)
+	close_modal()
 
+
+## The accepted batch-4 walk, from a party that is already eligible and back in
+## exploration. Setup belongs to the caller: the level-up probe earns eligibility
+## from a fixture, the advancement probe earns it from the campaign's own awards.
+## Every step, label and key from here on is identical in both probes.
+func _level_up_probe_walk(scale: float, crossed: int) -> void:
 	# 2. The button appears only on eligible pages.
 	print("PROBE STEP 02 pages")
 	current_screen._open_party(0)
@@ -4364,10 +4655,6 @@ func _level_up_probe_pass(scale: float) -> void:
 			_probe_save_artifacts("level_up_probe") == artifacts_before,
 			"Back then Escape left no save artifact",
 		)
-
-	# 10. The sorcerer's Spells step, on her own page and her own slot.
-	await _level_up_probe_sorcerer(scale)
-	close_modal()
 
 
 ## C1-C4, C6, C8 and C9 on the Summary step, with the geometry printed so the
