@@ -582,16 +582,33 @@ static func is_known(feat_text: String) -> bool:
 	return not CATALOG.get(String(parse(feat_text).get("key", "")), {}).is_empty()
 
 
-static func display_name(feat_text: String) -> String:
+## Player-facing feat text. The stored text is "Name (parameter)", and for a weapon
+## parameter the parameter is an item id, so the display resolves the shipped item's
+## own name ("masterwork_longsword" -> "Masterwork Longsword"). It is read from
+## content, never from a table: an id with no item entry, a bare authored name and an
+## unknown id all fall back to the text as written. Weapon parameters only - a skill
+## parameter keeps the content id it already showed.
+static func display_label(feat_text: String) -> String:
 	var parsed := parse(feat_text)
 	var data: Dictionary = CATALOG.get(parsed["key"], {})
 	if data.is_empty():
-		return parsed["raw"]
+		return String(parsed["raw"])
 	var name := String(data.get("name", parsed["name"]))
 	var parameter := String(parsed["param"])
-	if parameter != "" and not name.to_lower().ends_with("(%s)" % parameter.to_lower()):
-		return "%s (%s)" % [name, parameter]
-	return name
+	if parameter == "":
+		return name
+	if String(data.get("parameter", "")) == "weapon":
+		var item := _selected_weapon(parameter)
+		var item_name := String(item.get("name", "")).strip_edges()
+		if item_name != "":
+			return "%s (%s)" % [name, item_name]
+	return "%s (%s)" % [name, parameter]
+
+
+## Display name of a stored feat. Kept as the one entry point for surfaces that
+## already used it; it is the same text `display_label` returns.
+static func display_name(feat_text: String) -> String:
+	return display_label(feat_text)
 
 
 ## True when the character's list contains this feat, whether or not the catalog

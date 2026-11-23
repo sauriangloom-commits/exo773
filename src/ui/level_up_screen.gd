@@ -360,10 +360,13 @@ func _fill_feat(rows: VBoxContainer) -> void:
 	var chosen := String(draft.get("feat", ""))
 	for raw in Array(Dictionary(_choices["feat"])["options"]):
 		var row := Dictionary(raw)
+		# Display the readable label; the draft captures `text`, which is the stored
+		# value the engine parses, so a weapon parameter stays an item id.
 		var text := String(row["text"])
+		var label := String(row.get("label", text))
 		if not bool(row["eligible"]):
-			text += " — " + "; ".join(PackedStringArray(row["reasons"]))
-		var button := _row_button(text, _feat_control_name(row))
+			label += " — " + "; ".join(PackedStringArray(row["reasons"]))
+		var button := _row_button(label, _feat_control_name(row))
 		button.toggle_mode = true
 		button.button_group = group
 		button.disabled = not bool(row["eligible"])

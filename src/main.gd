@@ -4515,6 +4515,11 @@ func _level_up_probe_walk(scale: float, crossed: int, feat_text := "Power Attack
 		feat_control += "_" + String(parsed_feat.get("param", ""))
 	var feat_row := await _probe_tab_until(feat_control)
 	_probe_check(feat_row != null, "Tab reaches the %s row" % feat_text)
+	if feat_row != null:
+		_probe_check(
+			String((feat_row as Button).text) == Feats.display_label(feat_text),
+			"the %s row displays its readable label" % feat_text,
+		)
 	await _probe_key(KEY_ENTER)
 	for i in 2:
 		await get_tree().process_frame

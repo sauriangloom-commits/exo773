@@ -868,3 +868,15 @@ presentation choices are omitted; nothing here changes a rule silently.
     Focus whose own prerequisites are suspended does not count. The +2 is the existing
     mechanism, a weapon-parameterised `damage` modifier, so it reaches combat through
     `Feats.modifier` and `Rules.damage_bonus` without a second damage path.
+63. **Feat text shows the weapon's name; the stored parameter stays the item id
+    (batch 7b, 2026-11-23).** A weapon-parameterised feat stores "Name (item_id)",
+    and the engine parses that id, so the display is a separate read:
+    `Feats.display_label` resolves the parameter from the shipped item content
+    ("masterwork_longsword" -> "Masterwork Longsword") rather than from a table, and
+    falls back to the text as written when no item name resolves - a bare authored
+    name such as "longsword", an unknown id, or an unimplemented feat all keep what
+    they were given rather than inventing a name. Skill parameters are untouched:
+    "Skill Focus (search)" still shows the content id. Nothing stored changes - the
+    level-up row keeps raw `text` for the draft and adds `label` for the screen, the
+    sheet resolves at display time, and prerequisites, the weapon matcher, damage,
+    filters and `Feats.CATALOG` are untouched.

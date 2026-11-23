@@ -222,7 +222,10 @@ static func _feat_row(staged: Character, key: String, parameter: String) -> Dict
 	var text := name if parameter == "" else "%s (%s)" % [name, parameter]
 	var check := Feats.prereqs(staged, key, parameter)
 	return {
+		# `text` stays the stored value a draft captures; `label` is what a screen
+		# shows, with a weapon parameter resolved to the item's authored name.
 		"text": text,
+		"label": Feats.display_label(text),
 		"key": key,
 		"param": parameter,
 		"name": name,

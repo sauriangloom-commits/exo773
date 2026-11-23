@@ -360,3 +360,10 @@ or save.
 | The +2 reaches damage only for the selected weapon | PHB 3.5 p. 102 | a `damage` modifier of 2 with `weapon_parameter`, read by `Feats.modifier` and `Rules.damage_bonus` | `test_the_bonus_reaches_damage_only_for_the_selected_weapon`; `--advancement-probe` step 10 reads both weapons |
 | The prerequisite is re-checked at every use, so a character who no longer qualifies gets nothing | engine convention | `Feats.modifier` re-evaluates `Feats.prereqs` | `test_the_bonus_is_suspended_when_the_class_prerequisite_is_lost` |
 | The feat is offered in the level-up screen and accepted by a completed draft | ROADMAP batch 7 | `LevelChoices._feat_rows` picks up `fighter_bonus`; `LevelUp._stage_feat` re-checks | `test_the_level_up_screen_offers_it_for_the_selected_weapon`, `test_a_completed_draft_stages_with_the_feat` |
+### Readable feat parameters (batch 7b, 2026-11-23)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| A weapon-parameterised feat shows the weapon's authored name on screen while the stored parameter stays the item id | ROADMAP batch 7 debt; `content/shared/items.json` names | `Feats.display_label` (content lookup, no table); `LevelChoices._feat_row` `label` beside raw `text`; `level_up_screen._fill_feat` displays `label` and captures `text`; the sheet reads `display_label` through `Feats.describe` | `test_a_known_weapon_parameter_is_shown_by_name`, `test_the_level_up_row_shows_the_name_and_keeps_the_raw_value`, `test_the_character_sheet_names_the_weapon`; a probe check that the row's button text equals `Feats.display_label` |
+| A parameter with no content entry falls back to the text as written | the content is the only source of names | `display_label` returns the parsed parameter when no item name resolves | `test_a_bare_authored_parameter_falls_back_to_itself`, `test_an_unknown_item_id_falls_back_to_itself` |
+| Stored text, parse, prerequisites, selection and control names are unchanged | batch 7 invariants | `text` remains "Name (item_id)"; `display_label` is read-only | `test_the_level_up_row_shows_the_name_and_keeps_the_raw_value`; the batch-7 tests and both probes still pass |

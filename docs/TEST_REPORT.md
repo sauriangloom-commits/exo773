@@ -5758,10 +5758,11 @@ Rush; Quick Draw; Two-Weapon Fighting and iterative attacks; a level-up autosave
 sheet shortcut; gating the town square behind the gatehouse; correcting the
 town-square award; the rest of P1-P4.
 
-**Maintenance debt.** `weapon_parameter` rows are named by item id, so the screen and
-the saved text read "Weapon Specialization (masterwork_longsword)" even though the
-authored Weapon Focus says "longsword"; the prerequisite bridges the two by weapon
-match, but the display remains content-id shaped. `class_level` reads the one class
+**Maintenance debt.** `weapon_parameter` rows are named by item id in the stored
+text; *batch 7b resolved the display* - the screen and the sheet show
+"Weapon Specialization (Masterwork Longsword)" while the stored parameter stays
+`masterwork_longsword` - and a skill parameter such as "Skill Focus (search)" still
+shows its content id. `class_level` reads the one class
 string and one level the character owns; it does not model multiclassing. The
 advancement probe now differs from the level-up probe in the feat it chooses, so the
 two walks are no longer identical past the Feat step.
