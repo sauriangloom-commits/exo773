@@ -240,3 +240,33 @@ func test_selection_changes_nothing_until_the_load_is_accepted() -> void:
 	var loaded := Game.load_game(SLOT)
 	assert_true(bool(loaded.get("ok", false)), String(loaded.get("message", "")))
 	assert_eq(Game.gold, 90)
+
+
+## The roadmap review's reload-then-reapply gap. An applied level reaches disk
+## only at the next save, so the pre-apply save still holds the paid XP and the
+## step must be offered again after loading it. Existing behaviour only: no new
+## save policy, no new save field.
+func test_reloading_the_pre_apply_save_reapplies_the_same_level() -> void:
+	Game.new_game(["kaelen", "sera", "aldric", "ysolde"], 4242)
+	var kaelen: Character = Game.party[0]
+	kaelen.xp = 6000
+	var pre := Game.save_game(SLOT)
+	assert_true(bool(pre.get("ok", false)), String(pre.get("message", "")))
+	assert_eq(String(LevelUp.eligibility(kaelen)["code"]), "eligible")
+	var choices := {"ability": "str", "skills": {"climb": 1}, "feat": "Power Attack"}
+	var applied := LevelUp.apply(kaelen, choices)
+	assert_true(bool(applied.get("ok", false)), String(applied.get("message", "")))
+	assert_eq(kaelen.level, 4, "the level is applied in memory")
+	var reloaded := Game.load_game(SLOT)
+	assert_true(bool(reloaded.get("ok", false)), String(reloaded.get("message", "")))
+	assert_eq(Game.party[0].level, 3, "the pre-apply save still holds level 3")
+	assert_eq(Game.party[0].xp, 6000, "with the XP already paid")
+	assert_eq(String(LevelUp.eligibility(Game.party[0])["code"]), "eligible", "the step is offered again")
+	var reapplied := LevelUp.apply(Game.party[0], choices)
+	assert_true(bool(reapplied.get("ok", false)), String(reapplied.get("message", "")))
+	assert_eq(Game.party[0].level, 4, "the same choices are legal a second time")
+	var saved := Game.save_game(SLOT)
+	assert_true(bool(saved.get("ok", false)), String(saved.get("message", "")))
+	var again := Game.load_game(SLOT)
+	assert_true(bool(again.get("ok", false)), String(again.get("message", "")))
+	assert_eq(String(LevelUp.eligibility(Game.party[0])["code"]), "already_level_4")

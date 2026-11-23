@@ -56,6 +56,13 @@ static func size_category_for_modifier(modifier: int) -> String:
 static func size_category_steps(category: String) -> int:
 	return SIZE_ORDER.find(normalize_size_category(category)) - SIZE_ORDER.find("medium")
 
+
+## Grapple's special size modifier (PHB p.155): +16 for Colossal down to -16 for
+## Fine, four points per size category away from Medium. This is not the size AC
+## modifier in SIZE_CATEGORIES; it is derived from the same category order.
+static func grapple_size_modifier(category: String) -> int:
+	return 4 * size_category_steps(category)
+
 ## Skill data (key ability, armor multiplier, trained-only, synergies) lives
 ## in Skills.CATALOG. Rules keeps only the shared check and stacking formulas.
 
@@ -261,20 +268,24 @@ static func armor_class(ch: Character, opts: Dictionary = {}) -> int:
 	)
 	ac += prone_ac_modifier(ch, String(opts.get("attack_mode", "")))
 	var flat_footed := bool(opts.get("flat_footed", false))
+	# PHB p.156: a grappling creature loses its Dexterity bonus against opponents
+	# it is not grappling. `deny_dex` is that case; it never implies flat-footed,
+	# so it does not open the creature to a sneak attack.
+	var deny_dex := bool(opts.get("deny_dex", false))
 	# PHB p.136: "If you can't react to a blow, you can't use your Dexterity
 	# bonus to AC. (If you don't have a Dexterity bonus, nothing happens.)" Only
 	# a positive modifier is denied; a Dexterity penalty is not a bonus and stays.
 	# Helpless already uses Dexterity 0, so it is not subtracted a second time.
-	if flat_footed and not is_helpless(ch):
+	if (flat_footed or deny_dex) and not is_helpless(ch):
 		ac -= maxi(0, dex_bonus)
 	# Feat AC bonuses (Dodge's +1 dodge, PHB p.92). PHB p.136: "Any situation that
 	# denies you your Dexterity bonus also denies you dodge bonuses." Tabletop
 	# applies Dodge against one designated opponent; this slice applies it
 	# generally (documented adaptation). Prerequisites are re-checked on every use.
-	ac += _feat_ac_bonus(ch, flat_footed or is_helpless(ch))
+	ac += _feat_ac_bonus(ch, flat_footed or deny_dex or is_helpless(ch))
 	# Combat Expertise's dodge bonus is lost while flat-footed or helpless,
 	# matching the dodge-bonus condition on PHB p.136.
-	if not is_helpless(ch) and not flat_footed:
+	if not is_helpless(ch) and not flat_footed and not deny_dex:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
 		ac += defensive_dodge_bonus(ch)
 	return ac
@@ -288,11 +299,12 @@ static func touch_ac(ch: Character, opts: Dictionary = {}) -> int:
 	var ac := 10 + dex_bonus + ch.ac_misc + ch.size_ac
 	ac += prone_ac_modifier(ch, String(opts.get("attack_mode", "")))
 	var flat_footed := bool(opts.get("flat_footed", false))
+	var deny_dex := bool(opts.get("deny_dex", false))
 	# Same denial as normal AC (PHB p.136): a Dexterity penalty still applies.
-	if flat_footed and not is_helpless(ch):
+	if (flat_footed or deny_dex) and not is_helpless(ch):
 		ac -= maxi(0, dex_bonus)
-	ac += _feat_ac_bonus(ch, flat_footed or is_helpless(ch))
-	if not is_helpless(ch) and not flat_footed:
+	ac += _feat_ac_bonus(ch, flat_footed or deny_dex or is_helpless(ch))
+	if not is_helpless(ch) and not flat_footed and not deny_dex:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
 		# Touch AC keeps dodge bonuses (Rules Compendium, "Touch Attacks").
 		ac += defensive_dodge_bonus(ch)
@@ -699,10 +711,11 @@ static func attack(
 	if target.has_condition("cowering"):
 		attack_bonus_value += 2
 	var flat_footed := bool(opts.get("flat_footed", false))
+	var deny_dex := bool(opts.get("deny_dex", false))
 	var target_ac := (
-		touch_ac(target, {"flat_footed": flat_footed, "attack_mode": attack_mode})
+		touch_ac(target, {"flat_footed": flat_footed, "deny_dex": deny_dex, "attack_mode": attack_mode})
 		if bool(opts.get("touch", false))
-		else armor_class(target, {"flat_footed": flat_footed, "attack_mode": attack_mode})
+		else armor_class(target, {"flat_footed": flat_footed, "deny_dex": deny_dex, "attack_mode": attack_mode})
 	)
 	# Soft cover from creatures (PHB p.151) is +4 AC, and to touch AC as well
 	# because a touch attack keeps every modifier except armor, shield and natural
@@ -770,12 +783,41 @@ static func attack(
 		result["critical"] = false
 
 	var multiplier := int(result.get("damage_multiplier", 1))
+	var rolled := roll_damage(
+		rng,
+		attacker,
+		w,
+		{
+			"distance_ft": distance_ft,
+			"power_attack": power_attack,
+			"attack_mode": attack_mode,
+			"multiplier": multiplier,
+			"extra_damage": String(opts.get("extra_damage", "")),
+		}
+	)
+	result["damage"] = int(rolled["damage"])
+	result["damage_rolls"] = rolled["damage_rolls"]
+	result["damage_type"] = String(rolled["damage_type"])
+	return result
+
+
+## One damage roll for a weapon, shared by `attack` and by the automatic
+## unarmed-strike damage a won grapple deals (PHB p.155). The caller owns the
+## target; damage reduction and nonlethal tracking stay in the encounter.
+## opts: {distance_ft, power_attack, attack_mode, multiplier, extra_damage}.
+static func roll_damage(
+	rng: RandomNumberGenerator, attacker: Character, weapon: Dictionary, opts: Dictionary = {}
+) -> Dictionary:
+	var distance_ft := int(opts.get("distance_ft", 0))
+	var power_attack := int(opts.get("power_attack", 0))
+	var attack_mode := normalize_attack_mode(weapon, String(opts.get("attack_mode", "")))
+	var multiplier := maxi(1, int(opts.get("multiplier", 1)))
 	var damage_total := 0
 	var all_rolls: Array = []
 	for _m in multiplier:
-		var parsed := Dice.parse(rng, String(w.get("damage", "1d3")))
+		var parsed := Dice.parse(rng, String(weapon.get("damage", "1d3")))
 		damage_total += int(parsed["total"]) + damage_bonus(
-			attacker, w, distance_ft, power_attack, attack_mode
+			attacker, weapon, distance_ft, power_attack, attack_mode
 		)
 		all_rolls.append(Dice.describe(parsed))
 	var extra := String(opts.get("extra_damage", ""))
@@ -783,11 +825,11 @@ static func attack(
 		var extra_parsed := Dice.parse(rng, extra)
 		damage_total += int(extra_parsed["total"])
 		all_rolls.append("extra " + Dice.describe(extra_parsed))
-	damage_total = maxi(0, damage_total)
-	result["damage"] = damage_total
-	result["damage_rolls"] = all_rolls
-	result["damage_type"] = String(w.get("damage_type", "untyped"))
-	return result
+	return {
+		"damage": maxi(0, damage_total),
+		"damage_rolls": all_rolls,
+		"damage_type": String(weapon.get("damage_type", "untyped")),
+	}
 
 
 static func format_attack(result: Dictionary) -> String:

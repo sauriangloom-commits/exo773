@@ -54,6 +54,11 @@ var pending_cleave: Dictionary = {}
 # A Bull rush paused so the rusher can choose whether to move with the defender.
 # Every roll is already final; resuming never rerolls or spends another action.
 var pending_bull_rush: Dictionary = {}
+# Grapple pairs, player-initiated only (PHB pp.155-157). Each entry is
+# {holder, held} by combatant index. The grid holds one creature per square, so
+# the holder keeps its own square (docs/GRAPPLE_PLAN.md adaptation A); the pair is
+# encounter state and cannot outlive the encounter.
+var grapples: Array = []
 # Cleave is usable once per round; keyed by combatant index and cleared when a
 # new round begins. The use is consumed by making the extra attack, not by
 # being offered it.
@@ -137,6 +142,7 @@ func begin() -> void:
 	cleave_used.clear()
 	off_turn_resume.clear()
 	power_attack_committed.clear()
+	grapples.clear()
 	_clear_combat_scope_states()
 	order.clear()
 	# PHB p.133: "A character who has not yet acted during a combat is
@@ -360,6 +366,89 @@ func entry_for(ch: Character) -> Dictionary:
 	return {}
 
 
+## PHB p.156: a grappling creature loses its Dexterity bonus to AC against
+## opponents it is not grappling, and keeps it against the one it is. This never
+## sets flat-footed, so it does not enable a sneak attack.
+func denies_dex_to(target_index: int, attacker_index: int) -> bool:
+	return is_grappled(target_index) and grapple_partner(target_index) != attacker_index
+
+
+func is_grappled(index: int) -> bool:
+	return grapple_partner(index) >= 0
+
+
+func grapple_partner(index: int) -> int:
+	for pair in grapples:
+		if int(pair["holder"]) == index:
+			return int(pair["held"])
+		if int(pair["held"]) == index:
+			return int(pair["holder"])
+	return -1
+
+
+## "holder", "held" or "". The UI uses it only to explain the one Escape button.
+func grapple_role(index: int) -> String:
+	for pair in grapples:
+		if int(pair["holder"]) == index:
+			return "holder"
+		if int(pair["held"]) == index:
+			return "held"
+	return ""
+
+
+## The printed grapple check is base attack + Strength modifier + special size
+## modifier (PHB p.155). Improved Grapple adds +4 to every grapple check, on
+## either side (PHB p.95). `Rules.opposed_ability_check` adds the ability modifier
+## itself, so this returns the part it does not know about.
+func _grapple_bonus(ch: Character) -> int:
+	var bonus := ch.base_attack + Rules.grapple_size_modifier(ch.size_category)
+	if Feats.has_feat(ch, "improved_grapple"):
+		bonus += 4
+	return bonus
+
+
+func grapple_check_modifier(ch: Character) -> int:
+	return Rules.ability_modifier(ch, "str") + _grapple_bonus(ch)
+
+
+## PHB p.156: "You can't move normally while grappling." Movement and the item
+## actions that need a free hand are refused with this message.
+func _grapple_blocks(action: String) -> String:
+	var entry := active_entry()
+	if entry.is_empty() or not is_grappled(int(entry["index"])):
+		return ""
+	return "%s is grappling and cannot %s; escape or release first (PHB p.156)." % [
+		(entry["char"] as Character).display_name, action
+	]
+
+
+func _remove_pair(index: int) -> void:
+	for i in range(grapples.size() - 1, -1, -1):
+		var pair: Dictionary = grapples[i]
+		if int(pair["holder"]) == index or int(pair["held"]) == index:
+			grapples.remove_at(i)
+
+
+func _clear_grapple_for(index: int, reason: String) -> void:
+	if not is_grappled(index):
+		return
+	_remove_pair(index)
+	_log("  The grapple ends: %s" % reason)
+
+
+## A dead participant cannot keep holding or be held. Run before every end check
+## so a death inside a hold never leaves a stale pair behind.
+func _prune_grapples() -> void:
+	for i in range(grapples.size() - 1, -1, -1):
+		var pair: Dictionary = grapples[i]
+		var holder: Character = combatants[int(pair["holder"])]["char"]
+		var held: Character = combatants[int(pair["held"])]["char"]
+		var dead: Character = holder if holder.has_condition("dead") else held
+		if not dead.has_condition("dead"):
+			continue
+		grapples.remove_at(i)
+		_log("  The grapple ends: %s is dead." % dead.display_name)
+
 func cell_of(ch: Character) -> Vector2i:
 	var entry := entry_for(ch)
 	return entry.get("cell", Vector2i(-1, -1)) if not entry.is_empty() else Vector2i(-1, -1)
@@ -398,6 +487,9 @@ func move_active_to(dest: Vector2i, five_foot := false) -> Dictionary:
 		return _fail("%s cannot act." % ch.display_name)
 	if ch.has_condition("paralyzed"):
 		return _fail("%s is paralyzed and cannot move." % ch.display_name)
+	var grappling := _grapple_blocks("move")
+	if grappling != "":
+		return _fail(grappling)
 	# While prone the only supported movement is crawling 5 feet as a move
 	# action, which provokes from any attacker who threatens the crawl
 	# (PHB p.142). Ordinary movement is refused with an explanation.
@@ -586,6 +678,10 @@ func available_melee_attack(ch: Character) -> Dictionary:
 func threat_capability(ch: Character) -> Dictionary:
 	if ch == null:
 		return {}
+	# PHB p.156: "You don't threaten any squares while grappling."
+	var own_entry := entry_for(ch)
+	if not own_entry.is_empty() and is_grappled(int(own_entry["index"])):
+		return {}
 	if ch.is_monster:
 		for attack in ch.attacks:
 			var row: Dictionary = attack
@@ -666,6 +762,36 @@ func attack_active(target_index: int, attack_mode := "", unarmed_damage := "") -
 	if target.has_condition("dead"):
 		return _fail("%s is already dead." % target.display_name)
 	var weapon := _primary_weapon(ch)
+	var grapple_penalty := 0
+	if is_grappled(int(entry["index"])):
+		# PHB p.156: while grappling you may attack the creature you are
+		# grappling, with an unarmed strike, a natural weapon or a light weapon,
+		# at -4. No other target and no other weapon is allowed by that list.
+		var partner_index := grapple_partner(int(entry["index"]))
+		var partner: Character = combatants[partner_index]["char"]
+		if partner_index != target_index:
+			return _fail(
+				"%s is grappling and can attack only %s (PHB p.156)."
+				% [ch.display_name, partner.display_name]
+			)
+		if Rules.is_ranged_attack(weapon, Rules.normalize_attack_mode(weapon, attack_mode)):
+			return _fail(
+				"%s is grappling and cannot make a ranged attack (PHB p.156)." % ch.display_name
+			)
+		if not (
+			bool(weapon.get("unarmed", false))
+			or bool(weapon.get("light_weapon", false))
+			or ch.is_monster
+		):
+			return _fail(
+				(
+					"%s is grappling and can attack only with an unarmed strike, a natural "
+					+ "weapon or a light weapon (PHB p.156)."
+				)
+				% ch.display_name
+			)
+		grapple_penalty = -4
+		_log("%s attacks while grappling: -4 on the attack roll (PHB p.156)." % ch.display_name)
 	var unarmed_penalty := 0
 	# PHB p.97: Improved Unarmed Strike lets the character "deal lethal or nonlethal
 	# damage, at your option". Without the feat an unarmed strike deals only
@@ -763,7 +889,11 @@ func attack_active(target_index: int, attack_mode := "", unarmed_damage := "") -
 		int(entry["index"]),
 		target_index,
 		weapon,
-		{"attack_mode": mode, "bonus": unarmed_penalty, "unarmed_lethal": unarmed_penalty != 0},
+		{
+			"attack_mode": mode,
+			"bonus": unarmed_penalty + grapple_penalty,
+			"unarmed_lethal": unarmed_penalty != 0,
+		},
 	)
 
 
@@ -804,6 +934,9 @@ func draw_weapon(item_id: String) -> Dictionary:
 		return _fail("%s does not use equipment." % ch.display_name)
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot ready a weapon." % ch.display_name)
+	var grappling := _grapple_blocks("ready another weapon")
+	if grappling != "":
+		return _fail(grappling)
 	var item := ch.carried_weapon(item_id)
 	if item.is_empty():
 		return _fail("%s is not carrying that weapon." % ch.display_name)
@@ -868,6 +1001,9 @@ func sheathe_weapon() -> Dictionary:
 		return _fail("%s does not use equipment." % ch.display_name)
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot put a weapon away." % ch.display_name)
+	var grappling := _grapple_blocks("put a weapon away")
+	if grappling != "":
+		return _fail(grappling)
 	var weapon: Dictionary = ch.equipment.get("weapon", {})
 	if weapon.is_empty():
 		return _fail("%s has no weapon readied." % ch.display_name)
@@ -1018,6 +1154,9 @@ func load_weapon() -> Dictionary:
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot load a weapon." % ch.display_name)
+	var grappling := _grapple_blocks("load a weapon")
+	if grappling != "":
+		return _fail(grappling)
 	var weapon := _primary_weapon(ch)
 	var weapon_name := String(weapon.get("name", "that weapon"))
 	if String(weapon.get("reload", "")) == "":
@@ -1065,6 +1204,9 @@ func stand_up_active() -> Dictionary:
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot stand up." % ch.display_name)
+	var grappling := _grapple_blocks("stand up")
+	if grappling != "":
+		return _fail(grappling)
 	if not ch.is_prone():
 		return _fail("%s is not prone." % ch.display_name)
 	if bool(turn_state.get("move_used", false)):
@@ -1733,6 +1875,336 @@ func _advance_cell(entry: Dictionary, cell: Vector2i, cost_ft := BattleMap.CELL_
 	turn_state["moved_ft"] = int(turn_state["moved_ft"]) + cost_ft
 
 
+## Player-initiated grapple (PHB pp.155-157). A standard action: the target's
+## reaction, an unarmed melee touch attack, then an opposed grapple check. A win
+## records the pair and deals unarmed-strike damage; neither combatant moves into
+## the other's square (docs/GRAPPLE_PLAN.md adaptation A). A target two or more
+## size categories larger still gets the touch attack but loses the hold
+## automatically (PHB p.155).
+func grapple_active(target_index: int) -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot grapple." % ch.display_name)
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	var staggered := _staggered_blocks_standard(ch)
+	if staggered != "":
+		return _fail(staggered)
+	if target_index < 0 or target_index >= combatants.size():
+		return _fail("Invalid target.")
+	var target_entry: Dictionary = combatants[target_index]
+	var target: Character = target_entry["char"]
+	if int(target_entry["team"]) == int(entry["team"]):
+		return _fail("You cannot grapple an ally.")
+	if target.has_condition("dead"):
+		return _fail("%s is already dead." % target.display_name)
+	var index := int(entry["index"])
+	if is_grappled(index):
+		return _fail("%s is already in a grapple." % ch.display_name)
+	if is_grappled(target_index):
+		return _fail("%s is already in a grapple." % target.display_name)
+	var reach := maxi(ch.reach_ft, BattleMap.CELL_FT)
+	var distance := map.distance_ft(entry["cell"], target_entry["cell"])
+	if distance > reach:
+		return _fail(
+			"%s is %d ft. away; melee reach is %d ft. Move closer first."
+			% [target.display_name, distance, reach]
+		)
+	# Declared before any reaction: an interrupted attempt still spends the action.
+	turn_state["standard_used"] = true
+	_log("%s tries to grapple %s." % [ch.display_name, target.display_name])
+	var reaction: Dictionary = {}
+	if target.can_act() and not Feats.has_feat(ch, "improved_grapple"):
+		# PHB p.155, step 1: the attempt provokes from the target, and any damage
+		# dealt ends it. Improved Grapple removes this reaction (PHB p.95).
+		_log("  Grappling provokes an attack of opportunity from %s." % target.display_name)
+		reaction = _provoke_single_opportunity(target, ch)
+	if finished:
+		_changed()
+		return {
+			"ok": true,
+			"interrupted": true,
+			"reaction": reaction,
+			"message": "%s was interrupted before the grapple." % ch.display_name,
+		}
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		_after_action(ch)
+		_changed()
+		return {
+			"ok": false,
+			"interrupted": true,
+			"reaction": reaction,
+			"message": "%s loses the grapple attempt to an opportunity attack." % ch.display_name,
+		}
+	if not reaction.is_empty() and int(reaction.get("damage_applied", 0)) > 0:
+		_log("  The opportunity attack deals damage; the grapple attempt fails (PHB p.155).")
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"grappled": false,
+			"reaction": reaction,
+			"failed_reaction": true,
+			"message": "The grapple attempt fails: the opportunity attack dealt damage.",
+		}
+	var touch := Rules.attack(
+		rng,
+		ch,
+		target,
+		_unarmed_strike(ch),
+		distance,
+		{
+			"touch": true,
+			"attack_mode": "melee",
+			"label": "grapple touch attack",
+			"flat_footed": is_flat_footed(target_index),
+		}
+	)
+	_log("  " + Rules.format_attack(touch))
+	if not bool(touch["hit"]):
+		_log("  The touch attack misses; the grapple attempt ends.")
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {"ok": true, "grappled": false, "touch": touch, "message": "Grapple attempt missed."}
+	var attacker_steps := Rules.size_category_steps(ch.size_category)
+	var defender_steps := Rules.size_category_steps(target.size_category)
+	if defender_steps > attacker_steps + 1:
+		# PHB p.155: the hold fails automatically. The touch already resolved above.
+		_log(
+			"  %s is two or more size categories larger; the hold fails automatically (PHB p.155)."
+			% target.display_name
+		)
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"grappled": false,
+			"touch": touch,
+			"auto_lost": true,
+			"message": "%s cannot hold a creature that much larger." % ch.display_name,
+		}
+	var opposed := Rules.opposed_ability_check(
+		rng,
+		ch,
+		["str"],
+		target,
+		["str"],
+		{
+			"attacker_bonus": _grapple_bonus(ch),
+			"defender_bonus": _grapple_bonus(target),
+			"label": "grapple",
+		}
+	)
+	if not bool(opposed.get("ok", false)):
+		return _fail(String(opposed.get("reason", "The grapple could not be resolved.")))
+	_log(
+		"  Grapple check: %s %s d20(%d)%+d = %d vs %s %s d20(%d)%+d = %d"
+		% [
+			ch.display_name,
+			String(opposed["attacker_ability"]),
+			int(opposed["attacker_roll"]),
+			int(opposed["attacker_modifier"]),
+			int(opposed["attacker_total"]),
+			target.display_name,
+			String(opposed["defender_ability"]),
+			int(opposed["defender_roll"]),
+			int(opposed["defender_modifier"]),
+			int(opposed["defender_total"]),
+		]
+	)
+	if String(opposed["winner"]) != "attacker":
+		_log("  %s holds on; the grapple fails." % target.display_name)
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"grappled": false,
+			"touch": touch,
+			"opposed": opposed,
+			"message": "The grapple fails.",
+		}
+	grapples.append({"holder": index, "held": target_index})
+	_log("  %s grapples %s (PHB pp.155-157)." % [ch.display_name, target.display_name])
+	# PHB p.155: a won hold deals damage as if with an unarmed strike, which is
+	# nonlethal (PHB p.139). Undead and constructs therefore ignore it.
+	var rolled := Rules.roll_damage(
+		rng, ch, _unarmed_strike(ch), {"distance_ft": distance, "attack_mode": "melee"}
+	)
+	var hold := {
+		"damage": int(rolled["damage"]),
+		"damage_rolls": rolled["damage_rolls"],
+		"damage_type": String(rolled["damage_type"]),
+		"nonlethal": true,
+	}
+	_log("  The hold deals %d unarmed damage." % int(hold["damage"]))
+	_apply_damage(target, hold)
+	_after_action(ch)
+	_check_end()
+	changed.emit()
+	var response := {
+		"ok": true,
+		"grappled": true,
+		"touch": touch,
+		"opposed": opposed,
+		"damage": hold,
+		"message": "%s grapples %s." % [ch.display_name, target.display_name],
+	}
+	if not reaction.is_empty():
+		response["reaction"] = reaction
+	return response
+
+
+## Escape, or the holder's free release (PHB p.156). Either participant may act on
+## its own turn. Escape spends the standard action and is an opposed grapple check
+## or an untrained Escape Artist check; release is free and rolls nothing.
+func grapple_exit(use_escape_artist := false) -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot escape a grapple." % ch.display_name)
+	var index := int(entry["index"])
+	var partner_index := grapple_partner(index)
+	if partner_index < 0:
+		return _fail("%s is not grappling." % ch.display_name)
+	var opponent: Character = combatants[partner_index]["char"]
+	if grapple_role(index) == "holder":
+		# PHB p.156: opponents do not have to hold you. Letting go is free.
+		_remove_pair(index)
+		_log("%s lets go of %s." % [ch.display_name, opponent.display_name])
+		changed.emit()
+		return {
+			"ok": true,
+			"released": true,
+			"message": "%s lets go of %s." % [ch.display_name, opponent.display_name],
+		}
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	var staggered := _staggered_blocks_standard(ch)
+	if staggered != "":
+		return _fail(staggered)
+	turn_state["standard_used"] = true
+	var check := {}
+	if use_escape_artist:
+		_log("%s tries to slip free with Escape Artist." % ch.display_name)
+		check = _escape_artist_check(ch, opponent)
+	else:
+		_log("%s tries to break free of %s's hold." % [ch.display_name, opponent.display_name])
+		var opposed := Rules.opposed_ability_check(
+			rng,
+			ch,
+			["str"],
+			opponent,
+			["str"],
+			{
+				"attacker_bonus": _grapple_bonus(ch),
+				"defender_bonus": _grapple_bonus(opponent),
+				"label": "escape",
+			}
+		)
+		if not bool(opposed.get("ok", false)):
+			return _fail(String(opposed.get("reason", "The escape could not be resolved.")))
+		_log(
+			"  Escape check: %s %s d20(%d)%+d = %d vs %s %s d20(%d)%+d = %d"
+			% [
+				ch.display_name,
+				String(opposed["attacker_ability"]),
+				int(opposed["attacker_roll"]),
+				int(opposed["attacker_modifier"]),
+				int(opposed["attacker_total"]),
+				opponent.display_name,
+				String(opposed["defender_ability"]),
+				int(opposed["defender_roll"]),
+				int(opposed["defender_modifier"]),
+				int(opposed["defender_total"]),
+			]
+		)
+		check = {
+			"roll": int(opposed["attacker_roll"]),
+			"modifier": int(opposed["attacker_modifier"]),
+			"total": int(opposed["attacker_total"]),
+			"opponent_total": int(opposed["defender_total"]),
+			"success": String(opposed["winner"]) == "attacker",
+		}
+	var escaped := bool(check.get("success", false))
+	if escaped:
+		_remove_pair(index)
+		_log("  %s escapes the grapple." % ch.display_name)
+	else:
+		_log("  %s fails to break free." % ch.display_name)
+	_after_action(ch)
+	_check_end()
+	changed.emit()
+	return {
+		"ok": true,
+		"escaped": escaped,
+		"released": false,
+		"escape_artist": use_escape_artist,
+		"check": check,
+		"message": (
+			"%s escapes the grapple." % ch.display_name
+			if escaped
+			else "%s fails to break free." % ch.display_name
+		),
+	}
+
+
+## Escape Artist in place of the grapple check (PHB p.156). It uses the skill's
+## own modifier, untrained allowed, with no grapple bonus. The printed tie
+## procedure applies: higher modifier wins, otherwise reroll.
+func _escape_artist_check(ch: Character, opponent: Character) -> Dictionary:
+	var modifier := Skills.total(ch, "escape_artist")
+	var foe_modifier := grapple_check_modifier(opponent)
+	for attempt in range(1, 21):
+		var roll := Dice.d20(rng)
+		var foe_roll := Dice.d20(rng)
+		var total := roll + modifier
+		var foe_total := foe_roll + foe_modifier
+		_log(
+			"  Escape Artist: %s d20(%d)%+d = %d vs %s d20(%d)%+d = %d"
+			% [
+				ch.display_name,
+				roll,
+				modifier,
+				total,
+				opponent.display_name,
+				foe_roll,
+				foe_modifier,
+				foe_total,
+			]
+		)
+		if total == foe_total:
+			if modifier != foe_modifier:
+				return {
+					"roll": roll,
+					"modifier": modifier,
+					"total": total,
+					"opponent_total": foe_total,
+					"success": modifier > foe_modifier,
+				}
+			continue
+		return {
+			"roll": roll,
+			"modifier": modifier,
+			"total": total,
+			"opponent_total": foe_total,
+			"success": total > foe_total,
+		}
+	return {"roll": 0, "modifier": modifier, "total": 0, "opponent_total": 0, "success": false}
+
+
 func resolve_trip_decision(release_weapon: bool) -> Dictionary:
 	if pending_trip.is_empty():
 		return _fail("There is no pending Trip decision.")
@@ -2024,6 +2496,9 @@ func pick_up_active(ground_index: int) -> Dictionary:
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot pick anything up." % ch.display_name)
+	var grappling := _grapple_blocks("pick anything up")
+	if grappling != "":
+		return _fail(grappling)
 	if ground_index < 0 or ground_index >= ground_items.size():
 		return _fail("There is no such item on the ground.")
 	if bool(turn_state["five_foot_used"]):
@@ -2320,6 +2795,7 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		"attack_mode": attack_mode,
 		"into_melee_penalty": int(into_melee["penalty"]),
 		"cover": cover,
+		"deny_dex": denies_dex_to(target_index, attacker_index),
 	}
 	if opts.has("force_attack_base"):
 		attack_opts["force_attack_base"] = int(opts["force_attack_base"])
@@ -2682,20 +3158,23 @@ func _threatened_by_enemy(entry: Dictionary) -> bool:
 	return not _threatening_enemies(entry).is_empty()
 
 
-func _provoke_single_opportunity(attacker: Character, target: Character) -> void:
+## Returns the attack result when one was rolled, or {} when the reaction could
+## not happen. Grapple needs "did it deal damage" (PHB p.155); every existing
+## caller ignores the return value, so nothing else changes.
+func _provoke_single_opportunity(attacker: Character, target: Character) -> Dictionary:
 	var attacker_entry := entry_for(attacker)
 	var target_entry := entry_for(target)
 	if attacker_entry.is_empty() or target_entry.is_empty():
-		return
+		return {}
 	if bool(aoo_used.get(int(attacker_entry["index"]), false)):
-		return
+		return {}
 	# PHB p.143: "You can't make attacks of opportunity while using total defense."
 	if attacker.has_effect("total_defense"):
 		_log(
 			"  %s is using total defense and cannot make an opportunity attack (PHB p.143)."
 			% attacker.display_name
 		)
-		return
+		return {}
 	# Threat requires a legal melee attack (PHB p.137): a crossbow-armed character
 	# cannot spend the reaction, and nothing is consumed when it is refused.
 	if threat_capability(attacker).is_empty():
@@ -2703,14 +3182,14 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> void
 			"  %s has no melee attack ready and cannot make an opportunity attack."
 			% attacker.display_name
 		)
-		return
+		return {}
 	# A flat-footed creature cannot make attacks of opportunity (PHB p.133).
 	if is_flat_footed(int(attacker_entry["index"])):
 		_log(
 			"  %s is flat-footed and cannot make an attack of opportunity."
 			% attacker.display_name
 		)
-		return
+		return {}
 	aoo_used[int(attacker_entry["index"])] = true
 	_log("  Attack of opportunity by %s!" % attacker.display_name)
 	var weapon := _primary_weapon(attacker)
@@ -2743,6 +3222,7 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> void
 		_apply_damage(target, result)
 		_try_paralysis(attacker, target, weapon)
 	_check_end()
+	return result
 
 
 func _provoke_attacks_of_opportunity(
@@ -2825,6 +3305,16 @@ func cast_active_spell(spell_id: String, target_index: int, opts := {}) -> Dicti
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot cast." % ch.display_name)
+	if is_grappled(int(entry["index"])):
+		# Stated limit, not a printed prohibition: casting while grappling has a
+		# component and Concentration path this build does not model yet.
+		return _fail(
+			(
+				"%s is grappling; casting from a grapple is not modelled yet "
+				+ "(scope limit, not a printed prohibition)."
+			)
+			% ch.display_name
+		)
 	if bool(turn_state["standard_used"]):
 		return _fail("Your standard action is already spent this turn.")
 	var staggered_cast := _staggered_blocks_standard(ch)
@@ -3344,6 +3834,17 @@ func turn_undead() -> Dictionary:
 	var blocked := _pending_guard()
 	if not blocked.is_empty():
 		return blocked
+	var turn_entry := active_entry()
+	if not turn_entry.is_empty() and is_grappled(int(turn_entry["index"])):
+		# Stated limit, not a printed prohibition: see docs/GRAPPLE_PLAN.md,
+		# adaptation C and batch 8d.
+		return _fail(
+			(
+				"%s is grappling; turning undead from a grapple is not modelled yet "
+				+ "(scope limit, not a printed prohibition)."
+			)
+			% (turn_entry["char"] as Character).display_name
+		)
 	var allowed := can_active_turn_undead()
 	if not bool(allowed["ok"]):
 		return _fail(String(allowed["reason"]))
@@ -3465,6 +3966,11 @@ func _run_monster_turn(entry: Dictionary) -> void:
 	if ch.has_condition("turned"):
 		if _run_turned_turn(entry):
 			return
+	# The AI never initiates a grapple; a grappled monster spends its turn trying to
+	# escape and does not attack (docs/GRAPPLE_PLAN.md section 7).
+	if is_grappled(int(entry["index"])):
+		grapple_exit(false)
+		return
 	var targets := living_entries(TEAM_PARTY)
 	if targets.is_empty():
 		_check_end()
@@ -3607,6 +4113,10 @@ func resume_interrupted() -> Dictionary:
 ## Returns true when the turning behavior consumed the creature's turn.
 func _run_turned_turn(entry: Dictionary) -> bool:
 	var ch: Character = entry["char"]
+	# Turning overrides a hold: the creature cannot flee while it is held, so the
+	# pair separates before the fleeing turn runs (adaptation D, not printed).
+	if is_grappled(int(entry["index"])):
+		_clear_grapple_for(int(entry["index"]), "%s is turned and cannot hold on." % ch.display_name)
 	var effect := ch.get_effect("turned")
 	var turner := _combatant_by_id(String(effect.get("turner_id", "")))
 	var threat_cell: Vector2i = entry["cell"]
@@ -3781,6 +4291,7 @@ func _after_action(ch: Character) -> void:
 func _check_end() -> void:
 	if finished:
 		return
+	_prune_grapples()
 	# "Cannot act this instant" is not the same as "defeated". Paralysis from a
 	# ghoul's attack lasts 1d4+1 rounds and expires by itself, and a temporary
 	# unconsciousness effect can end, so both keep the encounter running with the
@@ -3835,6 +4346,9 @@ func finish(result: String) -> void:
 		pending_cleave.clear()
 		pending_bull_rush.clear()
 		_log("The encounter ends; any pending combat decision is void and has no effect.")
+	if not grapples.is_empty():
+		grapples.clear()
+		_log("The encounter ends; any grapple is released and has no effect.")
 	off_turn_resume.clear()
 	_clear_combat_scope_states()
 	_log("")

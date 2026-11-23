@@ -45,6 +45,10 @@ var total_defense_button: Button
 var _ui_actor_index := -1
 var mode := "move"
 var trip_weapon_check: CheckBox
+## One button for both grapple exits: the holder releases for free, the held
+## creature escapes with an opposed check. The label stays "Escape" because the
+## enable map is keyed by button text (see _refresh_actions).
+var grapple_exit_button: Button
 var decision_box: VBoxContainer
 var sidebar_panel: ScrollContainer
 
@@ -270,6 +274,12 @@ func _build() -> void:
 	_add_action_button("Turn undead", _turn_undead)
 	_add_action_button("Trip", _trip)
 	_add_action_button("Bull rush", _bull_rush)
+	_add_action_button("Grapple", _grapple)
+	grapple_exit_button = _add_action_button("Escape", _grapple_exit)
+	grapple_exit_button.tooltip_text = (
+		"Escape a grapple with an opposed grapple check or Escape Artist, or let go "
+		+ "for free if you are the one holding (PHB p.156)."
+	)
 	_add_action_button("Stand up", func() -> void: Game.combat_stand_up())
 	_add_action_button("Pick up", _pick_up_here)
 	_add_action_button("End turn", _end_turn)
@@ -642,6 +652,8 @@ func _update_button_states() -> void:
 		"Turn undead": bool(turn_status.get("ok", false)),
 		"Trip": standard,
 		"Bull rush": standard,
+		"Grapple": standard,
+		"Escape": player_turn and active_index >= 0 and e.is_grappled(active_index),
 		"Stand up": player_turn and prone and not moved,
 		"Pick up":
 		player_turn
@@ -710,6 +722,14 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 			refresh_screen()
 			return
 		Game.combat_bull_rush(int(entry["index"]))
+		refresh_screen()
+		return
+	if mode == "grapple":
+		if entry.is_empty() or int(entry["team"]) != Encounter.TEAM_ENEMY:
+			Game.last_ui_message = "Choose an enemy to grapple."
+			refresh_screen()
+			return
+		Game.combat_grapple(int(entry["index"]))
 		refresh_screen()
 		return
 	if mode == "step":
@@ -794,6 +814,23 @@ func _bull_rush() -> void:
 		return
 	mode = "bull_rush"
 	Game.last_ui_message = "Click an enemy within reach to Bull rush (PHB p.154)."
+	refresh_screen()
+
+
+func _grapple() -> void:
+	if _refuse_while_pending():
+		return
+	mode = "grapple"
+	Game.last_ui_message = "Click an enemy within reach to Grapple (PHB p.155)."
+	refresh_screen()
+
+
+## One control, two printed outcomes: the holder lets go for free, the held
+## creature spends its standard action on the opposed check.
+func _grapple_exit() -> void:
+	if _refuse_while_pending():
+		return
+	Game.combat_grapple_exit()
 	refresh_screen()
 
 

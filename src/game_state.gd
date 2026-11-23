@@ -1896,6 +1896,28 @@ func combat_resolve_bull_rush(follow: bool) -> Dictionary:
 	return result
 
 
+func combat_grapple(target_index: int) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.grapple_active(target_index)
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
+func combat_grapple_exit(use_escape_artist := false) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.grapple_exit(use_escape_artist)
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
 func combat_resolve_improved_trip(take_attack: bool, choice := "") -> Dictionary:
 	if encounter == null or mode != "combat":
 		return {"ok": false, "message": "No combat is running."}
