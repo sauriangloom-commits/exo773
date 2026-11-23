@@ -85,6 +85,36 @@ static func advancement_line(campaign: String, inventory: Dictionary) -> String:
 	)
 
 
+## The line for one shipped character with no completed draft. A shipped character
+## with no legal completed draft is a validation failure, as plan §10 decides; this
+## names the character and the choice group that emptied.
+static func advancement_completable_line(campaign: String, result: Dictionary) -> String:
+	return (
+		"ADVANCEMENT COMPLETABLE %s %s class=%s group=%s result=EMPTY"
+		% [
+			campaign,
+			String(result.get("character", "?")),
+			String(result.get("class", "?")),
+			String(result.get("group", "combination")),
+		]
+	)
+
+
+## The per-campaign summary of the completability check: how many characters were
+## checked and how many were empty. It carries no failure of its own; the empty
+## characters' lines are what count.
+static func advancement_completable_summary(campaign: String, report: Dictionary) -> String:
+	return (
+		"ADVANCEMENT COMPLETABLE %s checked=%d empty=%d result=%s"
+		% [
+			campaign,
+			int(report.get("checked", 0)),
+			Array(report.get("empty", [])).size(),
+			"PASS" if int(report.get("failures", 0)) == 0 else "FAIL",
+		]
+	)
+
+
 static func summary(diagnostics: Array) -> String:
 	var errors := count(diagnostics, ERROR)
 	var warnings := count(diagnostics, WARNING)

@@ -138,6 +138,24 @@ static func spell_options(ch: Character, draft: Dictionary = {}) -> Array[Dictio
 	return _spell_rows(ch, staged_result["staged"])
 
 
+## Stages one complete draft without the eligibility test `validate` performs
+## first. The developer completability check (batch 6c) needs the engine's own
+## completed-draft rules for a character deliberately below the XP threshold; the
+## staging itself still belongs to this module, so no other file calls
+## `LevelUp.stage`.
+static func stage_completed(ch: Character, choices: Dictionary) -> Dictionary:
+	return LevelUp.stage(ch, choices, true)
+
+
+## The skill budget the step would grant after this ability increase, without
+## requiring eligibility. 0 when the class cannot be staged at all.
+static func skill_budget(ch: Character, ability: String) -> int:
+	var staged_result := LevelUp.stage(ch, {"ability": ability}, false)
+	if not bool(staged_result.get("ok", false)):
+		return 0
+	return int(staged_result.get("budget", 0))
+
+
 ## Advisory refusal check: the same refusal code `LevelUp.apply` would return, in
 ## the order `apply` asks - is the step open at all, then is this draft legal. The
 ## eligibility test has to come first for two reasons: `apply` refuses a spent or

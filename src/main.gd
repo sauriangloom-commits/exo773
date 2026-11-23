@@ -962,6 +962,16 @@ func _validate_diagnostics_and_quit() -> void:
 				String(id), db.advancement_inventory()
 			)
 		)
+		# Completability of the shipped 3rd-level characters: a legal completed
+		# draft must exist. Unlike the inventory, an empty character is a failure -
+		# the content ships a character who cannot take the step it exists to take.
+		var completable := AdvancementCheck.inspect_all(db.characters, db.items)
+		for raw_result in Array(completable.get("results", [])):
+			var entry := Dictionary(raw_result)
+			if bool(entry.get("checked", false)) and not bool(entry.get("completable", false)):
+				print(ContentDiagnostics.advancement_completable_line(String(id), entry))
+				failures += 1
+		print(ContentDiagnostics.advancement_completable_summary(String(id), completable))
 		print("CAMPAIGN DIAGNOSTICS %s | %s" % [id, ContentDiagnostics.summary(diagnostics)])
 	print("CAMPAIGN_DIAGNOSTICS_JSON " + JSON.stringify(all))
 	# Class tables are data only; validating them here keeps the content gate in
