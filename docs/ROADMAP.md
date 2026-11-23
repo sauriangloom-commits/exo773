@@ -1126,3 +1126,109 @@ writing code here.
 `class_level` evaluation and the same-weapon prerequisite are recorded in
 `ADAPTATION_LOG.md` 62; the red/green receipts and the probe's input split are in
 `TEST_REPORT.md`.
+### Batch 7b closed, and a rules-work review (2026-11-23)
+
+Batch 7b is closed as accepted within the evidence recorded in `cf6c5c2`
+(implementation `334da1d`, candidate `2026-11-23_batch7b_feat_display`). Nothing was
+rebuilt, re-exported or re-run for the closure, and **no checks were run for this
+review**.
+
+**Confirmed defects.** None open. The two batch-4 defects stay closed, and nothing
+below has a failing case.
+
+**Deferred features.** Unchanged: levels 5 and above; more than one level per step;
+NPC advancement; Greater Weapon Focus and Greater Weapon Specialization; Improved
+Bull Rush; Quick Draw; Two-Weapon Fighting and iterative attacks; a level-up autosave;
+a sheet shortcut; gating the town square behind the gatehouse; correcting the
+town-square award; grapple, disarm, sunder and overrun; concealment and hard cover; AoE
+templates; encumbrance; disease; the content pipeline; a save shortcut; the campaign
+layer; skill parameters still showing content ids in feat text.
+
+**Maintenance debt.** The `Encounter` header comment (`src/core/encounter.gd:13-14`)
+still lists bull rush, trip, cover and turn undead as deferred although all four are
+implemented; a comment is not a defect, but it misleads a reader and should be fixed by
+the next batch that edits that file. The feat-label string exists twice
+(`Feats.display_label` and the precomputed row `label`). The advancement probe and the
+level-up probe choose different fighter feats past the Feat step.
+
+**Evidence gaps.** Rendered appearance, ordinary-combat victory and human playtesting
+remain unclaimed; the reload-then-reapply path is walked by no test; the advancement
+probe runs at one scale and without the sorcerer.
+
+#### What the engine models, against what shipped content can use
+
+| Area | Engine today | Authored content that would use it | Reachable by a player? |
+| --- | --- | --- | --- |
+| Grapple | Nothing: no grapple or pinned state, no opposed grapple check, no restricted-action path, no UI action | None. All three monsters (`zombie`, `infected_zombie`, `ghoul`) fight with natural attacks and none has a grab ability; Improved Grapple is cataloged as deferred | A player could initiate it against any monster if it existed, but no content initiates, rewards or teaches it, and no monster would grapple back |
+| Disarm | Nothing | None. Every monster has `equipment: {}` and attacks with a slam, bite or claw, so there is no weapon to disarm; no authored enemy ever disarms the party | No - only a test could reach it |
+| Sunder | Nothing | Nothing. No combatant carries a struck object and there is no object hit-point model | No |
+| Concealment | Nothing: no miss chance anywhere in the engine | None. No area, spell or monster authors darkness or concealment | No |
+| Hard cover | Soft cover only: `creature_cover` gives +4 when another creature is in the line (`encounter.gd:2503`, `BattleMap.creature_cover`), and `Rules.attack` accepts the `cover` term (`rules.gd:711`) | The three combat maps are open rooms; the town square's barricade is an exploration object, not a combat obstacle | Soft cover yes (and probed); hard or terrain cover no |
+| AoE templates | One shape only: `bless` applies to every party ally (`_cast_bless`); the engine has no radius, template or multi-target resolution | Bless's printed "all allies in a 50-ft. burst"; no damaging area spell is authored - magic missile, scorching ray, cure light wounds, aid and mage armor are all single-target | Bless yes; templates no |
+| Conditions | Implemented: dead, dying, stable, unconscious, nonlethal unconscious, disabled, staggered, prone, paralyzed, cowering, turned, plus the bless / mage armor / aid buffs, fighting defensively, total defence, Combat Expertise, flat-footed, flanking and helpless | Ghoul paralysis is authored and exercised in the crypt fight; the ghoul's own notes record that ghoul fever is not implemented, and the infected zombie's disease is deferred with it | Everything listed yes; disease no |
+| Encumbrance | Nothing: items carry `weight_lb`, and no rule reads it; `ADAPTATION_LOG.md` 18 records the decision | None: no content gates on weight and the party's kit is light | No consequence either way |
+| Items in play | Equipment and inventory work; `give_item` awards the clapper, keys, potions and the ferry token | The party carries longsword, short sword, heavy mace, daggers and a light crossbow. `light_flail` exists in `content/shared/items.json` and is granted by nothing, so no player can encounter it | The party's own weapons yes; `light_flail` no |
+
+Read together, the only listed rules area with a real target in shipped content is
+grapple, and even there the content never initiates one. Disarm, sunder, concealment,
+hard cover, AoE templates and encumbrance would be features only a test could reach
+until content creates a reason for them. Conditions are already broad; the one
+content-authored gap is disease, which has no day-scale pressure in these campaigns.
+
+#### The reload-then-reapply gap
+
+- **What the save path guarantees.** Victory pays every character the encounter's XP
+  and only then writes `save_game("auto")` (`game_state.gd:1734-1756`), so that
+  autosave holds level 3 with the paid XP and eligibility. `LevelUp.apply` mutates the
+  character and the screen writes nothing, so an applied level reaches disk at the next
+  manual save or auto boundary. Loading the pre-apply autosave therefore restores the
+  entitlement with an empty draft, and the same choices are legal again.
+- **What tests cover.** Eligibility from a loaded level-3 save and the level-4
+  round-trip (`test_level_up_core.gd` cases 33 and 34), and the probes' post-apply
+  save/reload. Nothing loads the *pre-apply* autosave and applies again.
+- **Can a focused test close it?** Yes, with no new save policy: a game-level test can
+  reach the threshold through a QA victory, let the autosave write, reload `auto`,
+  apply the same draft, reload again and apply once more. Every API it needs exists.
+- **Does it deserve its own batch?** No. It verifies an existing recovery path and
+  changes no player-visible behaviour; it belongs as a case inside the next batch that
+  touches saving, or as a rider on a test-only change.
+
+#### Recommendation: planning only for the special-attack family, grapple first
+
+**Why planning rather than a bounded implementation.** Grapple is the only listed
+rules area that can be reached in shipped content - a player can attempt it against
+every monster in all three campaigns - but it is bigger than either special attack
+already built: trip and bull rush each landed from a dedicated plan (`BULL_RUSH_PLAN.md`
+is 268 lines for bull rush alone), and grapple adds a persistent two-character state,
+movement into the defender's square, action restrictions on both participants, an
+escape check, and a turn-loop that must not let a grappled actor act normally. It is
+also the only one of the three that would work against content as authored, since no
+monster carries a weapon.
+
+**Planning deliverable.** One note that decides, with printed citations: the
+player-initiated single-defender grapple (touch attack, opposed check and size
+modifiers), the `grappled` state and exactly which actions it forbids, the escape
+check and who may attempt it, whether a pin is in the first batch, which feats count
+(Improved Grapple is cataloged and would become reachable), how the AI responds when
+it is the defender, the UI action and its keyboard path, the probe plan, and what stays
+out. It should also record that no monster initiates a grapple and why that is
+acceptable for this slice, and correct the stale `encounter.gd` header.
+
+**The first implementation batch it would produce.** Grapple and escape only, no pin
+and no pin damage: a player-initiated grapple against one defender in the existing
+combat screen, the `grappled` action restrictions, a defender escape attempt on its
+turn, and Improved Grapple's +4. Everything else - pin, constriction, multiple
+grapplers, monster-initiated grapple, improved grab, swallow whole - stays deferred and
+is named in the plan.
+
+**Player impact.** A new tactical option in every fight, and the first use for a feat
+the catalog already carries; modest rather than large, because the authored monsters
+never grapple and the campaign's fights are short. Exported candidate: required for the
+implementation batch (combat behaviour a player sees), not for the planning note.
+Exclusions for that batch: no disarm, no sunder, no concealment, no AoE templates, no
+encumbrance, no disease, no content, schema or save change, no threshold or award
+change.
+
+**Not recommended now.** Disarm and sunder (no authored target), concealment, hard
+cover, AoE templates and encumbrance (no authored content), disease (no day-scale
+pressure), and a reload-then-reapply batch of its own (a test case, not a feature).

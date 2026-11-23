@@ -5860,3 +5860,16 @@ built.
 
 **Evidence gaps.** Label equality is asserted on control text and data, not pixels;
 one OS and one window size; no rendered appearance and no human playtest.
+## Batch 7b closed (2026-11-23)
+
+Batch 7b is closed as accepted within the evidence recorded in `cf6c5c2` for
+implementation `334da1d` and candidate `2026-11-23_batch7b_feat_display`
+(110,852,840 bytes, SHA-256
+`64016e0af797f61ca5d4e7d9dd17cf0a724fd63ce634738c0e7c6d8816337d7a`). Nothing was
+rebuilt, re-exported or re-run for the closure, and **no checks were run for the
+roadmap review** recorded in `ROADMAP.md` - it is documentation only.
+
+The review's reachability findings and the recommended planning note for grapple are
+summarised in `ROADMAP.md` and `PROGRAM_PROGRESS.md`; the reload-then-reapply gap is
+confirmed as an evidence gap a focused test can close without new save policy, not a
+defect and not a batch of its own.

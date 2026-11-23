@@ -3261,3 +3261,33 @@ Green after: 9 focused tests, 910 in the suite, both validators, `--level-up-pro
 349 checks at both scales and `--advancement-probe`, from source and from the
 candidate. Feat text is verified as strings and control text, not rendered
 appearance; no manual testing was requested.
+### Batch 7b closed; rules-work review (2026-11-23)
+
+Batch 7b is closed as accepted within the evidence recorded in `cf6c5c2` for
+implementation `334da1d` and candidate `2026-11-23_batch7b_feat_display`; nothing was
+rebuilt, re-exported or re-run, and no checks were run for this review.
+
+The review found no open defect. Read against shipped content, the remaining rules
+work is mostly unreachable: disarm and sunder have no authored target because every
+monster attacks with natural weapons and carries nothing, concealment and hard cover
+have no authored darkness or obstacle, the engine has no AoE template and no damaging
+area spell is authored, encumbrance is recorded as ignored and no content depends on
+it, and the condition set is already broad - the one content-authored gap is disease.
+Soft cover from a creature in the line, creature-caused paralysis, prone, staggered,
+turning, blessing and the rest are modelled and exercised.
+
+Grapple is the only listed area a player could actually attempt in the shipped
+campaigns, and it is larger than trip or bull rush were: a persistent state across two
+combatants, movement into the defender's square, action restrictions and an escape
+check. The recommendation is a planning-only note for the special-attack family that
+decides the grapple model and produces, as its first implementation batch,
+player-initiated grapple plus escape with no pin. Disarm, sunder, concealment, hard
+cover, AoE templates, encumbrance and disease are not recommended.
+
+The reload-then-reapply gap is genuinely closable with a focused test and no new save
+policy - the pre-apply autosave already holds the paid XP, and reloading it re-offers
+the step - so it does not deserve a batch of its own; it belongs inside the next
+save-touching work. The `encounter.gd` header still lists implemented features as
+deferred; that is maintenance debt for the next batch that edits the file, not a
+defect. This commit is documentation only: no code, content, schema or save changed,
+and the README edit stays out.
