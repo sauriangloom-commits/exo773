@@ -927,6 +927,168 @@ func _validate_dialogue(dialogue: Dictionary, dialogue_id: String) -> void:
 					errors.append("Dialogue '%s' node '%s' %s" % [dialogue_id, node_key, error])
 
 
+# ------------------------------------------------------- advancement inventory
+
+## The campaign's authored XP, split into what shipped content can lead a player
+## into and what only QA harness code names.
+##
+## This is a static sum, not a route: it says nothing about flags, ordering, doors
+## or which awards one playthrough can carry, and mutually exclusive awards (the
+## pact's 200 and the crypt fight's 450) are both counted. Reachability is
+## `--advancement-probe`'s job, and only that probe says "reached".
+##
+## Classification is by reference, not by map tile. An encounter is `ordinary` when
+## a shipped trigger names it, or when a `start_combat` effect in an area, a
+## dialogue or a quest starts it, or when an ordinary encounter's own victory
+## effects start it; `qa_only` means exactly "no shipped content names it".
+## `crypt_warden` has no map trigger at all and is ordinary, because Corvin's
+## dialogue starts it.
+func advancement_inventory() -> Dictionary:
+	var encounter_xp := {}
+	for encounter_key in encounters.keys():
+		var encounter_id := String(encounter_key)
+		encounter_xp[encounter_id] = int(
+			Dictionary(encounters[encounter_key]).get("xp", 0)
+		)
+
+	var classification := _classify_encounters(encounter_xp.keys())
+	var encounters_total := 0
+	var qa_total := 0
+	var qa_ids: Array[String] = []
+	for encounter_id in encounter_xp.keys():
+		var amount := int(encounter_xp[encounter_id])
+		encounters_total += amount
+		if String(classification.get(encounter_id, "qa_only")) == "qa_only":
+			qa_total += amount
+			qa_ids.append(encounter_id)
+
+	var effects_total := _authored_effect_xp()
+	for encounter_id in qa_ids:
+		qa_total += _xp_in(Dictionary(encounters[encounter_id]).get("victory_effects", []))
+
+	var authored := encounters_total + effects_total
+	return {
+		"authored": authored,
+		"ordinary": authored - qa_total,
+		"qa": qa_total,
+		"encounters": encounters_total,
+		"effects": effects_total,
+		"start": _advancement_start(),
+		"qa_ids": qa_ids,
+		"classification": classification,
+	}
+
+
+## `id -> "ordinary" | "qa_only"`. A reference from an ordinary encounter's victory
+## effects makes the started encounter ordinary too, so the split is a closure
+## rather than one hop: an encounter reachable only through a QA-only encounter
+## stays QA-only.
+func _classify_encounters(ids: Array) -> Dictionary:
+	var ordinary := {}
+	for raw in ids:
+		ordinary[String(raw)] = false
+	for target in _content_encounter_references():
+		if ordinary.has(target):
+			ordinary[target] = true
+	var changed := true
+	while changed:
+		changed = false
+		for encounter_id in ordinary.keys():
+			if not bool(ordinary[encounter_id]):
+				continue
+			var victory: Array = Array(
+				Dictionary(encounters.get(encounter_id, {})).get("victory_effects", [])
+			)
+			for target in _effect_encounters(victory):
+				if ordinary.has(target) and not bool(ordinary[target]):
+					ordinary[target] = true
+					changed = true
+	var out := {}
+	for encounter_id in ordinary.keys():
+		out[encounter_id] = "ordinary" if bool(ordinary[encounter_id]) else "qa_only"
+	return out
+
+
+## Every encounter id a shipped trigger or `start_combat` effect names, outside the
+## encounter table itself.
+func _content_encounter_references() -> Array[String]:
+	var out: Array[String] = []
+	for area_key in areas.keys():
+		var area := Dictionary(areas[area_key])
+		for raw in Array(area.get("triggers", [])):
+			var named := String(Dictionary(raw).get("encounter", ""))
+			if named != "":
+				out.append(named)
+		out.append_array(_effect_encounters(area))
+	for dialogue_key in dialogues.keys():
+		out.append_array(_effect_encounters(Dictionary(dialogues[dialogue_key])))
+	for quest_key in quests.keys():
+		out.append_array(_effect_encounters(Dictionary(quests[quest_key])))
+	return out
+
+
+## Every `xp` effect under `node`, wherever the content nests it.
+func _xp_in(node: Variant) -> int:
+	var effects: Array = []
+	_collect_effects(node, "xp", effects)
+	var total := 0
+	for raw in effects:
+		total += int(Dictionary(raw).get("amount", 0))
+	return total
+
+
+## The encounters named by `start_combat` effects under `node`.
+func _effect_encounters(node: Variant) -> Array[String]:
+	var effects: Array = []
+	_collect_effects(node, "start_combat", effects)
+	var out: Array[String] = []
+	for raw in effects:
+		var named := String(Dictionary(raw).get("encounter", ""))
+		if named != "":
+			out.append(named)
+	return out
+
+
+func _collect_effects(node: Variant, effect_type: String, out: Array) -> void:
+	if node is Dictionary:
+		var dictionary: Dictionary = node
+		if String(dictionary.get("type", "")) == effect_type:
+			out.append(dictionary)
+		for key in dictionary.keys():
+			_collect_effects(dictionary[key], effect_type, out)
+	elif node is Array:
+		for item in node:
+			_collect_effects(item, effect_type, out)
+
+
+## Every authored effect award in the campaign: area and dialogue effects plus each
+## encounter's own victory effects. The encounter's `xp` field is counted
+## separately, as an encounter award, never here.
+func _authored_effect_xp() -> int:
+	var total := _xp_in(areas) + _xp_in(dialogues) + _xp_in(quests) + _xp_in(journal)
+	for encounter_key in encounters.keys():
+		var victory: Array = Array(
+			Dictionary(encounters[encounter_key]).get("victory_effects", [])
+		)
+		total += _xp_in(victory)
+	return total
+
+
+## The lowest authored XP among the campaign's default party. The threshold applies
+## per character, and this is a single figure, so a campaign that one day authors a
+## spread is reported at its most conservative start rather than at an average.
+func _advancement_start() -> int:
+	var lowest := -1
+	for raw in Array(Dictionary(campaign.get("party", {})).get("default", [])):
+		var data := Dictionary(characters.get(String(raw), {}))
+		if data.is_empty():
+			continue
+		var xp := int(data.get("xp", 0))
+		if lowest < 0 or xp < lowest:
+			lowest = xp
+	return maxi(lowest, 0)
+
+
 func summary() -> String:
 	return "Campaign '%s': %d items, %d spells, %d characters, %d monsters, %d encounters, %d dialogues, %d quests, %d areas." % [
 		campaign_id,

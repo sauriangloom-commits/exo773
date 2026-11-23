@@ -952,6 +952,16 @@ func _validate_diagnostics_and_quit() -> void:
 		all.append_array(diagnostics)
 		if ContentDiagnostics.has_errors(diagnostics):
 			failures += 1
+		# Informational: the award inventory is a static sum over authored content.
+		# It never becomes a diagnostic and never changes the failure count, so a
+		# campaign too short to reach the threshold still passes.
+		var db := ContentDB.new()
+		db.load_campaign(Game.campaigns.get_campaign(String(id)))
+		print(
+			ContentDiagnostics.advancement_line(
+				String(id), db.advancement_inventory()
+			)
+		)
 		print("CAMPAIGN DIAGNOSTICS %s | %s" % [id, ContentDiagnostics.summary(diagnostics)])
 	print("CAMPAIGN_DIAGNOSTICS_JSON " + JSON.stringify(all))
 	# Class tables are data only; validating them here keeps the content gate in

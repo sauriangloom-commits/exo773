@@ -61,6 +61,30 @@ static func messages(diagnostics: Array) -> Array[String]:
 	return result
 
 
+## The informational award inventory of one campaign, as one line.
+##
+## Informational only: the caller prints it beside the diagnostics and never turns
+## it into a diagnostic, so a campaign whose authored awards cannot reach the
+## threshold still passes. The words are load-bearing - a sum is not a route and
+## says nothing about reachability, and exclusive awards are all in the sum.
+static func advancement_line(campaign: String, inventory: Dictionary) -> String:
+	return (
+		"ADVANCEMENT AWARDS %s authored=%d ordinary=%d qa=%d encounters=%d effects=%d start=%d threshold=%d"
+		% [
+			campaign,
+			int(inventory.get("authored", 0)),
+			int(inventory.get("ordinary", 0)),
+			int(inventory.get("qa", 0)),
+			int(inventory.get("encounters", 0)),
+			int(inventory.get("effects", 0)),
+			int(inventory.get("start", 0)),
+			LevelUp.XP_THRESHOLD,
+		]
+		+ " (static inventory of authored awards; not a route, not reachability;"
+		+ " mutually exclusive awards are both counted)"
+	)
+
+
 static func summary(diagnostics: Array) -> String:
 	var errors := count(diagnostics, ERROR)
 	var warnings := count(diagnostics, WARNING)
