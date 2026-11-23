@@ -5396,3 +5396,91 @@ headless), an exported build" - those two points now have an exported, windowed 
 this scope only. Still not covered: rendered pixels (no screenshot, no visual check),
 the sorcerer end to end through every step, one window size, one OS, and any human
 playtest.
+## Batch 6a: the advancement milestone and its route (2026-11-23)
+
+Implementation `9139136f932bf2aa641ae7796f59f16e7d154d7d`: the bell's 2,300 XP
+effect and narration, `tests/test_demo_advancement.gd`, and `--advancement-probe`
+sharing the accepted walk through `_level_up_probe_walk`. This is plan §13 batch 6a
+only; 6b (informational award lines) and 6c (the completability check) are not
+implemented.
+
+### Red, before the content change
+
+Tests and probe were written first and run against `6e556cc` with the milestone
+absent.
+
+- `tests/test_demo_advancement.gd`: 4 tests, 2 failing, 17/25 asserts. Observed:
+  effects 700 (expected 3,000), authored 2,200 (4,500), ordinary 2,050 (4,350);
+  bell 500 (2,800), combat route 4,250 (6,550), parley route 3,700 (6,000),
+  unresolved 3,500 (5,800). Tests 3 and 4 passed unchanged.
+- `--advancement-probe`: `PROBE RESULT FAIL scenario=advancement ... failures=14`,
+  with `ADVANCEMENT NOT REACHED ... xp=4250 threshold=6000 eligible=` and the walk
+  unable to offer the level-up button (`every eligible page offers Level up`
+  failed). The route itself walked: Miruna, storeroom (3,300), crate, warden
+  (3,750) all passed before the bell.
+
+### Green, after the change
+
+- `tests/test_demo_advancement.gd`: 4/4 tests, 25 asserts.
+- Full suite: 66 scripts, 881 tests, 9,370 asserts, exit 0.
+- `--validate-campaigns`: `CAMPAIGN VALIDATION PASS`. `--validate-diagnostics`:
+  `CAMPAIGN DIAGNOSTICS PASS`.
+- `--advancement-probe` from source: `ADVANCEMENT REACHED campaign=ravenloft_demo
+  route=gatehouse_quest awards=storeroom_dead:300,crate:0,corvin_destroy:450,bell:500+2300
+  xp=6550 threshold=6000 eligible=kaelen,sera,aldric,ysolde`; `PROBE RESULT PASS
+  scenario=advancement elapsed_ms=13534`, 222 checks, 0 failures.
+- `--level-up-probe` from source, unchanged: receipts at 1.00 (172 checks) and 1.60
+  (173), `PROBE AGGREGATE result=PASS ... checks=347 failures=0`.
+
+### Exported candidate
+
+`tools/qa/build_candidate.sh 2026-11-23_batch6a_advancement`. `BUILD.txt` records
+`source_head=9139136f932bf2aa641ae7796f59f16e7d154d7d`,
+`exe_bytes=110838888`,
+`exe_sha256=fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`,
+`worktree_entries=1` (one uncommitted README edit left from the previous request,
+not part of this batch).
+
+From that executable: the advancement probe printed the same `ADVANCEMENT REACHED`
+line and `PROBE RESULT PASS scenario=advancement elapsed_ms=12402`; the level-up
+probe printed `PROBE AGGREGATE result=PASS ... checks=347 failures=0` (21,662 ms);
+`CAMPAIGN VALIDATION PASS` and `CAMPAIGN DIAGNOSTICS PASS`. The file's SHA-256 was
+identical before and after all four runs and equals `BUILD.txt`'s value.
+
+### What the route establishes, and what it does not
+
+- Completing `drowned_bell` needs the crate (`found_clapper`), a resolved warden
+  (`warden_resolved`), Miruna (`met_miruna`) and the bell (`bell_rung`). The
+  least-awarding completion is crate 0 + pact 200 + bell 500 = 700 before the
+  milestone and 3,000 with it, so a parley player is at exactly 6,000 when the bell
+  pays. The named combat route is 6,550.
+- Ringing without resolving the warden is 5,800 and does not complete the quest:
+  700 is a completion floor, not a floor for every route that rings.
+- The fights were resolved by `apply_nonlethal` plus each encounter's `_check_end`.
+  That proves the victory path pays its award and sets its flags exactly once; it is
+  not evidence that either fight is winnable by a player taking turns.
+- Keyboard input covers the party sheet and the level-up screen only. Movement,
+  interactions and dialogue choices are direct calls, disclosed in the probe's
+  `PROBE INPUT` line.
+- The advancement probe runs the walk at 1.00 only and the sorcerer step is not in
+  it (its party is `kaelen,sera,aldric,ysolde`); the sorcerer's Spells walk stays
+  with `--level-up-probe`. No rendered pixels, no window, no human playtest.
+
+### Four lists, kept separate
+
+**Confirmed defects.** None found in this batch. The two batch-4 defects stay
+closed.
+
+**Deferred features.** Levels 5 and above; more than one level per step; NPC
+advancement; the implanted printed fighter feats; a level-up autosave; a sheet
+shortcut; gating the town square behind the gatehouse; correcting the town square
+award from 600 to the printed 1,200; batches 6b and 6c; the rest of P1-P4.
+
+**Maintenance debt.** The plan §15 list, plus: the advancement probe hardcodes the
+route's coordinates, so a map edit fails a named step rather than discovering the
+new path, and the milestone's amount is pinned only by
+`test_demo_xp_ledger_matches_the_content`.
+
+**Evidence gaps.** Rendered appearance; ordinary combat success; human playtesting;
+the advancement probe at 160 %; the sorcerer inside the advancement route; the
+reload-then-reapply path; one OS and one window size.

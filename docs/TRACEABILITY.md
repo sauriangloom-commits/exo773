@@ -316,3 +316,18 @@ same flag at 160 % (`probe_4c_4.log`: a receipt per scale and 347 checks in all)
 | --- | --- | --- | --- |
 | The whole level-up path runs in an exported candidate, at 100 % and 160 %, with the same checks as source | `LEVEL_UP_PLAN.md` 15 | `--level-up-probe` inside candidate `level_up_ui_2026-11-22` | `PROBE RECEIPT` at 1.00 (172 checks) and 1.60 (173), `PROBE AGGREGATE result=PASS ... checks=347 failures=0`, from `RavenloftFoundationEdit.exe`, 110,832,568 bytes, SHA-256 `2f890629160847962a21a8d9f7ced0178360bd2eb0d1e0a9c1c5b92ba3d24cff`, source `84d8fb7` |
 | The exported package ships content, scripts and assets only | `docs/SETUP.md` export section | the `Windows Desktop` preset's exclusions | `pck_paths.py`: 201 packed paths, none under `docs/`, `tests/`, `tools/`, `addons/gut/` or `builds/`, no `.md` or `.pdf` |
+### Advancement milestone and route (batch 6a, 2026-11-23)
+
+`DEMO_ADVANCEMENT_PLAN.md` batch 6a. The bell's `ring` interaction pays a second
+`xp` effect of 2,300 beside its existing 500 and narrates it as a project
+adaptation. Nothing else changed: no threshold, encounter, character, UI, schema
+or save.
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| Completing `drowned_bell` lands on the printed 6,000; the crypt route reaches 6,550 | PHB Table 3-2, p. 22; DMG pp. 39-40 (ad hoc and story awards); plan §4-§6 | `content/campaigns/ravenloft_demo/dungeon.json`, `bell`/`ring` effects | `test_the_named_route_reaches_the_threshold`: 6,550 / 6,000 / 5,800 |
+| Ringing without resolving the warden stays at 5,800 and does not complete the quest | plan §5; `quests.json` `drowned_bell` objectives | the `warden_resolved` objective | same test, plus `test_drowned_bell_needs_the_crate_flag` |
+| The ledger is pinned to the content | plan §2 | `tests/test_demo_advancement.gd` | `test_demo_xp_ledger_matches_the_content`: authored 4,500, ordinary 4,350, one route 4,150, least completion 3,000 |
+| The QA encounters have no content entry point | plan §8 | `main.gd` probe code only | `test_the_qa_encounters_have_no_content_entry_point` |
+| An authored party reaches eligibility by walking the shipped route, with no XP write | plan §11 | `--advancement-probe` | `ADVANCEMENT REACHED ... xp=6550 threshold=6000 eligible=kaelen,sera,aldric,ysolde` |
+| The accepted level-up walk runs unchanged on that state | plan §11 | `_level_up_probe_walk`, shared by both probes | the advancement probe's `PROBE STEP 02`-`09` checks; `--level-up-probe` still 347 checks, 0 failures |

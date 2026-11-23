@@ -1,10 +1,12 @@
 # How the demo reaches 4th level
 
-Planning note, 2026-11-22. Status: **proposal only**. Nothing in this note is
-implemented. No code, content, schema, save, XP threshold or UI was changed for
-it, no check was run, no manual testing is requested and no backup was touched.
-It follows the review committed as `2877bbc` and corrects that review's route
-arithmetic and its save sentence; those corrections are listed in §14.
+Planning note, 2026-11-22. Status: **batch 6a implemented** at
+`9139136f932bf2aa641ae7796f59f16e7d154d7d` - the bell's 2,300 XP milestone, tests
+1-4 and `--advancement-probe`; batches 6b and 6c remain proposals. The note itself
+changed no code, content, schema, save, XP threshold or UI, and asked for no manual
+testing. It follows the review committed as `2877bbc` and corrects that review's
+route arithmetic and its save sentence; those corrections, and two route details
+the probe corrected, are listed in §14.
 
 ## 1. What this note decides
 
@@ -451,6 +453,16 @@ and can be reordered or dropped without weakening 6a's acceptance.
 - **"A reachable-XP line" is narrowed**: the validator prints static inventory
   only; reachability is established by the probe, because a scanner cannot
   establish a route.
+
+- **The §7 route needed two corrections, found while writing the probe.** It also
+  has to speak to Miruna: `drowned_bell` carries a `met_miruna` objective, so the
+  bell alone does not complete the quest (0 XP, so the floor is unchanged). And the
+  crypt door at (5,3) does not gate Corvin - the crypt room is entered from below
+  through (4,3) - it is the door the party crosses on the way from Corvin to the
+  bell, where the crate's key is actually used.
+- **The ledger test's pins move with batch 6a**: authored 4,500, ordinary 4,350, one
+  ordinary route 4,150, least-awarding completion 3,000. The §2 figures stay correct
+  as the pre-6a ledger, and §11 test 1 should be read with the new pins.
 
 ## 15. Four lists, kept separate
 

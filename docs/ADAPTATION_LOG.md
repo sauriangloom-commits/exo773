@@ -791,3 +791,19 @@ presentation choices are omitted; nothing here changes a rule silently.
     because C3 requires the footer to sit outside that pane and the header `Close` is
     not part of the body; the header and footer are held by C2 and C3 instead. No rule
     or printed value is involved in either.
+58. **The bell pays a 2,300 XP completion milestone (batch 6a).** The demo could not
+    reach 4th level: 2,200 authored XP against the printed 6,000 (PHB Table 3-2,
+    p. 22), and its best single ordinary route carried 1,850. DMG pp. 39-40 allow
+    experience for goals other than defeated monsters and give no number for them,
+    so the amount is a project adaptation, not a printed value. 2,300 is derived
+    from the least-awarding route that completes `drowned_bell` - crate 0 + Corvin's
+    pact 200 + bell 500 = 3,700 - so every completing player is eligible when the
+    quest completes, at 6,000 exactly; the named combat route lands at 6,550. 1,750
+    was rejected because it leaves the parley route at 5,750 at the bell. The award
+    sits on the bell rather than on a quest hook because the engine has no XP hook
+    for quest completion, the bell is where `bell_rung` - the last objective - is
+    set, and the interaction boundary autosaves what it pays. A player who rings
+    without resolving the warden is at 5,800 and has not completed the quest, since
+    `warden_resolved` is an objective: the least-awarding *completion* is 3,000 with
+    the milestone (700 without it), not a floor for every route that rings. No
+    threshold, encounter, character, UI, schema or save changed.

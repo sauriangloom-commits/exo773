@@ -3133,3 +3133,19 @@ assigning XP. It corrects the review's 5,200 route figure to 4,850 and its save
 sentence: paid XP and eligibility survive the autosave, an unsaved applied level
 and its choices do not. No checks were run for this note and no code, content,
 schema, save or threshold changed.
+### Batch 6a implemented: the bell milestone and the advancement probe (2026-11-23)
+
+`DEMO_ADVANCEMENT_PLAN.md` batch 6a is implemented at
+`9139136f932bf2aa641ae7796f59f16e7d154d7d`. The bell's `ring` interaction now
+pays 2,300 XP beside its existing 500 and narrates the milestone, so completing
+`drowned_bell` lands on exactly 6,000 and the named combat route on 6,550; ringing
+without resolving the warden stays at 5,800 and does not complete the quest.
+`--advancement-probe` earned that XP by walking the shipped gatehouse route - no XP
+assignment, no injected award, no QA encounter - and then ran the accepted level-up
+walk unchanged. Red first: the ledger and route tests failed at 4,250 and the probe
+printed `ADVANCEMENT NOT REACHED`. Green after: 881/881 tests, both validators, and
+both probes from source and from candidate `2026-11-23_batch6a_advancement`
+(110,838,888 bytes, SHA-256
+`fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`). No rendered
+appearance, ordinary combat success or human playtest is claimed. Batches 6b and 6c
+are not implemented.
