@@ -4,9 +4,11 @@ Planning note, 2026-11-22. Status: **batch 6a accepted and closed** -
 implemented at `9139136f932bf2aa641ae7796f59f16e7d154d7d`, accepted on the evidence
 recorded in `27963b8`, with no check repeated for the closure. **Batch 6b accepted
 and closed** - implemented at `dd965fc`, accepted on the evidence recorded in
-`f552371`. **Batch 6c is implemented** at
-`ff5c4a168f9d41b54c93bee110babfab78eaf5d4` - the completability check of §10, as
-amended there. The note itself changed no code, content, schema, save, XP
+`f552371`. **Batch 6 is closed.** 6c is accepted within `44b8137`, having been
+implemented at `ff5c4a168f9d41b54c93bee110babfab78eaf5d4` (the completability check
+of §10, as
+amended there); 6a's acceptance rests on an exported candidate and 6b's and 6c's on
+source-only evidence. The note itself changed no code, content, schema, save, XP
 threshold or UI, and asked for no manual testing. It follows the review committed as `2877bbc` and corrects that review's
 route arithmetic and its save sentence; those corrections, and two route details
 the probe corrected, are listed in §14.
@@ -456,9 +458,12 @@ record should use:
 
 Each is independently acceptable and independently revertable.
 
-Status: **6a accepted and closed** (`27963b8`); **6b accepted and closed**
-(`f552371`); **6c implemented** at `ff5c4a168f9d41b54c93bee110babfab78eaf5d4`. No
-check was repeated for either closure.
+Status: **batch 6 is closed.** 6a accepted and closed (`27963b8`,
+implementation `9139136`) on the exported candidate `2026-11-23_batch6a_advancement`;
+6b accepted and closed (`f552371`, implementation `dd965fc`) and 6c accepted and
+closed (`44b8137`, implementation `ff5c4a1`) on source-only evidence, because both
+are developer tools with no player-visible change. No check was repeated for any
+closure.
 
 **Batch 6a (first) - the milestone award and the advancement probe.**
 
@@ -567,3 +572,10 @@ the completability failure path is covered by synthetic characters, not by a
 deliberately broken shipped character; no end-to-end assertion covers the inventory
 or completability lines; rendered appearance, combat success and playtesting are not
 claimed.
+
+**After the batch-6 closure (2026-11-23).** The town-square award was reviewed and
+kept at 600: the encounter is a bounded excerpt, no player-visible number depends on
+the difference, and the inconsistency with the printed table and with the demo's own
+sum convention is recorded rather than repaired (`ADAPTATION_LOG.md` 61). The
+recommended next batch is Weapon Specialization for the fighter's 4th-level bonus
+feat; the reasoning and its scope are in `ROADMAP.md`.

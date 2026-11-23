@@ -3178,3 +3178,31 @@ naming the group that emptied; all five pass in all three campaigns. The inherit
 6b question is answered: prose cannot make an encounter ordinary, because
 classification reads trigger fields and structured effects. Focused 5/5, suite
 889/889, both validators PASS, JSON diagnostics line unchanged.
+### Batch 6c closed; batch 6 closed; roadmap review (2026-11-23)
+
+Batch 6c is closed as accepted within the evidence recorded in `44b8137` for
+implementation `ff5c4a1`, and batch 6 as a whole is closed. 6a rests on the exported
+candidate `2026-11-23_batch6a_advancement` - both probes and both validators from the
+exe, hash bound before and after; 6b and 6c rest on source-only evidence, the suite
+and both validators, because both are developer tools with no player-visible change.
+Nothing was rebuilt, re-exported or re-run for the closures, and no checks were run
+for this review.
+
+The review found no open defect. The town square pays 600 for two CR 2 infected
+zombies where the printed table and the demo's own convention - its other two
+encounters sum their monsters - support 1,200; that is a recorded content
+inconsistency, not a defect, and correcting it would move the ledger and the
+post-climax totals by 600 without moving eligibility or level-up timing. The decision
+is to keep 600 for now. The reload-then-reapply path stays an evidence gap rather than
+a defect, and the level-up deferrals stand: levels 5 and above are unreachable,
+Improved Bull Rush still needs two feats before 6th level, and the victory autosave
+already carries the paid XP.
+
+Recommended next batch: Weapon Specialization as the fighter's 4th-level bonus feat,
+the first rules addition the accepted advancement makes reachable, with Kaelen
+already holding Weapon Focus (longsword). It needs a class-level prerequisite type
+and one catalog entry; `Rules.damage_bonus` already applies weapon-parameterised feat
+damage. Player-visible damage changes, so it needs an exported candidate. Player
+impact, dependencies, scope, acceptance criteria and exclusions are in
+[ROADMAP.md](ROADMAP.md). No code, content, schema or save was changed; this commit
+is documentation only.

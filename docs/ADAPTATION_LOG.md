@@ -841,3 +841,17 @@ presentation choices are omitted; nothing here changes a rule silently.
     inherited 6b question is answered: a prose mention of an encounter id cannot be
     counted as an ordinary reference, because classification reads trigger fields and
     `start_combat` effects only.
+61. **The town square's award stays 600 for now (batch-6 review, 2026-11-23).**
+    `town_square_zombies` authors two CR 2 infected zombies and `"xp": 600`, and the
+    engine pays the encounter's field, not the monsters'. The printed table gives 600
+    per CR 2 monster, so the fight's printed value is 1,200, and the demo's other two
+    encounters already equal the sum of their monsters (300 = 150 + 150, 450 = 300 +
+    150). The square is the only encounter that does not follow that convention. It
+    is not a defect: nothing asserts a sum rule, every test pins the authored number,
+    and the plan lists the correction as deferred. Correcting it would move the ledger
+    and the post-climax totals by 600 but not eligibility or pacing, because the
+    milestone is sized from the 700 completion floor, which excludes the square, and a
+    party that fights it first still stands at 4,200, below 6,000. Decision: keep 600
+    and keep the inconsistency recorded; if a content-accuracy batch is wanted it is a
+    one-value change plus its pins, independent of the milestone, and it must not be
+    used to resize 2,300.

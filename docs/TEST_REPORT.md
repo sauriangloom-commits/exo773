@@ -5650,3 +5650,30 @@ not by a deliberately broken shipped character, so the validator's own exit code
 an empty character is untested end to end; the inventory and completability lines
 have no end-to-end assertion. No rendered appearance, combat success or human
 playtesting is claimed.
+## Batch 6 closed (2026-11-23)
+
+Batch 6c is closed as accepted within the evidence recorded in `44b8137` for
+implementation `ff5c4a1`; batch 6 as a whole is closed. No check was run for either
+closure - the runs already recorded below and in the 6a entry are the evidence - and
+no checks were run for the roadmap review either.
+
+**The evidence split, stated so it is not read as more than it is.**
+
+- **Exported-candidate evidence (6a):** candidate `2026-11-23_batch6a_advancement`,
+  110,838,888 bytes, SHA-256
+  `fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`, exported from
+  `9139136`. `--advancement-probe` and the two-scale `--level-up-probe` plus both
+  validators ran from that executable, with the file's hash identical before and
+  after and equal to `BUILD.txt`.
+- **Source-only evidence (6b, 6c):** the GUT suite and both validators from the
+  working tree. Both batches are developer tools whose only outputs are diagnostics
+  lines and a validation failure rule, so there is no player-visible behaviour for a
+  binary to prove, and no candidate was withheld.
+- **The candidate predates 6b and 6c.** It cannot cover their code, and it is not
+  claimed to; a developer tool's acceptance is source evidence by construction.
+
+**What batch 6 leaves.** Advancement is reachable through authored awards and the
+step is accepted on a candidate; the town-square award is a recorded content
+inconsistency with no mechanical effect; the reload-then-reapply path is an evidence
+gap; levels 5 and above and Improved Bull Rush remain unreachable. See
+[ROADMAP.md](ROADMAP.md) for the review and the recommended next batch.

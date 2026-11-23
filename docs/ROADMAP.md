@@ -998,3 +998,125 @@ ruleset.
   them out of exported assets.
 - The raycaster is a stylized placeholder, not a production renderer.
 - Test count is strong for rules and flow, but UI interaction coverage is shallow.
+### Batch 6 closed, and a roadmap review (2026-11-23)
+
+Batch 6 is closed. Batch 6a is accepted on **exported-candidate** evidence
+(`2026-11-23_batch6a_advancement`, 110,838,888 bytes, SHA-256
+`fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`, from
+`9139136`): both probes and both validators ran from that executable with the hash
+bound before and after. Batches 6b and 6c are accepted on **source-only** evidence -
+the GUT suite and both validators from the working tree - because both are developer
+tools with no player-visible change, so no candidate was exported and none is
+missing. Nothing was rebuilt, re-exported or re-run for any closure, and no checks
+were run for this review.
+
+**Confirmed defects.** None open. The two batch-4 defects stay closed, and nothing
+below has a failing case.
+
+**Deferred features.** Unchanged: levels 5 and above; more than one level per step;
+NPC advancement; the printed fighter feats this slice does not implement (Weapon
+Specialization, Improved Bull Rush, Quick Draw, Two-Weapon Fighting); a level-up
+autosave; a sheet shortcut; gating the town square behind the gatehouse; correcting
+the town square award; grapple, disarm, sunder and overrun; two-weapon fighting and
+iterative attacks; AoE templates; concealment and hard cover; encumbrance; the
+content pipeline; a save shortcut; the campaign layer.
+
+**Maintenance debt.** The recorded list stands, plus the completability check's one
+skill allocation per combination and its dependence on the screen's candidate
+helpers (`DEMO_ADVANCEMENT_PLAN.md` §15).
+
+**Evidence gaps.** Rendered appearance, ordinary combat success and human playtesting
+remain unclaimed; no probe walks the reload-then-reapply path; the advancement probe
+runs at one scale and without the sorcerer.
+
+#### The town-square award: 600 authored against a printed 1,200
+
+- **What the repository authors.** `town_square_zombies` lists two
+  `infected_zombie` monsters and `"xp": 600`. The engine pays the encounter's own
+  field (`game_state.gd:1689`, `:1734-1738`), not the monsters' `xp` values - those
+  feed the creator's authoring spinbox only.
+- **What the printed rules support.** DMG 3.5 Table 2-6, at the party's 1st-3rd
+  level row, gives CR 2 = 600 per monster, so two CR 2 infected zombies are 1,200.
+  The monster's own authored `xp` is already the printed CR 2 value.
+- **What the rest of the content does.** `storeroom_dead` pays 300 = 150 + 150;
+  `crypt_warden` pays 450 = 300 + 150. The square is the only encounter that does
+  not equal the sum of its monsters.
+- **Is it a defect?** No failing case exists. Every test pins the authored number,
+  nothing asserts a sum rule, and the plan already lists the correction as deferred
+  (§15). It is a recorded content inconsistency, not a confirmed defect.
+- **What changing it would do.** The demo's encounter ledger would go 1,500 -> 2,100,
+  the authored inventory 4,500 -> 5,100 and the ordinary inventory 4,350 -> 4,950;
+  the post-climax totals would rise by 600 (completion route 6,600 -> 7,200, named
+  route 6,550 -> 7,150), and `test_demo_advancement.gd`'s pins plus the diagnostics
+  inventory line would move. It would **not** move eligibility or level-up timing:
+  the milestone is fixed at 2,300 and sized from the 700 completion floor, which
+  excludes the square; and a party that fights the square first stands at 4,200,
+  still below 6,000, so the step still arrives at the bell.
+- **Decision.** Keep 600 for now and record the inconsistency. The fight is a
+  bounded excerpt (two of the source's nine zombies), XP has no sink past 4th level,
+  so the change buys ledger fidelity rather than play. It stays an independent
+  one-value batch with its pins if a content-accuracy pass is ever wanted, and it
+  must not be used to resize the milestone.
+
+#### What actually has player impact, ranked
+
+1. **Weapon Specialization.** The level-up feature is now reachable and accepted,
+   and Kaelen already holds Weapon Focus (longsword), so his 4th-level bonus feat can
+   be Weapon Specialization and his damage changes in the town square - the one
+   fight left after levelling. This is the first rules addition the accepted
+   advancement actually unlocks, and the catalog's own "deferred: fighter bonus-feat
+   / level subsystem" blocker is gone.
+2. **Grapple, disarm and sunder.** Reachable at every level and the strongest
+   tactical alternative, but each is larger than one batch and needs a plan first;
+   none is unlocked by anything that just landed.
+3. **The reload-then-reapply path.** An evidence gap, not a defect: the victory
+   autosave already holds the paid XP, and the post-apply reload is covered. Cheap
+   as a rider on a save batch, weak as a batch of its own.
+4. **A level-up autosave or a sheet shortcut.** Convenience only; the entitlement is
+   already safe, and the screen deliberately writes nothing.
+5. **Levels 5 and above.** Still unreachable: 10,000 XP against 4,850 on one
+   ordinary route, and no 3rd-level spell exists in content for the casters.
+6. **The town-square award.** No mechanical effect at all for the 600 XP difference.
+
+#### Recommended batch 7: Weapon Specialization as the fighter's 4th-level feat
+
+**Player impact.** A fighter who levels takes a feat whose printed effect is real
+damage, not another +1 on a sheet: +2 with the selected weapon, applied by
+`Rules.damage_bonus` (`rules.gd:451`, which already sums `Feats.modifier(ch,
+"damage", {weapon: ...})`). With Kaelen that is his longsword in the town square
+fight, so the accepted advancement ends in a character who hits harder.
+
+**Dependencies.** `Feats.CATALOG` (a `fighter_bonus` entry with `parameter:
+"weapon"` and the printed prerequisites), one new prerequisite type for class level
+(`ch.level` is character level, and only `cleric_level()` exists as a class helper
+today), `Rules.damage_bonus` and `Feats.modifier` (both already support
+weapon-parameterised damage), `LevelChoices._feat_rows` (it picks up
+`fighter_bonus` entries automatically), and Kaelen's authored Weapon Focus.
+
+**Scope.** One catalog entry; a `class_level` prerequisite check with player-facing
+refusal text; the coverage table row; tests - the entry's parameters and
+prerequisites (a 4th-level fighter with Weapon Focus accepted, a 3rd-level fighter
+refused, a weapon without Weapon Focus refused, a multiclass fighter/rogue refused),
+damage with the selected weapon only, the level-up screen offering it to Kaelen at
+4th, and the probe choosing it and reading the damage change; records.
+
+**Acceptance criteria.** Red-first, with the logged failures captured; focused tests
+then the full suite and both validators green; `--level-up-probe` (both scales) and
+`--advancement-probe` green from source; an exported candidate whose probes bind its
+hash before and after, because damage numbers are player-visible; records updated with
+the four lists kept apart; no other feat, no level 5, no threshold or award change, no
+UI, schema or save change.
+
+**Exclusions.** Quick Draw (needs weapon-drawing action economy), Two-Weapon Fighting
+and iterative attacks (need the full-attack chain), Improved Bull Rush (unreachable
+before 6th - it needs Power Attack plus a slot), Greater Weapon Specialization and
+Greater Weapon Focus (levels 8 and 12), the town-square award, the reload-then-reapply
+probe, and any XP or milestone change.
+
+**Exported candidate.** Yes - the feat changes combat numbers a player sees, so the
+batch follows the 6a precedent of binding a candidate's hash to its probe runs.
+
+**Why not planning only.** Weapon Focus is the exact template for the entry, its
+damage path already exists, and the printed prerequisites are unambiguous; the only
+new mechanism is one prerequisite type. No open design question is being answered by
+writing code here.
