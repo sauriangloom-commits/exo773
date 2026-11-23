@@ -807,3 +807,18 @@ presentation choices are omitted; nothing here changes a rule silently.
     `warden_resolved` is an objective: the least-awarding *completion* is 3,000 with
     the milestone (700 without it), not a floor for every route that rings. No
     threshold, encounter, character, UI, schema or save changed.
+59. **The advancement inventory classifies by reference, not by map tile (batch
+    6b).** `--validate-diagnostics` now prints one `ADVANCEMENT AWARDS` line per
+    campaign: `authored`, `ordinary`, `qa`, `encounters`, `effects`, `start` and
+    `threshold`. An encounter counts as ordinary when any shipped trigger or
+    `start_combat` effect names it, and as QA-only only when nothing in the content
+    does; a closure keeps an encounter that only a QA-only encounter starts on the
+    QA side. The alternative - "has a map trigger" - was rejected because it
+    misclassifies `crypt_warden`, which has no trigger at all and is entered from
+    Corvin's dialogue. `start` is the lowest authored XP among the default party,
+    because the threshold is per character and the line carries one number.
+    `effects` counts every authored `xp` effect, including an encounter's victory
+    effects, while an encounter's own `xp` field is counted once as an encounter
+    award. The line is informational: it never becomes a diagnostic, a campaign
+    below the threshold still passes, and the JSON diagnostics contract is
+    byte-identical before and after.

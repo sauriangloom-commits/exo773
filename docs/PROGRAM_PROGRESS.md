@@ -3149,3 +3149,16 @@ both probes from source and from candidate `2026-11-23_batch6a_advancement`
 `fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`). No rendered
 appearance, ordinary combat success or human playtest is claimed. Batches 6b and 6c
 are not implemented.
+### Batch 6a closed; batch 6b implemented (2026-11-23)
+
+Batch 6a is closed as accepted within the evidence recorded in `27963b8` for
+implementation `9139136`; nothing was rebuilt or re-run for the closure. Batch 6b
+adds the informational `ADVANCEMENT AWARDS` line to `--validate-diagnostics`: one
+line per campaign with `authored`, `ordinary`, `qa`, `encounters`, `effects`,
+`start` and `threshold`, stating that the figures are a static inventory, not a
+route or reachability, and that mutually exclusive awards are both counted. QA-only
+means "no shipped content names the encounter", not "no map trigger" - `crypt_warden`
+has no trigger and is ordinary because Corvin's dialogue starts it. `hollow_lantern`
+(200 authored) and `ashwick_ferry` (500) still pass, the failure count and exit code
+are unchanged, and the `CAMPAIGN_DIAGNOSTICS_JSON` line is byte-identical. Tests
+3/3 focused, 884/884 in the suite, both validators PASS. Batch 6c is not started.

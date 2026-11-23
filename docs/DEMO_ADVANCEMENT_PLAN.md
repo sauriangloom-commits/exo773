@@ -1,10 +1,11 @@
 # How the demo reaches 4th level
 
-Planning note, 2026-11-22. Status: **batch 6a implemented** at
-`9139136f932bf2aa641ae7796f59f16e7d154d7d` - the bell's 2,300 XP milestone, tests
-1-4 and `--advancement-probe`; batches 6b and 6c remain proposals. The note itself
-changed no code, content, schema, save, XP threshold or UI, and asked for no manual
-testing. It follows the review committed as `2877bbc` and corrects that review's
+Planning note, 2026-11-22. Status: **batch 6a accepted and closed** -
+implemented at `9139136f932bf2aa641ae7796f59f16e7d154d7d`, accepted on the evidence
+recorded in `27963b8`, with no check repeated for the closure. **Batch 6b is
+implemented** (the informational inventory of §9, as corrected there); batch 6c
+remains a proposal. The note itself changed no code, content, schema, save, XP
+threshold or UI, and asked for no manual testing. It follows the review committed as `2877bbc` and corrects that review's
 route arithmetic and its save sentence; those corrections, and two route details
 the probe corrected, are listed in §14.
 
@@ -244,13 +245,16 @@ stay excluded from acceptance:
 
 ## 9. Proposed `--validate-diagnostics` output
 
-Two new **informational** lines per campaign, printed before the summary. Neither
-changes the failure count, the exit code, or `--validate-campaigns`.
+One new **informational** line per campaign, printed before that campaign's
+summary. It changes neither the failure count nor the exit code, and
+`--validate-campaigns` is untouched. Implemented in batch 6b; the figures below are
+the post-6a ones, printed by the current source.
 
 ```
-ADVANCEMENT AWARDS ravenloft_demo authored=2200 ordinary=2050 qa=150 encounters=2200 effects=700 start=3000 threshold=6000 (static inventory of authored awards; not a route, not reachability)
-ADVANCEMENT AWARDS hollow_lantern authored=200 ordinary=200 qa=0 encounters=200 effects=0 start=3000 threshold=6000 (static inventory of authored awards; not a route, not reachability)
-CAMPAIGN DIAGNOSTICS hollow_lantern | 0 errors, 0 warnings
+ADVANCEMENT AWARDS ravenloft_demo authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000 threshold=6000 (static inventory of authored awards; not a route, not reachability; mutually exclusive awards are both counted)
+ADVANCEMENT AWARDS hollow_lantern authored=200 ordinary=200 qa=0 encounters=200 effects=0 start=3000 threshold=6000 (static inventory of authored awards; not a route, not reachability; mutually exclusive awards are both counted)
+ADVANCEMENT AWARDS ashwick_ferry authored=500 ordinary=500 qa=0 encounters=500 effects=0 start=3000 threshold=6000 (static inventory of authored awards; not a route, not reachability; mutually exclusive awards are both counted)
+CAMPAIGN DIAGNOSTICS hollow_lantern | No content problems.
 ```
 
 Rules the shape follows:
@@ -272,6 +276,26 @@ Rules the shape follows:
 - **A short campaign is not an error.** `ashwick_ferry` and `hollow_lantern` stay
   PASS with the line printed: they are legitimately shorter than one level, and
   the line is information for an author, not a gate.
+
+**Fields and classification, as implemented (batch 6b).** `encounters` is the sum
+of every authored encounter's `xp`; `effects` is the sum of every authored `xp`
+effect in areas, dialogues, quests and encounters' victory effects; `authored` is
+their sum; `qa` is the part of it only QA harness code names; `ordinary` is
+`authored - qa`; `start` is the lowest authored XP among the campaign's default
+party, because the threshold is per character and the line carries one number;
+`threshold` is `LevelUp.XP_THRESHOLD`. The example above originally printed
+`encounters=2200` beside `effects=700`, which cannot sum to `authored=2200`; the
+field is the encounter total, as implemented and tested.
+
+An encounter is **ordinary** when a shipped trigger names it, or when a
+`start_combat` effect in an area, a dialogue, a quest or an ordinary encounter's
+victory effects starts it, and **QA-only** only when nothing in the content names
+it; the closure keeps an encounter that only a QA-only encounter starts on the QA
+side. "Not triggered by a map tile" is deliberately **not** the rule:
+`crypt_warden` has no trigger at all and is ordinary because Corvin's dialogue
+starts it. Mutually exclusive awards - the pact's 200 and the crypt's 450 - are
+both in `authored` and in `ordinary`; the sum is an inventory, not one
+playthrough.
 
 ## 10. Required-choice completability check for shipped 3rd-level characters
 
@@ -404,6 +428,9 @@ record should use:
 
 Each is independently acceptable and independently revertable.
 
+Status: **6a accepted and closed** on the evidence recorded in `27963b8`, with no
+check repeated for the closure; **6b implemented**; 6c not started.
+
 **Batch 6a (first) - the milestone award and the advancement probe.**
 
 - Content: the 2,300 XP effect and its narration on the bell (§6).
@@ -491,7 +518,8 @@ probe is the proposal that would).
 
 ## 16. What this note does not do
 
-It does not change the threshold, any award, any character, any encounter, the
-screen, the save format or the UI. It does not claim the demo is now beatable to
-4th level, because nothing here is implemented. It does not ask for manual
-testing, and it does not touch a backup.
+It does not change the threshold, any character, any encounter, the screen, the
+save format or the UI. Batch 6a's milestone is the only award it adds; 6b adds a
+developer report and 6c is not started. It does not claim the demo is beatable to
+4th level from any route other than the one the probe walks. It does not ask for
+manual testing, and it does not touch a backup.

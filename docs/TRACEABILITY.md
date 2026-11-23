@@ -331,3 +331,12 @@ or save.
 | The QA encounters have no content entry point | plan §8 | `main.gd` probe code only | `test_the_qa_encounters_have_no_content_entry_point` |
 | An authored party reaches eligibility by walking the shipped route, with no XP write | plan §11 | `--advancement-probe` | `ADVANCEMENT REACHED ... xp=6550 threshold=6000 eligible=kaelen,sera,aldric,ysolde` |
 | The accepted level-up walk runs unchanged on that state | plan §11 | `_level_up_probe_walk`, shared by both probes | the advancement probe's `PROBE STEP 02`-`09` checks; `--level-up-probe` still 347 checks, 0 failures |
+### Advancement inventory (batch 6b, 2026-11-23)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| `--validate-diagnostics` prints one informational award line per campaign, with the authored total split into ordinary and QA-only | plan §9; batch 6b | `ContentDB.advancement_inventory`, `ContentDiagnostics.advancement_line`, `_validate_diagnostics_and_quit` | `test_the_demo_inventory_reports_the_authored_awards`; the `ADVANCEMENT AWARDS` lines in `--validate-diagnostics` |
+| QA-only means "no shipped content names it", not "no map trigger" | plan §9 as implemented; adaptation log 59 | `_classify_encounters`, `_content_encounter_references` | `test_qa_only_encounters_are_excluded_from_the_ordinary_total` - `crypt_warden` ordinary, `qa_victory` QA-only |
+| A campaign that cannot reach 6,000 is not a failure | plan §9 | the inventory is printed and never turned into a diagnostic | `test_a_short_campaign_still_passes_although_it_cannot_reach_the_threshold`; `CAMPAIGN DIAGNOSTICS PASS` with `hollow_lantern` at 200 |
+| The machine-readable diagnostics contract did not move | plan §9; the existing JSON line | nothing in `CAMPAIGN_DIAGNOSTICS_JSON` changed | that line is byte-identical before and after (SHA-256 `09a4a9f65f5d1ce7f93f66e6c4c701f1a786c00303f5fd2e6422db5bf933b00b`) |
+| Batch 6a is closed as accepted | plan §13; the 6a records | implementation `9139136` | the evidence recorded in `27963b8`; no check was repeated for the closure |

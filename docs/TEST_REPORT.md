@@ -5484,3 +5484,74 @@ new path, and the milestone's amount is pinned only by
 **Evidence gaps.** Rendered appearance; ordinary combat success; human playtesting;
 the advancement probe at 160 %; the sorcerer inside the advancement route; the
 reload-then-reapply path; one OS and one window size.
+## Batch 6b: the advancement inventory, and the 6a closure (2026-11-23)
+
+Batch 6a is closed as accepted on the evidence recorded in `27963b8` for
+implementation `9139136`: the source suite and both validators, both probes from
+source, and both probes and both validators from candidate
+`2026-11-23_batch6a_advancement` (110,838,888 bytes, SHA-256
+`fda021540aff8adbc15123e0363dbcfa421fb0494a7e4abb68dfbabda23be7e6`). Nothing was
+rebuilt, re-exported or re-run for the closure.
+
+Batch 6b is developer tooling only: no player-visible change, so no candidate.
+
+### Red, before the implementation
+
+`tests/test_advancement_inventory.gd` was written first and run against `27963b8`:
+
+    SCRIPT ERROR: Parse Error: Static function "advancement_line()" not found in
+    base "ContentDiagnostics".
+       at: GDScript::reload (res://tests/test_advancement_inventory.gd:28)
+    ERROR: Failed to load script "res://tests/test_advancement_inventory.gd" ...
+    [ERROR]:  Nothing was run.
+
+The first implementation attempt then failed to compile and is recorded because it
+was caught before any acceptance: two declarations inferred from a Variant
+(`content_db.gd:999`, `:1068`) tripped the project's warning-as-error rule, which
+took `game_state.gd` and every screen behind it down with it. Both were given
+explicit `Array` types.
+
+### Green, after it
+
+- Focused: 3 tests, 35 asserts.
+- Full suite: 67 scripts, 884 tests, 9,405 asserts, exit 0.
+- `--validate-campaigns`: `CAMPAIGN VALIDATION PASS`.
+- `--validate-diagnostics`: `CAMPAIGN DIAGNOSTICS PASS`, with one line per
+  campaign:
+
+      ADVANCEMENT AWARDS ravenloft_demo authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000 threshold=6000 (...)
+      ADVANCEMENT AWARDS hollow_lantern authored=200 ordinary=200 qa=0 encounters=200 effects=0 start=3000 threshold=6000 (...)
+      ADVANCEMENT AWARDS ashwick_ferry authored=500 ordinary=500 qa=0 encounters=500 effects=0 start=3000 threshold=6000 (...)
+
+  `hollow_lantern` (200) and `ashwick_ferry` (500) cannot reach 6,000 and still
+  pass.
+- The `CAMPAIGN_DIAGNOSTICS_JSON` line is byte-identical to the batch-6a run
+  (SHA-256 `09a4a9f65f5d1ce7f93f66e6c4c701f1a786c00303f5fd2e6422db5bf933b00b`),
+  so the machine-readable contract did not move.
+
+### What the line says, and what it does not
+
+A static sum over authored awards: `encounters` plus `effects` is `authored`, `qa`
+is the part only QA harness code names, `ordinary` is the rest, `start` is the
+lowest default-party XP and `threshold` is 6,000. It is not a route: mutually
+exclusive awards (the pact's 200 and the crypt's 450) are both counted, and only
+`--advancement-probe` says "reached".
+
+### Four lists, kept separate
+
+**Confirmed defects.** None in this batch. The two batch-4 defects stay closed.
+
+**Deferred features.** Batch 6c (the choice-completability check); levels 5 and
+above; more than one level per step; NPC advancement; the implanted printed fighter
+feats; a level-up autosave; a sheet shortcut; gating the town square behind the
+gatehouse; correcting the town square award from 600 to the printed 1,200; the rest
+of P1-P4.
+
+**Maintenance debt.** The classification is a reference scan, so an encounter named
+only in prose would count as ordinary; `start` reports the lowest default-party XP
+rather than a spread; the inventory loads each campaign a second time in the
+validator; the line has to be read by a person.
+
+**Evidence gaps.** No automated test runs the validator end to end: the exit code
+and the unchanged JSON line were compared by hand between runs. No rendered
+appearance, ordinary combat success or human playtesting is claimed here.
