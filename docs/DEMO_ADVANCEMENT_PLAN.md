@@ -2,9 +2,11 @@
 
 Planning note, 2026-11-22. Status: **batch 6a accepted and closed** -
 implemented at `9139136f932bf2aa641ae7796f59f16e7d154d7d`, accepted on the evidence
-recorded in `27963b8`, with no check repeated for the closure. **Batch 6b is
-implemented** (the informational inventory of §9, as corrected there); batch 6c
-remains a proposal. The note itself changed no code, content, schema, save, XP
+recorded in `27963b8`, with no check repeated for the closure. **Batch 6b accepted
+and closed** - implemented at `dd965fc`, accepted on the evidence recorded in
+`f552371`. **Batch 6c is implemented** at
+`ff5c4a168f9d41b54c93bee110babfab78eaf5d4` - the completability check of §10, as
+amended there. The note itself changed no code, content, schema, save, XP
 threshold or UI, and asked for no manual testing. It follows the review committed as `2877bbc` and corrects that review's
 route arithmetic and its save sentence; those corrections, and two route details
 the probe corrected, are listed in §14.
@@ -305,9 +307,25 @@ one *completed* draft exist that the rules layer accepts?
 
 **How it answers, and why this form.** For each character, for each of the six
 abilities, for each candidate feat (when a slot is granted) and each candidate
-spell (sorcerer only), build a draft `{ability, feat, spell, skills: {}}` and call
-`LevelUp.stage(ch, draft, true)`. The character is completable if any draft
-returns `ok`.
+spell (sorcerer only), build a draft with that ability, that feat, that spell and a
+full-budget skill allocation, then stage it with the completed rule set. The
+character is completable if any draft stages with the whole budget spent.
+
+**Implemented (batch 6c).** `AdvancementCheck.inspect` searches all six abilities,
+every feat `LevelChoices.feat_options` would offer and every spell
+`LevelChoices.spell_options` would offer - the screen's own filters, so a sorcerer
+who already knows the only implemented 2nd-level spell yields no candidate - and one
+deterministic full-budget skill allocation per combination: class skills first, then
+the widest remaining capacity, one rank at a time. Skill legality depends only on
+the budget (class points plus the Int modifier after the increase) and on the caps,
+neither of which depends on the feat or the spell, which is why one allocation per
+combination is enough; when it cannot spend the budget the character is reported
+rather than passed. Staging goes through `LevelChoices.stage_completed`, because
+`validate` refuses on eligibility first, and because the choice module is the only
+file allowed to stage. The tests then re-stage every recorded draft and compare its
+spent budget with its budget, so the proof is a completed draft - ability, whole
+skill budget, feat where granted, legal unknown spell for the sorcerer - not a
+nonempty pool.
 
 - **Pending ability.** The ability is not "pending" in this check: all six are
   tried in turn. `LevelUp.stage` applies the increase before grading feats, so a
@@ -342,6 +360,16 @@ ADVANCEMENT COMPLETABLE ravenloft_demo mira class=sorcerer group=spell result=EM
 Today it passes everywhere; the negative cases are fixtures, not shipped content.
 This is the one new check that may fail the validator, and it is separate from the
 informational XP lines in §9.
+
+**Implemented severity and lines (batch 6c).** A shipped character with no draft is
+a validation **failure**, as decided above: the character is content that cannot
+take the step it ships for, so the diagnostics failure count and exit code move. The
+line is the shape above, with the class lower-cased and `group` one of `ability`,
+`skill`, `feat`, `spell` or `combination`; a per-campaign summary
+`ADVANCEMENT COMPLETABLE <campaign> checked=N empty=M result=PASS|FAIL` follows it.
+Characters that are not 3rd level, or whose class has no 4th-level row, are skipped
+with a reason and are not failures. All five shipped characters pass in all three
+campaigns.
 
 ## 11. Tests and the follow-on probe
 
@@ -428,8 +456,9 @@ record should use:
 
 Each is independently acceptable and independently revertable.
 
-Status: **6a accepted and closed** on the evidence recorded in `27963b8`, with no
-check repeated for the closure; **6b implemented**; 6c not started.
+Status: **6a accepted and closed** (`27963b8`); **6b accepted and closed**
+(`f552371`); **6c implemented** at `ff5c4a168f9d41b54c93bee110babfab78eaf5d4`. No
+check was repeated for either closure.
 
 **Batch 6a (first) - the milestone award and the advancement probe.**
 
@@ -520,6 +549,21 @@ probe is the proposal that would).
 
 It does not change the threshold, any character, any encounter, the screen, the
 save format or the UI. Batch 6a's milestone is the only award it adds; 6b adds a
-developer report and 6c is not started. It does not claim the demo is beatable to
+developer report and 6c the completability check. It does not claim the demo is
+beatable to
 4th level from any route other than the one the probe walks. It does not ask for
 manual testing, and it does not touch a backup.
+
+**After 6b and 6c (2026-11-23).** Defects: none added. Deferred: levels 5 and above,
+more than one level per step, NPC advancement, the implanted printed fighter feats,
+a level-up autosave, a sheet shortcut, gating the town square behind the gatehouse,
+correcting the town square award from 600 to the printed 1,200, and the rest of
+P1-P4. Maintenance debt: the completability check searches one full-budget skill
+allocation per ability/feat/spell combination, so a character whose only legal full
+spend needed a different allocation would be reported empty; `AdvancementCheck`
+reads the screen's candidate helpers, so a filter change moves its verdict; the 6b
+inventory still loads each campaign a second time in the validator. Evidence gaps:
+the completability failure path is covered by synthetic characters, not by a
+deliberately broken shipped character; no end-to-end assertion covers the inventory
+or completability lines; rendered appearance, combat success and playtesting are not
+claimed.

@@ -822,3 +822,22 @@ presentation choices are omitted; nothing here changes a rule silently.
     award. The line is informational: it never becomes a diagnostic, a campaign
     below the threshold still passes, and the JSON diagnostics contract is
     byte-identical before and after.
+
+60. **Completability spends the whole skill budget, and an empty character fails
+    the validator (batch 6c).** The plan's check staged a draft with
+    `skills: {}`, but the engine accepts an underspent budget, so an empty draft
+    would have proved less than it claimed. The check therefore allocates the whole
+    budget - class skills first, one rank at a time, inside the caps - and accepts
+    only a stage whose `spent` equals its `budget`; a character whose budget cannot
+    be spent is reported, not passed. The search is exhaustive over the six
+    abilities and over the screen's own feat and spell candidate lists, with one
+    deterministic allocation per combination, because skill legality depends only on
+    the budget (class points plus the Int modifier after the increase) and the caps,
+    neither of which depends on the feat or the spell. An empty shipped character is
+    a validation failure naming the group that emptied, as the plan decided; today
+    all five pass. Staging goes through `LevelChoices.stage_completed` because
+    `validate` asks eligibility first and would refuse every shipped character, and
+    because the batch-3 guard keeps `LevelUp.stage` inside the choice module. The
+    inherited 6b question is answered: a prose mention of an encounter id cannot be
+    counted as an ordinary reference, because classification reads trigger fields and
+    `start_combat` effects only.

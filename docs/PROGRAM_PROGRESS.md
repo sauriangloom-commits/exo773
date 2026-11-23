@@ -3162,3 +3162,19 @@ has no trigger and is ordinary because Corvin's dialogue starts it. `hollow_lant
 (200 authored) and `ashwick_ferry` (500) still pass, the failure count and exit code
 are unchanged, and the `CAMPAIGN_DIAGNOSTICS_JSON` line is byte-identical. Tests
 3/3 focused, 884/884 in the suite, both validators PASS. Batch 6c is not started.
+
+### Batch 6b closed; batch 6c implemented (2026-11-23)
+
+Batch 6b is closed as accepted on the evidence recorded in `f552371` for
+implementation `dd965fc`, with no check repeated. Batch 6c adds `AdvancementCheck`:
+every authored 3rd-level character must have a legal completed draft - ability
+increase, whole skill budget inside the caps, feat where granted, unknown 2nd-level
+spell for the sorcerer - proved by staging the draft and comparing its spent budget,
+not by looking at candidate pools. The screen's own feat and spell filters are
+reused, so a sorcerer who already knows the only implemented 2nd-level spell is
+caught, and `LevelChoices.validate` is not used because it refuses shipped
+characters as below threshold. An empty shipped character is a validation failure
+naming the group that emptied; all five pass in all three campaigns. The inherited
+6b question is answered: prose cannot make an encounter ordinary, because
+classification reads trigger fields and structured effects. Focused 5/5, suite
+889/889, both validators PASS, JSON diagnostics line unchanged.

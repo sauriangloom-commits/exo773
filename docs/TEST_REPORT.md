@@ -5547,11 +5547,106 @@ feats; a level-up autosave; a sheet shortcut; gating the town square behind the
 gatehouse; correcting the town square award from 600 to the printed 1,200; the rest
 of P1-P4.
 
-**Maintenance debt.** The classification is a reference scan, so an encounter named
-only in prose would count as ordinary; `start` reports the lowest default-party XP
-rather than a spread; the inventory loads each campaign a second time in the
-validator; the line has to be read by a person.
+**Maintenance debt.** *Corrected in the 6c entry below:* the classification reads
+trigger fields and structured `start_combat` effects, never text, so an encounter
+named only in prose cannot count as ordinary (tested). `start` reports the lowest
+default-party XP rather than a spread; the inventory loads each campaign a second
+time in the validator; the line has to be read by a person.
 
 **Evidence gaps.** No automated test runs the validator end to end: the exit code
 and the unchanged JSON line were compared by hand between runs. No rendered
 appearance, ordinary combat success or human playtesting is claimed here.
+
+## Batch 6c: choice completability, and the 6b closure (2026-11-23)
+
+Batch 6b is closed as accepted on the evidence recorded in `f552371` for
+implementation `dd965fc`; nothing was rebuilt or re-run for the closure.
+
+Batch 6c is a developer tool: no player-visible behaviour changes, so no candidate
+was built.
+
+### Red, before the implementation
+
+`tests/test_advancement_completability.gd` was written first and run against
+`f552371`:
+
+    SCRIPT ERROR: Parse Error: Identifier "AdvancementCheck" not declared in the
+    current scope.
+
+logged five times, with the cascading "Cannot infer the type of ... because the
+value doesn't have a set type" errors behind it. Nothing was run.
+
+### A guarded source rule, and the fix
+
+The first implementation called the engine's stage function from the new module. The
+batch-3 guard `test_no_shipped_file_stages_a_level_outside_the_choice_module` then
+failed:
+
+    ARRAY(["res://src/core/advancement_check.gd", "res://src/core/level_choices.gd"])
+    != ARRAY(["res://src/core/level_choices.gd"]).
+
+The fix kept the invariant instead of weakening the test: `LevelChoices` gained
+`stage_completed` and `skill_budget`, and the check calls those. The guard matches
+the source *text*, so the new module's header was also rephrased to name the helper
+rather than the raw call.
+
+### Green, after it
+
+- Focused: 5 tests, 56 asserts.
+- Guard script: 3 tests, all passing.
+- Full suite: 68 scripts, 889 tests, 9,461 asserts, exit 0.
+- `--validate-campaigns`: `CAMPAIGN VALIDATION PASS`.
+- `--validate-diagnostics`: `CAMPAIGN DIAGNOSTICS PASS`, with
+  `ADVANCEMENT COMPLETABLE <campaign> checked=5 empty=0 result=PASS` for all three
+  campaigns. The `CAMPAIGN_DIAGNOSTICS_JSON` line is still byte-identical
+  (`09a4a9f65f5d1ce7f93f66e6c4c701f1a786c00303f5fd2e6422db5bf933b00b`).
+
+### What the check proves
+
+A legal completed draft exists in the rules layer for each authored 3rd-level
+character: one ability increase, the whole skill budget spent inside the caps, a
+legal feat where the class grants one, and a legal unknown 2nd-level spell for the
+sorcerer. It does not prove screen reachability, keyboard navigability, that a
+player will find the draft, or that any campaign awards enough XP.
+
+The search is exhaustive over the six abilities and over the screen's own feat and
+spell candidate lists; each combination gets one deterministic full-budget skill
+allocation, because skill legality depends only on the budget and the caps. A
+character whose only legal full spend needed a different allocation would be
+reported empty; that limit is stated in the module and the plan rather than hidden.
+
+Severity: an empty shipped character is a validation **failure**, one per campaign,
+with a line naming the group that emptied. That is the plan's decision, now
+implemented; no existing success semantics were changed, and all five characters
+pass.
+
+### The inherited 6b classification debt, answered
+
+A prose-only mention of an encounter id cannot be counted as an ordinary reference:
+classification reads trigger `encounter` fields and structured `start_combat`
+effects, never text. `test_a_prose_mention_does_not_make_an_encounter_ordinary`
+pins both halves - a narration naming the id stays QA-only, and the same id in a
+`start_combat` effect makes it ordinary. The 6b entry's note was corrected rather
+than fixed, because there was nothing to fix.
+
+### Four lists, kept separate
+
+**Confirmed defects.** None. No shipped character is empty, and no award, threshold,
+character, campaign, UI or save behaviour changed.
+
+**Deferred features.** Levels 5 and above; more than one level per step; NPC
+advancement; the implanted printed fighter feats; a level-up autosave; a sheet
+shortcut; gating the town square behind the gatehouse; correcting the town square
+award from 600 to the printed 1,200; the rest of P1-P4.
+
+**Maintenance debt.** One skill allocation per combination, as above;
+`AdvancementCheck` reads the screen's candidate helpers, so a filter change moves its
+verdict; the batch-3 source guard matches text, so a comment naming the stage call
+counts as a call - it caught this batch once; the 6b inventory still loads each
+campaign a second time in the validator.
+
+**Evidence gaps.** The failure path is covered by synthetic characters in unit tests,
+not by a deliberately broken shipped character, so the validator's own exit code on
+an empty character is untested end to end; the inventory and completability lines
+have no end-to-end assertion. No rendered appearance, combat success or human
+playtesting is claimed.

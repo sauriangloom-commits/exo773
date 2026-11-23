@@ -340,3 +340,14 @@ or save.
 | A campaign that cannot reach 6,000 is not a failure | plan §9 | the inventory is printed and never turned into a diagnostic | `test_a_short_campaign_still_passes_although_it_cannot_reach_the_threshold`; `CAMPAIGN DIAGNOSTICS PASS` with `hollow_lantern` at 200 |
 | The machine-readable diagnostics contract did not move | plan §9; the existing JSON line | nothing in `CAMPAIGN_DIAGNOSTICS_JSON` changed | that line is byte-identical before and after (SHA-256 `09a4a9f65f5d1ce7f93f66e6c4c701f1a786c00303f5fd2e6422db5bf933b00b`) |
 | Batch 6a is closed as accepted | plan §13; the 6a records | implementation `9139136` | the evidence recorded in `27963b8`; no check was repeated for the closure |
+
+### Choice completability (batch 6c, 2026-11-23)
+
+| Behavior | Source | Implementation | Evidence |
+| --- | --- | --- | --- |
+| Every shipped 3rd-level character has a legal completed draft: an ability increase, the whole skill budget, a feat where granted, an unknown 2nd-level spell for the sorcerer | plan §10 | `AdvancementCheck.inspect` / `inspect_all`, `LevelChoices.stage_completed` | `test_every_shipped_level_three_character_has_a_completed_draft` (5 characters, 0 empty); `ADVANCEMENT COMPLETABLE ... checked=5 empty=0 result=PASS` per campaign |
+| The check proves a staged draft, not a nonempty pool, and does not use `LevelChoices.validate` | plan §10 | the completed stage with its spent budget compared | `test_the_check_stages_a_draft_without_using_validate` - stage ok, validate still `xp_below_threshold` |
+| The screen's own candidate filters are reused, so a sorcerer knowing the only implemented 2nd-level spell is caught | plan §10 | `LevelChoices.feat_options` / `spell_options` | `test_a_sorcerer_who_knows_the_only_second_level_spell_has_no_draft` (group=spell, one failure) |
+| A fighter owning every fighter-bonus feat is reported too | plan §10 | same | `test_a_fighter_owning_every_fighter_bonus_feat_has_no_draft` (group=feat, one failure) |
+| Only the choice module stages a level | the batch-3 guard in `tests/test_level_up_ui_surface.gd` | `LevelChoices.stage_completed` / `skill_budget` | that guard passes with `advancement_check.gd` in the tree |
+| Batch 6b is closed as accepted | plan §13; the 6b records | implementation `dd965fc` | the evidence recorded in `f552371`; no check repeated |
