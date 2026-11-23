@@ -3206,3 +3206,31 @@ damage. Player-visible damage changes, so it needs an exported candidate. Player
 impact, dependencies, scope, acceptance criteria and exclusions are in
 [ROADMAP.md](ROADMAP.md). No code, content, schema or save was changed; this commit
 is documentation only.
+### Batch 7 implemented and accepted: Weapon Specialization (2026-11-23)
+
+The fighter's 4th-level bonus feat now includes the printed Weapon Specialization
+(PHB 3.5 p. 102), implemented at `87da7ea` and accepted on candidate
+`2026-11-23_batch7_weapon_specialization` - 110,853,000 bytes, SHA-256
+`a53836eaf3a1cb2018c23e3f488ec025f76440272f68fba1bcc1e04f40aed311`, from
+`87da7ead1b4cd79d8b9e8109332b5f342ac74dc6`, hash identical before and after the
+probes and both validators and equal to `BUILD.txt`.
+
+The feat is a catalog entry with a weapon parameter and the printed prerequisites:
+proficiency, Weapon Focus with the same weapon, and fighter level 4. The Weapon Focus
+prerequisite compares weapons rather than parameter text, because the screen offers
+item ids while the authored feat names the base weapon; the new `class_level`
+prerequisite matches the character's single class string exactly (case aside) and
+then reads character level, refusing a composite such as "Fighter/Rogue" rather than
+inventing multiclass. The +2 reaches combat as an existing weapon-parameterised
+damage modifier, so `Rules.damage_bonus` carries it and a character who loses the
+prerequisite stops getting it. Kaelen, who already holds Weapon Focus (longsword),
+can take it at 4th level and hits harder in the town square.
+
+Red first: the focused file failed against `1c5e375` with
+`'weapon_specialization' is not an implemented feat` and
+`[0] expected to equal [2]` on the damage path. Green after: 12 focused tests, 901 in
+the suite, both validators, `--level-up-probe` at 1.00 and 1.60 (347 checks), and
+`--advancement-probe`, whose walk now selects the feat by keyboard and reads both
+weapons' damage from source and from the candidate. No award, threshold, encounter
+XP, character, milestone, UI flow or schema changed; the town-square award was not
+touched.

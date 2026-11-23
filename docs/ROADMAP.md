@@ -1120,3 +1120,9 @@ batch follows the 6a precedent of binding a candidate's hash to its probe runs.
 damage path already exists, and the printed prerequisites are unambiguous; the only
 new mechanism is one prerequisite type. No open design question is being answered by
 writing code here.
+**Status (2026-11-23).** Implemented at `87da7ea` and accepted on candidate
+`2026-11-23_batch7_weapon_specialization` (110,853,000 bytes, SHA-256
+`a53836eaf3a1cb2018c23e3f488ec025f76440272f68fba1bcc1e04f40aed311`). The
+`class_level` evaluation and the same-weapon prerequisite are recorded in
+`ADAPTATION_LOG.md` 62; the red/green receipts and the probe's input split are in
+`TEST_REPORT.md`.

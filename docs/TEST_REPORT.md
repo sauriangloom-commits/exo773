@@ -5677,3 +5677,96 @@ step is accepted on a candidate; the town-square award is a recorded content
 inconsistency with no mechanical effect; the reload-then-reapply path is an evidence
 gap; levels 5 and above and Improved Bull Rush remain unreachable. See
 [ROADMAP.md](ROADMAP.md) for the review and the recommended next batch.
+## Batch 7: Weapon Specialization (2026-11-23)
+
+Implementation `87da7ea`; accepted on the exported candidate below.
+
+### Red, before the implementation
+
+`tests/test_weapon_specialization.gd` was written first and run against `1c5e375`.
+The logged failures, not the exit status:
+
+    [Failed]:  the feat is in the catalog
+    [Failed]:  [""] expected to equal ["Weapon Specialization"]:  the printed name
+    [Failed]:  [0] expected to equal [102]:  PHB p. 102
+    [Failed]:  Expected [ARRAY([])] to contain value:  ["class_level"]:  fighter level 4th
+    [Failed]:  accepted: 'weapon_specialization' is not an implemented feat.
+    [Failed]:  [0] expected to equal [2]:  Rules.damage_bonus adds the printed +2
+
+One further run-in with the screen: the first probe attempt tabbed to
+`feat_weapon_specialization`, but parameterised rows are named
+`feat_weapon_specialization_masterwork_longsword`; the probe failed that check
+(`PROBE FAILED CHECK Tab reaches the Weapon Specialization (masterwork_longsword)
+row`) and was corrected before any receipt was taken.
+
+### Source runs
+
+- Focused: 12 tests, 37 asserts.
+- Full suite: 69 scripts, 901 tests, 9,522 asserts, exit 0.
+- `--validate-campaigns`: `CAMPAIGN VALIDATION PASS`.
+- `--validate-diagnostics`: `CAMPAIGN DIAGNOSTICS PASS`; completability
+  `checked=5 empty=0 result=PASS` in all three campaigns; the
+  `CAMPAIGN_DIAGNOSTICS_JSON` line is still byte-identical
+  (`09a4a9f65f5d1ce7f93f66e6c4c701f1a786c00303f5fd2e6422db5bf933b00b`).
+- `--advancement-probe`: `ADVANCEMENT REACHED ... xp=6550`, then `PROBE STEP 10
+  specialization damage` and `PROBE RESULT PASS`. Its walk now selects
+  "Weapon Specialization (masterwork_longsword)" in the Feat step through the
+  keyboard, applies it, and reads the longsword's and a dagger's damage afterwards.
+- `--level-up-probe`: `PROBE AGGREGATE result=PASS scenario=level_up
+  scales=1.00,1.60 checks=347 failures=0`. Its fighter still takes Power Attack, so
+  the accepted batch-4/5 walk keeps the coverage it had.
+
+### Exported candidate
+
+`builds/qa/candidates/2026-11-23_batch7_weapon_specialization/RavenloftFoundationEdit.exe`,
+110,853,000 bytes, SHA-256
+`a53836eaf3a1cb2018c23e3f488ec025f76440272f68fba1bcc1e04f40aed311`, exported from
+`87da7ead1b4cd79d8b9e8109332b5f342ac74dc6` through `tools/qa/build_candidate.sh`.
+`BUILD.txt` records `worktree_entries=1` - the uncommitted README edit - and its
+`worktree_diff_sha256` is `0e8ff3e1...`, the README diff hash.
+
+From that executable, run from its own directory (the export rejects `--path`):
+`PROBE RESULT PASS scenario=advancement` including step 10; `PROBE AGGREGATE
+result=PASS scenario=level_up checks=347 failures=0`; `CAMPAIGN VALIDATION PASS`;
+`CAMPAIGN DIAGNOSTICS PASS`. The file's SHA-256 was identical before the first run,
+after the probes and after both validators, and equals `BUILD.txt`.
+
+### What the probe input proves
+
+- **Fixture:** seed, party list and save directory only. No XP write for the damage
+  read; the advancement probe reaches eligibility on the campaign's own awards.
+- **Direct calls:** movement, interactions, dialogue choices, `apply_nonlethal` plus
+  `_check_end`, save/load, and the read-only `Feats.modifier` / `Rules.damage_bonus`
+  queries.
+- **Keyboard:** the ability, both skill ranks, the feat row and Confirm, as in the
+  accepted walk.
+- **What step 10 establishes:** after the keyboard-chosen feat and the reload, the
+  longsword's `Rules.damage_bonus` rose by exactly 2 plus the Strength increase the
+  step itself granted, a dagger's rose by the Strength increase only, and
+  `Feats.modifier` reports a damage total of 2 for the longsword. That is the combat
+  damage path, not the feat list.
+- **What it does not establish:** rendered appearance, that an ordinary player finds
+  the row, or human playtesting.
+
+### Four lists, kept separate
+
+**Confirmed defects.** None open. The two batch-4 defects stay closed.
+
+**Deferred features.** Levels 5 and above; more than one level per step; NPC
+advancement; Greater Weapon Focus and Greater Weapon Specialization; Improved Bull
+Rush; Quick Draw; Two-Weapon Fighting and iterative attacks; a level-up autosave; a
+sheet shortcut; gating the town square behind the gatehouse; correcting the
+town-square award; the rest of P1-P4.
+
+**Maintenance debt.** `weapon_parameter` rows are named by item id, so the screen and
+the saved text read "Weapon Specialization (masterwork_longsword)" even though the
+authored Weapon Focus says "longsword"; the prerequisite bridges the two by weapon
+match, but the display remains content-id shaped. `class_level` reads the one class
+string and one level the character owns; it does not model multiclassing. The
+advancement probe now differs from the level-up probe in the feat it chooses, so the
+two walks are no longer identical past the Feat step.
+
+**Evidence gaps.** The +2 is read through `Rules.damage_bonus` and `Feats.modifier`,
+not by resolving a full attack roll against a live target in the probe (the suite
+does cover `Rules.damage_bonus` directly); no rendered pixels, no ordinary-combat
+win claim, no human playtest; one OS and one window size.
