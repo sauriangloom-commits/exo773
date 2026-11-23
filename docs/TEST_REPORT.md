@@ -5771,3 +5771,92 @@ two walks are no longer identical past the Feat step.
 not by resolving a full attack roll against a live target in the probe (the suite
 does cover `Rules.damage_bonus` directly); no rendered pixels, no ordinary-combat
 win claim, no human playtest; one OS and one window size.
+## Batch 7 closure and batch 7b: readable feat text (2026-11-23)
+
+Batch 7 is closed as accepted within the evidence recorded in `d7c3dd5` for
+implementation `87da7ea` and candidate `2026-11-23_batch7_weapon_specialization`
+(110,853,000 bytes, SHA-256
+`a53836eaf3a1cb2018c23e3f488ec025f76440272f68fba1bcc1e04f40aed311`). Nothing was
+rebuilt, re-exported or re-run for the closure.
+
+### Where parameterised feat text is produced and consumed
+
+- **Stored:** `Feats.parse` and `ch.feats` hold `"Name (parameter)"`, and the
+  parameter is the raw item id.
+- **Produced for display:** `LevelChoices._feat_row` (`text`, and now `label`),
+  `Feats.display_name` and `Feats.describe` (the sheet's rows).
+- **Consumed as display:** `level_up_screen._fill_feat` (the button's text and the
+  selected-state comparison) and `panels.gd`'s Feats section through `Feats.describe`.
+- **Consumed as a value:** the screen's capture into `draft["feat"]`,
+  `AdvancementCheck._feat_candidates`, `LevelUp._stage_feat`, the probes'
+  `feat_<key>_<param>` control names and `ch.feats.has(...)`.
+- No dialogue, tooltip or creator surface displays parameterised feat text.
+
+No source guard, probe control name or existing test depended on the raw id appearing
+in displayed text: the probe names controls from key and parameter, and the tests
+asserted `text`, which stayed raw. The one display the probe now checks - the row
+button's own text - was added deliberately.
+
+### Red, before the implementation
+
+`tests/test_feat_display.gd` was written first and run against `d7c3dd5`:
+
+    SCRIPT ERROR: Parse Error: Static function "display_label()" not found in base "Feats".
+
+logged seven times.
+
+### Green, from source
+
+- Focused: 9 tests, 14 asserts.
+- Full suite: 70 scripts, 910 tests, 9,536 asserts, exit 0.
+- `--validate-campaigns`: `CAMPAIGN VALIDATION PASS`.
+- `--validate-diagnostics`: `CAMPAIGN DIAGNOSTICS PASS`; completability PASS in all
+  three campaigns; the `CAMPAIGN_DIAGNOSTICS_JSON` line is still byte-identical
+  (`09a4a9f6...`).
+- `--advancement-probe`: `ADVANCEMENT REACHED ... xp=6550`, step 10, `PROBE RESULT
+  PASS`.
+- `--level-up-probe`: `PROBE AGGREGATE result=PASS ... checks=349 failures=0` at 1.00
+  and 1.60 - one more check per scale than batch 7, the row-label check.
+
+### Exported candidate
+
+`builds/qa/candidates/2026-11-23_batch7b_feat_display/RavenloftFoundationEdit.exe`,
+110,852,840 bytes, SHA-256
+`64016e0af797f61ca5d4e7d9dd17cf0a724fd63ce634738c0e7c6d8816337d7a`, exported from
+`334da1d04ba76212b837164bdaccd47910689c2c`. `BUILD.txt` records
+`worktree_entries=1` (the uncommitted README edit) and its `worktree_diff_sha256` is
+the README diff hash.
+
+From that executable, run from its own directory: `PROBE RESULT PASS
+scenario=advancement`; `PROBE AGGREGATE result=PASS scenario=level_up checks=349
+failures=0`; `CAMPAIGN VALIDATION PASS`; `CAMPAIGN DIAGNOSTICS PASS`. The file's
+SHA-256 was identical before the first run and after all four and equals
+`BUILD.txt`.
+
+### What is verified, and how
+
+Feat text is verified as **strings and control geometry**, not rendered appearance.
+`Feats.display_label` returns the item's authored name for a known weapon id, the
+level-up row's `Button.text` equals that label, and the sheet's row name equals it;
+the fallbacks are pinned for a bare authored name, an unknown id and an unimplemented
+feat; and the stored `text`, `Feats.parse`'s parameter, prerequisites, selection,
+control names and saved strings are unchanged. Nothing was rendered, screenshotted or
+played.
+
+### Four lists, kept separate
+
+**Confirmed defects.** None open; the two batch-4 defects stay closed.
+
+**Deferred features.** Skill parameters keep their content id ("Skill Focus
+(search)"), deliberately out of this batch; levels 5 and above; more than one level
+per step; NPC advancement; Greater Weapon Focus/Specialization; Improved Bull Rush;
+Quick Draw; Two-Weapon Fighting; a level-up autosave; a sheet shortcut; the
+town-square gating and award items; the rest of P1-P4.
+
+**Maintenance debt.** The display string exists twice - `Feats.display_label` and the
+row's precomputed `label` - so a future label change has two places to update; the
+sheet resolves at display time while the level-up row resolves when the choices are
+built.
+
+**Evidence gaps.** Label equality is asserted on control text and data, not pixels;
+one OS and one window size; no rendered appearance and no human playtest.

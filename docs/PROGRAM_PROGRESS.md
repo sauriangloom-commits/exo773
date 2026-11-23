@@ -3234,3 +3234,30 @@ the suite, both validators, `--level-up-probe` at 1.00 and 1.60 (347 checks), an
 weapons' damage from source and from the candidate. No award, threshold, encounter
 XP, character, milestone, UI flow or schema changed; the town-square award was not
 touched.
+### Batch 7 closed; batch 7b implemented and accepted: readable feat text (2026-11-23)
+
+Batch 7 is closed as accepted within `d7c3dd5` for implementation `87da7ea` and
+candidate `2026-11-23_batch7_weapon_specialization`; nothing was rebuilt or re-run for
+the closure.
+
+Batch 7b is implemented at `334da1d` and accepted on candidate
+`2026-11-23_batch7b_feat_display` - 110,852,840 bytes, SHA-256
+`64016e0af797f61ca5d4e7d9dd17cf0a724fd63ce634738c0e7c6d8816337d7a`, from
+`334da1d04ba76212b837164bdaccd47910689c2c`, hash identical before and after both
+probes and both validators and equal to `BUILD.txt`.
+
+A weapon-parameterised feat now shows the weapon's authored name on the level-up row
+and the character sheet - "Weapon Specialization (Masterwork Longsword)" instead of
+`masterwork_longsword` - resolved from the shipped item content with no lookup table.
+A parameter with no content entry keeps the text as written, whether it is a bare
+authored name, an unknown id or an unimplemented feat. The stored text is unchanged:
+rows keep raw `text` for the draft and add `label` for the screen, the sheet resolves
+only when it draws, and prerequisites, the weapon matcher, damage, selection filters,
+control names and saves are untouched. Skill parameters stay out of scope. The
+batch-7 display-debt note is cleared.
+
+Red first: `Static function "display_label()" not found in base "Feats"`, seven times.
+Green after: 9 focused tests, 910 in the suite, both validators, `--level-up-probe`
+349 checks at both scales and `--advancement-probe`, from source and from the
+candidate. Feat text is verified as strings and control text, not rendered
+appearance; no manual testing was requested.
