@@ -2190,3 +2190,14 @@ runs (both validators, all six probes, layout at both scales). Logs are in
 balance testing, no playthrough and no human playtest, and the new log line was not
 reviewed in a rendered window (the probe is headless). No content, schema, save, award
 or XP change was made, nothing was pushed, and no backup was taken.
+
+
+#### Monster parity changes shipped difficulty without measurement (documentation only)
+
+Monsters receive the flanking bonus on the same terms as the party, which is what the
+shared `_flank_bonus` helper gives them and what the printed rule asks for, so it is not a
+defect. It does change the difficulty of any shipped fight that can produce a monster flank,
+and this batch did not measure that change: the only living opponent is `store_looter`,
+every other monster is undead and immune to sneak attack, and no fight was replayed to
+compare outcomes. No balance testing, playthrough or human playtest was done. A later balance
+or content pass should treat this as an unmeasured rules change rather than a regression.

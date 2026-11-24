@@ -3832,3 +3832,10 @@ with its hash identical before and after. Adapted and still unmodelled: the 30-f
 limit and concealment. Evidence gaps: no balance testing, no playthrough, no human playtest,
 and no rendered review of the new log line. Overrun stays deferred; no content, schema, save,
 award or XP changes.
+
+Monster parity note (documentation only, 2026-11-24): monsters now receive the same +2 flanking
+bonus as the party because `_flank_bonus` is shared rather than party-specific. That is the
+printed rule and not a defect, but it changes the difficulty of any shipped fight that can
+produce a monster flank, and the change was not measured: no balance testing, playthrough or
+human playtest was done, and the living looter remains the only opponent that can be sneak
+attacked.
