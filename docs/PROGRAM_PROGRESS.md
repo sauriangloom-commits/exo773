@@ -3677,3 +3677,17 @@ Kept separate: the shared AoO and into-melee defects are corrected, the 720px pr
 defect is closed, overrun is deferred, and continuation/tie/geometry remain open
 design questions. No overrun acceptance unit is authorized. README remains
 untouched and no push was made.
+
+**Combat sidebar reveal and focus stability landed** in `bad3a05` (batch 1 of
+`docs/COMBAT_INFO_ACCESS_PLAN.md`). Focusable target rows and pending-decision
+controls now reveal themselves through both nested sidebar scrollers, survive a
+refresh by stable focus key, and take the ring only when no usable owner remains;
+resolution returns to the action controls. The combat log, grid cursor, mouse
+targeting, pause handling, rules, content, schemas and saves are unchanged, and the
+log batch is not implemented. Evidence: 9 failing-first tests (7 red before the
+change), suite 1001/1001, both validators, four existing probes plus the new
+`--combat-info-probe` (38 checks), 32 layout controls at 100 % and 160 %, candidate
+`2026-11-24_combat_info_batch1` with its hash matched before and after. This is
+automated input and geometry evidence only: no rendered review, human keyboard-only
+playthrough or screen-reader check exists. README remains untouched and no push was
+made.

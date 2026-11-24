@@ -1694,3 +1694,11 @@ pins its engine assumptions — `RichTextLabel` focus mode and indirect-child re
 before any behaviour. The engine is Godot **4.7.2**; the `4.7` in `project.godot:18` is
 only the major.minor feature tag. Review only: **no tests, probes, validators, builds or
 exports were run**.
+
+**Batch 1 implemented 2026-11-24 in `bad3a05`.** The sidebar and pending-decision
+reveal plus focus stability shipped as scoped: follow focus on the outer sidebar and
+both inner lists, stable focus keys, rebuild signatures that include every written
+value including disabled flags, focus restoration after layout, and decision seating
+only when no usable owner remains. Suite 1001/1001, layout 32 controls at both scales,
+probe 38 checks, candidate `2026-11-24_combat_info_batch1`. Batch 2 (combat log focus
+and scrolling) remains unimplemented, as does overrun.

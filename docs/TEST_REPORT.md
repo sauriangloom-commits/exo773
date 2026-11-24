@@ -6550,3 +6550,74 @@ no human playtest or rendered review of sidebar scrolling/focus; the keyboard
 grid path was not exercised here; the 900 result is supplementary. Keep the old
 720 failure logs and screenshots. No product UI, content, schema, save,
 progression, award or XP change was made; no overrun work, backup or push.
+
+## Combat sidebar reveal and focus stability (2026-11-24)
+
+Batch 1 of `docs/COMBAT_INFO_ACCESS_PLAN.md`, implemented in `bad3a05`. It makes the
+sidebar's rebuilt controls reachable and stable for a keyboard player: follow focus on
+the outer sidebar and both inner lists, stable focus keys with a rebuild signature
+built from every value written into the controls, one-frame focus restoration after
+layout, decision seating only when no usable owner remains, and focus return to the
+action controls after a decision resolves. The combat log, grid cursor, mouse
+targeting, pause handling, rules, content, schemas and saves are unchanged; batch 2
+(log focus and scrolling) is not implemented.
+
+**Failing-first.** `tests/test_combat_focus_reveal.gd` was written and run against
+`78956f9` before any implementation. Preserved log
+`builds/qa/combat_info_batch1_red/red_focused_tests.log`: 9 collected, **7 failing**,
+2 passing (the two guard cases: modal/off-turn and the no-extra-control count),
+39/52 asserts. The 7 red cases are behavioural: both-scroller reveal, Tab reveal plus
+Enter activation, refresh survival, key restore after a disabled-flag change, a
+decision not stealing a valid owner, grid-active decision seating and post-resolution
+focus. The first collection attempt had two fixture mistakes of mine (a party Inspect
+inflated the row count, and a freed instance was compared by id); both were fixed
+before this preserved red run, and no fixture, import or parse error is counted as red
+evidence.
+
+**Green.** The same file after implementation: **9/9 tests, 56 asserts, exit 0**
+(`builds/qa/combat_info_batch1_red/green_focused_tests.log`).
+
+**Suite.** **1001/1001 tests, 10,015 asserts, 76 scripts, exit 0** (`suite.log`). The
+suite's existing notices are unchanged and kept separate: one orphan in
+`test_combat_keyboard_targeting.gd`'s modal case, the deprecation notices and the
+RID/ObjectDB leak warnings. None is treated as a pass or as a new failure.
+
+**Validators.** `--validate-campaigns` PASS. `--validate-diagnostics` PASS, with the
+eight accepted authored class-progression inconsistencies.
+
+**Probes (source).** `--keyboard-probe` 31 checks PASS; `--grapple-probe` 160 PASS;
+`--level-up-probe` 349 PASS at 1.00 and 1.60; `--advancement-probe` 228 PASS; the new
+`--combat-info-probe` 38 checks PASS (19 per scale). Combat layout
+`--demo-combat --layout-probe --layout-scenario=combat`: **32 controls, 0 failures** at
+1280x720 at 100 % and 160 %.
+
+**New probe.** `--combat-info-probe` builds a five-enemy fixture and drives only
+Tab/Enter/Escape through the viewport. At both scales it asserts that the last target
+row and the last Cleave choice start outside the sidebar, are reached by real Tab
+presses, are inside the visible sidebar while focused, and are activated by a real
+Enter (the Inspect panel opens without spending an action; the Cleave decision
+resolves). Output labels seeded state (`fixture:`), arranging or inspecting calls
+(`direct:`) and the behaviour under test (`key:`) separately. Its `_layout_report`
+prints 35 controls because the fixture seeds five enemies where the demo combat
+scenario has two plus a four-member party; the 32-control expectation belongs to the
+layout run above and is unchanged.
+
+**Candidate.** `2026-11-24_combat_info_batch1`, source
+`bad3a05c4488a4b4c5397d740b6ae2d1889375d4`, 110,900,648 bytes, SHA-256
+`0a4b83196b2158795b481a161365cc50018091684ffad979d9e47387fd417a53`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`, no untracked
+files. From that executable: both validators PASS; keyboard 31, grapple 160, level-up
+349, advancement 228 and combat-info 38 checks PASS; both layout scales 32/0. The
+executable hash was identical before and after acceptance.
+
+**Classification.** Confirmed product defects: none new, and this batch found none.
+Deferred: the combat log's keyboard focus and scrolling (batch 2), overrun (still
+under `docs/OVERRUN_PLAN.md` §18), readied/delayed actions, further grapple and the
+save shortcut. Maintenance debt: the previous section's "combat enemy rows do not
+auto-reveal when focused" is **closed**; the existing suite orphan, the
+deprecation/leak notices and the probe-heavy `main.gd` remain. Evidence gaps: no
+rendered review of the reveal or the focus outline, no human keyboard-only
+playthrough and no screen-reader check; the new probe checks input and rects, not
+pixels, and the grid cursor path is covered by `--keyboard-probe`, not by the new
+probe. No screenshot was taken and no manual testing is requested.
