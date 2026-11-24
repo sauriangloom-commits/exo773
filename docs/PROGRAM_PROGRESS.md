@@ -3481,3 +3481,33 @@ only: no rendered-cursor or human keyboard-only review. The surrounding gaps (mo
 choice still needs its button, no toolbar or save hotkey, built-in `ui_*` bindings, no
 keyboard path to the combat log, other screens not re-tested) are recorded in
 `TEST_REPORT.md` and `ROADMAP.md`, not folded into this batch.
+
+### Keyboard battle-grid targeting closed; next-task review (2026-11-24)
+
+Closed within the evidence already recorded in `b2db538` for implementation `072c15b`
+and candidate `2026-11-24_combat_keyboard_a` (110,887,928 bytes, SHA-256
+`a4f485b6416a8985e043757f7746167e93e6a04eb6ccdbdcf117438630d5f1ad`). No rebuild,
+re-export or check was run for this closure, and none was run for the review. The
+acceptance remains automated input behaviour and geometry: it does not establish
+complete keyboard-only play, a rendered cursor, human accessibility or the other
+screens. Turn Undead remains closed as no product defect found; the grapple, pin and
+keyboard acceptances are not broadened.
+
+The review read the roadmap, progress, supported-features, test and traceability
+records, the feat/skill coverage, the grapple and pin plans, the authored encounters
+and monsters, and the combat/input code. No blocked keyboard turn path was found:
+action buttons and End turn are focusable and enabled, the shared modal traps and
+reveals focus, and Godot's viewport restarts Tab from the first control when no ring is
+set, so pending decisions are reachable. The combat log has no keyboard path (history
+is mouse-wheel only) and the scrolling combat sidebar never reveals a focused decision
+or target row; both are information/visibility gaps, not blocked actions.
+
+Recommended next task: **a planning-only note for overrun**, not implementation.
+Overrun is player-reachable in every fight and adds the one movement capability no
+existing action has (passing an occupied square while knocking the blocker prone), but
+its action/movement model, defender avoid/block choice, AoO and failure placement need
+a plan before code. Readied/delayed actions have a higher tactical ceiling but are a
+larger subsystem; further grapple has no content that rewards it because every shared
+monster is undead and ignores nonlethal hold damage; the save shortcut remains
+convenience. The bounded keyboard log/sidebar-reveal item is deferred, not recommended,
+because it closes information rather than a path.

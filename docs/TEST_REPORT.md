@@ -6191,3 +6191,15 @@ features: further grapple (8c, 8b-2/8f), overrun, readied/delayed actions and th
 shortcut remain as recorded in the roadmap review. Maintenance debt: unchanged.
 Evidence gaps: no human or rendered review of the cursor, no exported visual capture,
 and mouse/keyboard handoff is exercised at the click, not at hover or focus traversal.
+
+## Keyboard battle-grid targeting closed (2026-11-24)
+
+Closed within the evidence already recorded in `b2db538` for implementation `072c15b`
+and candidate `2026-11-24_combat_keyboard_a`. **No checks were run for this closure**,
+nothing was rebuilt or re-exported, and no executable behaviour changed. The accepted
+scope remains automated input behaviour and geometry (cursor, activation through
+`_on_cell_clicked`, cancellation, guards and mouse handoff); it is not evidence of
+complete keyboard-only play, the rendered cursor, human accessibility, or keyboard
+access to the other screens. The combat log's keyboard gap and the sidebar
+focus-visibility gap are recorded in the roadmap review and stay deferred; Turn Undead
+remains closed as no product defect found.

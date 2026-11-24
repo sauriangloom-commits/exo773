@@ -1486,12 +1486,162 @@ save case and the seeded probe limits stay evidence work, not features.
 - **Deferred features.** Grapple 8b-2/8c/8d/8e/8f; overrun, disarm, sunder,
   concealment, terrain hard cover, AoE templates, encumbrance, disease; readied
   and delayed actions; full attacks and two-weapon fighting; levels 5 and above;
-  a save shortcut; keyboard combat (recommended next).
+  a save shortcut. Keyboard combat is closed (implemented 2026-11-24); combat-log
+  scrolling and sidebar focus reveal stay deferred.
 - **Maintenance debt.** The stale `Combat Casting` benefit text; the singular
   modal field; probe-heavy `main.gd`; source-text guards that cannot see a
   string-built call; shallow UI suite coverage; the placeholder renderer. None
   is promoted to a defect here.
 - **Evidence gaps.** Grapple, pin and AI-escape behaviour is exercised through
-  seeded probes, not ordinary recorded play; keyboard combat has no evidence at
-  all today; no rendered appearance or human playtesting is claimed. The
+  seeded probes, not ordinary recorded play; keyboard combat has automated input
+  evidence but no rendered-cursor or human review; no rendered appearance or
+  human playtesting is claimed. The
   reload-then-reapply save case remains a test to fold into future save work.
+
+## Next bounded task - roadmap review after keyboard targeting (2026-11-24)
+
+Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this
+section, and **no checks were run**. It reads the current `ROADMAP.md`,
+`PROGRAM_PROGRESS.md`, `SUPPORTED_FEATURES.md`, `TEST_REPORT.md`, `TRACEABILITY.md`,
+`FEATS_SKILLS_COVERAGE.md`, `GRAPPLE_PLAN.md`, `PIN_PLAN.md`, the authored encounters
+and monsters, and the combat/input code.
+
+### Keyboard battle-grid targeting closed
+
+Closed within the evidence recorded in `b2db538` for implementation `072c15b` and
+candidate `2026-11-24_combat_keyboard_a` (110,887,928 bytes, SHA-256
+`a4f485b6416a8985e043757f7746167e93e6a04eb6ccdbdcf117438630d5f1ad`): 12/12 focused
+tests (52 asserts), suite 985/985 (9,864 asserts, 74 scripts), both validators,
+`--grapple-probe` 154 checks, `--keyboard-probe` 31 checks, `--level-up-probe` 349
+checks, `--advancement-probe` PASS, layout 32 controls/0 failures at 100 % and 160 %,
+and the same checks from the exported candidate with its hash unchanged. No rebuild,
+re-export or check was run for this closure.
+
+The acceptance remains automated input behaviour and geometry. It is not evidence of
+complete keyboard-only play, the rendered cursor, human accessibility or the other
+screens, and this review does not broaden it. Turn Undead stays closed as **no product
+defect found**; the earlier grapple and pin acceptances are unchanged.
+
+### What the keyboard boundary is now (code reading, not a new test)
+
+- **Action buttons.** Ordinary focusable `Button`s. A disabled action is skipped by
+  Godot's focus traversal (the repository's campaign-list test pins that rule), and
+  `End turn`/`Inspect` are enabled on a live player turn and sit in the action grid,
+  so Tab reaches them. No missing activation path was found.
+- **Combat dialogs.** Cast spell, Use potion, First aid, Inspect and Pause all use the
+  shared modal: its body is a `ScrollContainer` with `follow_focus = true`, Close takes
+  focus, and `_cycle_modal_focus` traps Tab while `_reveal_focused_control` scrolls the
+  focused control into view. Existing modal-focus tests already exercise that path; it
+  was not re-run here.
+- **Pending decisions.** Trip counter-trip, Improved Trip's follow-up, Cleave and Bull
+  rush choices are plain `Button`s in `decision_box`, focusable but never focused
+  automatically. When the grid releases the ring after a keyboard trip no action button
+  is enabled, so the ring is unset. Godot's viewport then starts Tab from the first
+  visible top-level Control and focuses the first focusable descendant
+  (`Viewport::_gui_input_event`), so Tab recovers to the HUD; it does not dead-end. The
+  buttons live in the scrolling sidebar, which sets no `follow_focus`, and
+  `Main._reveal_focused_control` reveals only inside a modal or the campaign creator. A
+  focused decision or target row can therefore stay off-screen; it can still be
+  activated. This is a visibility gap, not a blocked turn.
+- **Combat log.** `log_label` is a `RichTextLabel` with `scroll_following = true` and the
+  default `focus_mode` (NONE); it has no key handler. The newest lines are visible, but
+  earlier rolls are mouse-wheel only. This is a real keyboard capability gap for
+  information, not a blocked action.
+- **Target rows.** The per-enemy Inspect/Attack rows sit in the same scrolling sidebar
+  without a reveal; attacking is duplicated by the grid cursor and Inspect by the action
+  button, so neither is a unique path.
+
+### Candidate A - bounded keyboard-combat information access
+
+- **Player benefit.** A keyboard-only player could review earlier rolls and see which
+  pending-decision or target control currently has the ring.
+- **Evidence and reachability.** Every combat; the two gaps above are set by the code,
+  not inferred from a missing test. `RichTextLabel` already scrolls, and `ScrollContainer`
+  already has a reveal routine used for modals and the creator.
+- **Unresolved decisions.** Whether the log takes a Tab stop or scrolls from screen-level
+  Page keys; what happens to `scroll_following` when the player scrolls up; which keys
+  (Page/arrow); how focus is drawn; whether the sidebar follows focus or only reveals
+  decisions/targets.
+- **Dependencies and boundary.** `CombatScreen` and one small reveal hook; no rule,
+  content, save or focus-framework change. Focused tests plus a real-key probe step, the
+  suite, both validators, all probes, both layout scales and a candidate.
+- **Verdict.** Bounded and honest, but it closes information/visibility, not a blocked
+  path. It stays a deferred usability item rather than leading a batch.
+
+### Candidate B - overrun (recommended for a planning-only batch)
+
+- **Player benefit.** A standard-action way to move through an occupied square and knock
+  the blocker prone, using a capability no current action has: trip makes prone at reach
+  and bull rush pushes, but neither lets the mover pass.
+- **Reachability.** Any monster is a legal target, so every shipped fight can use it. The
+  demo maps have real chokepoints (`storeroom_dead` and `crypt_warden` carry pillar rows
+  with three-square gaps), which is where passing a blocker matters. Ordinary play is
+  less demanding than that suggests: every shared monster is a melee undead with natural
+  weapons, encounters are kill-all, and the AI never initiates special attacks, so there
+  is no back line to reach.
+- **What is already in place.** `Character.size_category`, occupancy-aware movement, the
+  AoO machinery, the contested-check and pending-decision patterns from trip and bull
+  rush, and the action-grid control shape.
+- **Unresolved decisions.** Whether the mover spends a standard action, a move, or both;
+  how much movement is available and how it interacts with `moved_ft`; the defender's
+  avoid/block choice and the AI policy for it; size and stability; the attack of
+  opportunity (from the target, from others, or none); where a failed attempt stops; when
+  prone applies; one target per round; and whether the mover can continue after a
+  success. Improved Overrun stays deferred behind the action
+  (`FEATS_SKILLS_COVERAGE.md`).
+- **Dependencies and cost.** A short design note, then an `Encounter` batch with one
+  control or one pending choice, focused tests and probe checks, and a candidate. Bull
+  rush needed its own 268-line plan; this is comparable, not smaller.
+- **Verdict.** The strongest rules step that can be scoped as one special attack, but it
+  is not safe to implement without settling the decisions above. Recommend planning only.
+
+### Candidate C - readied and delayed actions
+
+- **Player benefit.** The highest tactical ceiling in the remaining roadmap: hold an
+  attack for a trigger, or act later in the round.
+- **Reachability.** Every fight.
+- **Decisions and cost.** Trigger list and selection UI, interrupt ordering against the
+  existing `pending_*` decisions, reaction timing, action economy, duration, AI policy and
+  log wording. This is a subsystem, not one action; it needs its own plan first and is a
+  larger commitment than overrun.
+
+### Candidate D - further grapple (8c, 8b-2/8f)
+
+- **Benefit.** Grapple damage and half-speed movement of the pair.
+- **Why not now.** Every shared monster is undead and ignores the nonlethal damage the
+  existing hold already deals; the AI never grapples, so break-another's-pin and multiple
+  grapplers have no player-reachable target. Pin shipped in 8b-1. Numbering alone is not
+  a reason to continue.
+
+### Candidate E - save shortcut
+
+- **Benefit.** One key opens the existing Save modal instead of Escape -> Save game.
+- **Why not now.** Saving is exploration-only by design and the pause menu already exposes
+  it; the gain is convenience. Small enough to ride with a later UI batch, not to lead one.
+
+### Recommendation
+
+**Write a planning-only note for overrun; implement nothing in that pass.** No blocked
+keyboard path was found, and the keyboard log/focus item is information access rather
+than a missing action. Overrun is the strongest independently useful rules action
+ordinary play can reach that is still close to one bounded batch, but its defender
+choice, movement model, AoO and failure placement decide its tests and UI, so the plan
+must settle them before code. Readied/delayed actions carry more tactical value but are a
+larger subsystem with their own planning need; further grapple is not prioritised without
+content that rewards it, and the save shortcut stays a ride-along.
+
+### Classification, kept separate
+
+- **Confirmed defects.** None open. The Turn Undead wrapper claim stays closed as no
+  product defect found; this review found no failing case.
+- **Deferred features.** Overrun (planning next); readied/delayed actions; further grapple
+  (8b-2/8c/8f); disarm, sunder, concealment, terrain hard cover, AoE, encumbrance,
+  disease; levels 5+; a save shortcut; keyboard combat-log scrolling and sidebar focus
+  reveal.
+- **Maintenance debt.** Unchanged: the stale `Combat Casting` benefit text, the singular
+  modal field, the probe-heavy `main.gd`, shallow UI suite coverage and the placeholder
+  renderer.
+- **Evidence gaps.** No human keyboard-only playthrough, rendered cursor or accessibility
+  check; Tab traversal and decision focus recovery were read from the engine and code,
+  not key-tested; exported acceptance covers probes, not the suite; overrun has no
+  implementation, tests or content pressure yet.
