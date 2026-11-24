@@ -52,6 +52,19 @@ var grapple_exit_button: Button
 var pin_button: Button
 var decision_box: VBoxContainer
 var sidebar_panel: ScrollContainer
+## Inner combatant/target list. It follows focus itself and sits inside
+## `sidebar_panel`, which also follows focus, so a row below either fold is
+## revealed by the engine instead of by a per-control callback.
+var target_panel: ScrollContainer
+## The values last written into the two rebuilt subtrees. An unchanged signature
+## skips the rebuild, so the focused control and both scroll offsets survive an
+## ordinary refresh.
+var _target_signature := ""
+var _decision_signature := ""
+## Bumped around a rebuild's deferred focus restore, so pending-decision seating
+## never overrides an owner that is about to be restored.
+var _restores_pending := 0
+var _seated_decision := ""
 ## Keyboard grid session: the mode, actor and cell the cursor was last seated on.
 ## A refresh compares them, so a turn, mode or actor move reseats the cursor on
 ## purpose instead of leaving it on a cell that no longer means anything.
@@ -129,6 +142,9 @@ func _build() -> void:
 	# bar, which changes the wrap width, which changes the height again — a
 	# layout loop that starved the frame queue.
 	sidebar_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+	# A row inside the inner target list can sit below both folds; the engine then
+	# moves this scroller too, so no per-control reveal callback is needed.
+	sidebar_scroll.follow_focus = true
 	sidebar_panel = sidebar_scroll
 	body.add_child(sidebar_scroll)
 	var sidebar := VBoxContainer.new()
@@ -300,14 +316,15 @@ func _build() -> void:
 	turn_label = ThemeBuilder.body("", false, 11)
 	sidebar.add_child(turn_label)
 	sidebar.add_child(ThemeBuilder.body("Combatants — enemies first", true, 12))
-	var target_scroll := ScrollContainer.new()
-	target_scroll.custom_minimum_size = Vector2(0, 96)
-	target_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sidebar.add_child(target_scroll)
+	target_panel = ScrollContainer.new()
+	target_panel.custom_minimum_size = Vector2(0, 96)
+	target_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	target_panel.follow_focus = true
+	sidebar.add_child(target_panel)
 	target_box = VBoxContainer.new()
 	target_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	target_box.add_theme_constant_override("separation", 4)
-	target_scroll.add_child(target_box)
+	target_panel.add_child(target_box)
 	sidebar.add_child(ThemeBuilder.body(
 		"Movement, attacks, AoOs, dying and spells follow D&D 3.5; see docs/SUPPORTED_FEATURES.md for scope.",
 		true,
@@ -433,6 +450,9 @@ func _focus_action_controls() -> void:
 		if candidate != null and candidate.is_visible_in_tree() and not candidate.disabled:
 			candidate.grab_focus()
 			return
+	# Nothing enabled is left, so a pending decision owns the ring instead of
+	# leaving a keyboard player with no focus owner at all.
+	_seat_decision_if_ownerless()
 
 
 func _on_state_changed() -> void:
@@ -610,6 +630,7 @@ func refresh_screen() -> void:
 	view.queue_redraw()
 	_update_button_states()
 	_sync_grid_keyboard()
+	_maybe_seat_pending_decision()
 
 
 func _initiative_text() -> String:
@@ -628,10 +649,20 @@ func _initiative_text() -> String:
 	return "\n".join(lines)
 
 
-func _rebuild_targets() -> void:
-	for child in target_box.get_children():
-		child.queue_free()
+## Pure description of the target rows: the label text and every value written
+## into a button, including its enabled state. It is both the rebuild signature and
+## the build input, so a spent action (which disables Attack) rebuilds the rows even
+## when no hit point changed.
+func _target_spec() -> Array:
 	var e := Game.encounter
+	var spec: Array = []
+	if e == null:
+		return spec
+	var can_standard := _can_standard(e)
+	var active_now := e.active_entry()
+	var cell_now := (
+		Vector2i(active_now["cell"]) if not active_now.is_empty() else Vector2i(-1, -1)
+	)
 	var ordered: Array = []
 	for entry in e.combatants:
 		if int(entry["team"]) == Encounter.TEAM_ENEMY:
@@ -641,67 +672,196 @@ func _rebuild_targets() -> void:
 			ordered.append(entry)
 	for entry in ordered:
 		var ch: Character = entry["char"]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		var label := ThemeBuilder.body(
-			"%s — %d/%d HP%s%s"
-			% [
-				ch.display_name,
-				ch.hp,
-				ch.max_hp,
-				" (dead)" if ch.has_condition("dead") else "",
-				" (prone)" if ch.is_prone() else "",
-			],
-			true,
-			11
-		)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var index := int(entry["index"])
-		if int(entry["team"]) == Encounter.TEAM_ENEMY and not ch.has_condition("dead"):
+		var enemy := int(entry["team"]) == Encounter.TEAM_ENEMY
+		var alive := not ch.has_condition("dead")
+		spec.append({
+			"kind": "combatant",
+			"index": int(entry["index"]),
+			"label": (
+				"%s — %d/%d HP%s%s"
+				% [
+					ch.display_name,
+					ch.hp,
+					ch.max_hp,
+					"" if alive else " (dead)",
+					" (prone)" if ch.is_prone() else "",
+				]
+			),
 			# The enemy panel reports the AC an attack would use right now, so it
-			# is reachable from the same row as the attack itself.
-			var inspect_enemy := Button.new()
-			inspect_enemy.text = "Inspect"
-			inspect_enemy.pressed.connect(func() -> void: _inspect_index(index))
-			row.add_child(inspect_enemy)
-			var attack := Button.new()
-			attack.text = "Attack"
-			attack.disabled = not _can_standard(e)
-			attack.pressed.connect(func() -> void: _attack(index))
-			row.add_child(attack)
-		elif int(entry["team"]) == Encounter.TEAM_PARTY:
-			var inspect := Button.new()
-			inspect.text = "Inspect"
-			inspect.pressed.connect(func() -> void: _inspect_index(index))
-			row.add_child(inspect)
-		target_box.add_child(row)
+			# is reachable from the same row as the attack itself. The party row
+			# only inspects.
+			"inspect": alive if enemy else true,
+			"attack": enemy and alive,
+			"attack_enabled": can_standard,
+		})
 	if not e.ground_items.is_empty():
-		target_box.add_child(ThemeBuilder.body("Ground", true, 11))
-		var active_now := e.active_entry()
-		var cell_now := (
-			Vector2i(active_now["cell"]) if not active_now.is_empty() else Vector2i(-1, -1)
-		)
+		spec.append({"kind": "heading", "text": "Ground"})
 		for i in e.ground_items.size():
 			var ground: Dictionary = e.ground_items[i]
-			var ground_row := HBoxContainer.new()
-			var ground_label := ThemeBuilder.body(
-				String(Dictionary(ground["item"]).get("name", "item")), true, 11
-			)
-			ground_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			ground_row.add_child(ground_label)
-			var pickup := Button.new()
-			pickup.text = "Pick up"
 			var here := Vector2i(ground["cell"]) == cell_now
-			pickup.disabled = not here or not e.is_player_turn() or e.has_pending_decision()
-			pickup.tooltip_text = (
-				"Move action; provokes an opportunity attack (PHB p.141)."
-				if here
-				else "Stand in the item's square to pick it up."
-			)
-			pickup.pressed.connect(func() -> void: Game.combat_pick_up(i))
-			ground_row.add_child(pickup)
-			target_box.add_child(ground_row)
+			spec.append({
+				"kind": "ground",
+				"index": i,
+				"label": String(Dictionary(ground["item"]).get("name", "item")),
+				"enabled": here and e.is_player_turn() and not e.has_pending_decision(),
+				"here": here,
+			})
+	return spec
+
+
+func _target_row(row: Dictionary) -> Control:
+	if String(row["kind"]) == "heading":
+		return ThemeBuilder.body(String(row["text"]), true, 11)
+	if String(row["kind"]) == "ground":
+		var ground_row := HBoxContainer.new()
+		ground_row.add_theme_constant_override("separation", 4)
+		var ground_label := ThemeBuilder.body(String(row["label"]), true, 11)
+		ground_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ground_row.add_child(ground_label)
+		var pickup := Button.new()
+		pickup.text = "Pick up"
+		pickup.disabled = not bool(row["enabled"])
+		pickup.tooltip_text = (
+			"Move action; provokes an opportunity attack (PHB p.141)."
+			if bool(row["here"])
+			else "Stand in the item's square to pick it up."
+		)
+		var ground_index := int(row["index"])
+		pickup.pressed.connect(func() -> void: Game.combat_pick_up(ground_index))
+		pickup.set_meta("combat_focus_key", "ground:%d:pickup" % ground_index)
+		ground_row.add_child(pickup)
+		return ground_row
+	var row_box := HBoxContainer.new()
+	row_box.add_theme_constant_override("separation", 4)
+	var label := ThemeBuilder.body(String(row["label"]), true, 11)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_box.add_child(label)
+	var index := int(row["index"])
+	if bool(row["inspect"]):
+		var inspect := Button.new()
+		inspect.text = "Inspect"
+		inspect.pressed.connect(func() -> void: _inspect_index(index))
+		inspect.set_meta("combat_focus_key", "target:%d:inspect" % index)
+		row_box.add_child(inspect)
+	if bool(row["attack"]):
+		var attack := Button.new()
+		attack.text = "Attack"
+		attack.disabled = not bool(row["attack_enabled"])
+		attack.pressed.connect(func() -> void: _attack(index))
+		attack.set_meta("combat_focus_key", "target:%d:attack" % index)
+		row_box.add_child(attack)
+	return row_box
+
+
+func _rebuild_targets() -> void:
+	var spec := _target_spec()
+	var signature := str(spec)
+	if signature == _target_signature:
+		return
+	_target_signature = signature
+	var key := _focused_key_in(target_box)
+	for child in target_box.get_children():
+		target_box.remove_child(child)
+		child.queue_free()
+	for row in spec:
+		target_box.add_child(_target_row(row))
+	if key != "":
+		_restore_focus(key, target_box)
+
+
+## The `combat_focus_key` of the control that owns the ring inside `root`, or "".
+## The key is metadata, not a node path, so it survives the rebuild that frees the
+## control it was written on.
+func _focused_key_in(root: Node) -> String:
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner == null or not is_instance_valid(owner):
+		return ""
+	if not root.is_ancestor_of(owner):
+		return ""
+	return String(owner.get_meta("combat_focus_key", ""))
+
+
+func _control_with_key(root: Node, key: String) -> Control:
+	for node in root.find_children("*", "Control", true, false):
+		var control := node as Control
+		if control != null and String(control.get_meta("combat_focus_key", "")) == key:
+			return control
+	return null
+
+
+## A control may hold the ring only while it can actually be used.
+func _focusable_now(control: Control) -> bool:
+	if control == null or not is_instance_valid(control) or not control.is_visible_in_tree():
+		return false
+	var button := control as BaseButton
+	return button == null or not button.disabled
+
+
+## Puts the ring back on `key` once the rebuilt subtree has laid out. It never takes
+## the ring from a control another part of the refresh already focused, and a key
+## whose control disappeared or is disabled falls back to the action controls.
+## `follow_focus` on both ancestor scrollers reveals the restored control.
+func _restore_focus(key: String, root: Node) -> void:
+	_restores_pending += 1
+	await get_tree().process_frame
+	_restores_pending = maxi(0, _restores_pending - 1)
+	if root == null or not is_instance_valid(root) or not is_inside_tree():
+		return
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner != null and is_instance_valid(owner) and not root.is_ancestor_of(owner):
+		return
+	var control := _control_with_key(root, key)
+	if _focusable_now(control):
+		control.grab_focus()
+		return
+	_focus_action_controls()
+
+
+func _focus_owner_is_inside(root: Node) -> bool:
+	var owner := get_viewport().gui_get_focus_owner()
+	return owner != null and is_instance_valid(owner) and root.is_ancestor_of(owner)
+
+
+## A new pending decision seats its first usable control only when no valid owner
+## remains. An enabled option, an Inspect row or another live control keeps the
+## ring, and Tab finds the decision instead.
+func _maybe_seat_pending_decision() -> void:
+	var e := Game.encounter
+	if e == null:
+		return
+	if not e.has_pending_decision():
+		_seated_decision = ""
+		return
+	if _restores_pending > 0 or _decision_signature == "":
+		return
+	if main != null and main.get("modal") != null:
+		return
+	if _decision_signature == _seated_decision:
+		return
+	if _focusable_now(get_viewport().gui_get_focus_owner() as Control):
+		return
+	# The grid cannot own the ring while a decision is pending; release it so the
+	# decision control is the only thing a keyboard player can act on.
+	if view != null and view.keyboard_cursor_active:
+		_leave_grid_keyboard()
+	_seat_decision_if_ownerless()
+
+
+## Focus the first decision control only if nothing usable owns the ring.
+func _seat_decision_if_ownerless() -> void:
+	if _focusable_now(get_viewport().gui_get_focus_owner() as Control):
+		return
+	if _decision_signature == "":
+		return
+	for node in decision_box.find_children("*", "Control", true, false):
+		var control := node as Control
+		if control == null or String(control.get_meta("combat_focus_key", "")) == "":
+			continue
+		if not _focusable_now(control):
+			continue
+		control.grab_focus()
+		_seated_decision = _decision_signature
+		return
 
 
 func _can_standard(e: Encounter) -> bool:
@@ -1011,171 +1171,240 @@ func _pick_up_here() -> void:
 
 ## A bounded, scrolling list for decision targets. Many eligible targets must
 ## not push the accept/decline controls below the window at 1024x600 or at the
-## largest text scale.
+## largest text scale. The list follows focus so a target below its fold is
+## revealed, and the outer sidebar follows the list in turn.
 func _decision_scroll(count: int) -> ScrollContainer:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
 	scroll.custom_minimum_size = Vector2(0, mini(152, maxi(40, count * 40)))
 	return scroll
 
 
-## Shown while a combat decision is paused: Trip (PHB p.159), Improved Trip's
-## granted attack (p.96) or Cleave (p.92), on or off turn.
-func _rebuild_decision() -> void:
-	for child in decision_box.get_children():
-		child.queue_free()
+func _decision_label(text: String) -> Label:
+	var label := ThemeBuilder.body(text, false, 10)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
+
+
+## Pure description of the pending decision: label, option items, and the text of
+## every button. It is both the rebuild signature and the build input.
+func _decision_spec() -> Dictionary:
 	var e := Game.encounter
 	if e == null or not e.has_pending_decision():
-		return
+		return {}
 	if not e.pending_cleave.is_empty():
 		var cleaver_index := int(e.pending_cleave.get("actor_index", -1))
 		if cleaver_index < 0 or cleaver_index >= e.combatants.size():
-			return
+			return {}
 		var cleaver: Character = e.combatants[cleaver_index]["char"]
 		var dropped_index := int(e.pending_cleave.get("dropped_index", -1))
 		var dropped_name := "a creature"
 		if dropped_index >= 0 and dropped_index < e.combatants.size():
 			dropped_name = String((e.combatants[dropped_index]["char"] as Character).display_name)
 		var off_turn := not e.is_player_turn()
-		var cleave_label := ThemeBuilder.body(
-			(
-				"Cleave: %s dropped %s off turn. Choose another enemy within reach, or decline (PHB p.92). The interrupted turn resumes afterwards."
-				if off_turn
-				else "Cleave: %s dropped %s. Choose another enemy within reach, or decline (PHB p.92)."
-			)
-			% [cleaver.display_name, dropped_name],
-			false,
-			10
-		)
-		cleave_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		cleave_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		decision_box.add_child(cleave_label)
-		var targets := e.cleave_targets(cleaver_index, dropped_index)
-		var choices_scroll := _decision_scroll(targets.size())
-		decision_box.add_child(choices_scroll)
-		var choices := VBoxContainer.new()
-		choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		choices.add_theme_constant_override("separation", 6)
-		choices_scroll.add_child(choices)
-		for other in targets:
-			var pick := Button.new()
-			pick.text = "Attack %s" % String((other["char"] as Character).display_name)
-			var target_index := int(other["index"])
-			pick.pressed.connect(func() -> void: Game.combat_resolve_cleave(target_index))
-			choices.add_child(pick)
-		# Decline stays outside the scrolling list so it is always reachable.
-		var pass_up := Button.new()
-		pass_up.text = "Decline extra attack"
-		pass_up.pressed.connect(func() -> void: Game.combat_decline_cleave())
-		decision_box.add_child(pass_up)
-		return
+		var cleave_list: Array = []
+		for other in e.cleave_targets(cleaver_index, dropped_index):
+			cleave_list.append({
+				"index": int(other["index"]),
+				"text": "Attack %s" % String((other["char"] as Character).display_name),
+			})
+		return {
+			"kind": "cleave",
+			"label": (
+				(
+					"Cleave: %s dropped %s off turn. Choose another enemy within reach, or decline (PHB p.92). The interrupted turn resumes afterwards."
+					if off_turn
+					else "Cleave: %s dropped %s. Choose another enemy within reach, or decline (PHB p.92)."
+				)
+				% [cleaver.display_name, dropped_name]
+			),
+			"targets": cleave_list,
+			"decline": "Decline extra attack",
+		}
 	if not e.pending_bull_rush.is_empty():
-		_rebuild_bull_rush_decision(e)
-		return
+		return _bull_rush_spec(e)
 	var actor_index := int(e.pending_trip.get("actor_index", -1))
 	if actor_index < 0 or actor_index >= e.combatants.size():
-		return
+		return {}
 	var ch: Character = e.combatants[actor_index]["char"]
 	if String(e.pending_trip.get("type", "weapon_release")) == "improved_trip_attack":
 		var target_index := int(e.pending_trip.get("target_index", -1))
 		var target_name := "the tripped opponent"
 		if target_index >= 0 and target_index < e.combatants.size():
 			target_name = String((e.combatants[target_index]["char"] as Character).display_name)
-		var attack_label := ThemeBuilder.body(
-			"Improved Trip: %s may immediately attack %s (PHB p.96)." % [ch.display_name, target_name],
-			false,
-			10
-		)
-		attack_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		attack_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		decision_box.add_child(attack_label)
-		# The feat grants "a melee attack", not the trip method. Offer every melee
-		# attack already available in hand; taking a different weapon out would be
-		# an equip action and is not offered.
-		var follow_menu := OptionButton.new()
-		follow_menu.add_item("Unarmed strike")
-		follow_menu.set_item_metadata(0, "unarmed")
+		# The feat grants "a melee attack", not the trip method, so every melee
+		# attack already in hand is offered; taking a different weapon out would
+		# be an equip action.
+		var items: Array = [{"text": "Unarmed strike", "mode": "unarmed"}]
 		var primary := e._primary_weapon(ch)
 		for mode in Rules.weapon_attack_modes(primary):
 			if Rules.is_ranged_attack(primary, mode):
 				continue
-			follow_menu.add_item("%s (%s)" % [String(primary.get("name", "weapon")), mode])
-			follow_menu.set_item_metadata(follow_menu.item_count - 1, mode)
-		if follow_menu.item_count > 1:
-			follow_menu.select(1)
-		decision_box.add_child(follow_menu)
-		var buttons := HBoxContainer.new()
-		buttons.add_theme_constant_override("separation", 6)
-		decision_box.add_child(buttons)
-		var take := Button.new()
-		take.text = "Make the extra attack"
-		take.pressed.connect(
-			func() -> void:
-				var picked := String(follow_menu.get_item_metadata(follow_menu.selected))
-				Game.combat_resolve_improved_trip(true, picked)
-		)
-		buttons.add_child(take)
-		var decline := Button.new()
-		decline.text = "Decline extra attack"
-		decline.pressed.connect(func() -> void: Game.combat_resolve_improved_trip(false))
-		buttons.add_child(decline)
-		return
-	var label := ThemeBuilder.body(
-		"%s lost the counter-trip. Drop the weapon to stay standing, or keep it and fall prone (PHB p.159)."
-		% ch.display_name,
-		false,
-		10
-	)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	decision_box.add_child(label)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 6)
-	decision_box.add_child(buttons)
-	var drop := Button.new()
-	drop.text = "Drop weapon"
-	drop.pressed.connect(func() -> void: Game.combat_resolve_trip(true))
-	buttons.add_child(drop)
-	var keep := Button.new()
-	keep.text = "Keep weapon"
-	keep.pressed.connect(func() -> void: Game.combat_resolve_trip(false))
-	buttons.add_child(keep)
+			items.append({
+				"text": "%s (%s)" % [String(primary.get("name", "weapon")), mode],
+				"mode": mode,
+			})
+		return {
+			"kind": "improved_trip",
+			"label": (
+				"Improved Trip: %s may immediately attack %s (PHB p.96)."
+				% [ch.display_name, target_name]
+			),
+			"items": items,
+			"selected": 1 if items.size() > 1 else 0,
+			"take": "Make the extra attack",
+			"decline": "Decline extra attack",
+		}
+	return {
+		"kind": "trip",
+		"label": (
+			"%s lost the counter-trip. Drop the weapon to stay standing, or keep it and fall prone (PHB p.159)."
+			% ch.display_name
+		),
+		"drop": "Drop weapon",
+		"keep": "Keep weapon",
+	}
 
 
 ## PHB p.154: after a won check the rusher chooses whether to move with the
 ## defender. Every roll is already final, so this only offers the two distances.
-func _rebuild_bull_rush_decision(e: Encounter) -> void:
+func _bull_rush_spec(e: Encounter) -> Dictionary:
 	var actor_index := int(e.pending_bull_rush.get("actor_index", -1))
 	var target_index := int(e.pending_bull_rush.get("target_index", -1))
 	if actor_index < 0 or actor_index >= e.combatants.size():
-		return
+		return {}
 	var ch: Character = e.combatants[actor_index]["char"]
 	var target_name := "the defender"
 	if target_index >= 0 and target_index < e.combatants.size():
 		target_name = String((e.combatants[target_index]["char"] as Character).display_name)
 	var push_ft := int(e.pending_bull_rush.get("push_ft", 5))
-	var label := ThemeBuilder.body(
-		(
+	return {
+		"kind": "bull_rush",
+		"label": (
 			"Bull rush: %s won the check. Push %s 5 feet, or move with them and push %d feet (PHB p.154)."
 			% [ch.display_name, target_name, push_ft]
 		),
-		false,
-		10
-	)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	decision_box.add_child(label)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 6)
-	decision_box.add_child(buttons)
-	var stay := Button.new()
-	stay.text = "Push 5 ft"
-	stay.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(false))
-	buttons.add_child(stay)
-	var follow := Button.new()
-	follow.text = "Follow"
-	follow.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(true))
-	buttons.add_child(follow)
+		"stay": "Push 5 ft",
+		"follow": "Follow",
+	}
+
+
+## Shown while a combat decision is paused: Trip (PHB p.159), Improved Trip's
+## granted attack (p.96) or Cleave (p.92), on or off turn.
+func _rebuild_decision() -> void:
+	var spec := _decision_spec()
+	var signature := str(spec)
+	if signature == _decision_signature:
+		return
+	var had_focus := _focus_owner_is_inside(decision_box)
+	var key := _focused_key_in(decision_box)
+	_decision_signature = signature
+	for child in decision_box.get_children():
+		decision_box.remove_child(child)
+		child.queue_free()
+	if spec.is_empty():
+		if had_focus:
+			_reseat_after_resolution()
+		return
+	_build_decision(spec)
+	if key != "":
+		_restore_focus(key, decision_box)
+
+
+## The decision that owned the ring is gone. Resolution returns focus through the
+## ordinary action-control policy rather than leaving no owner at all.
+func _reseat_after_resolution() -> void:
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	if _focusable_now(get_viewport().gui_get_focus_owner() as Control):
+		return
+	_focus_action_controls()
+
+
+func _build_decision(spec: Dictionary) -> void:
+	match String(spec["kind"]):
+		"cleave":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var cleave_targets: Array = spec["targets"]
+			var choices_scroll := _decision_scroll(cleave_targets.size())
+			decision_box.add_child(choices_scroll)
+			var choices := VBoxContainer.new()
+			choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			choices.add_theme_constant_override("separation", 6)
+			choices_scroll.add_child(choices)
+			for target in cleave_targets:
+				var pick := Button.new()
+				pick.text = String(target["text"])
+				var target_index := int(target["index"])
+				pick.pressed.connect(func() -> void: Game.combat_resolve_cleave(target_index))
+				pick.set_meta("combat_focus_key", "decision:cleave:%d" % target_index)
+				choices.add_child(pick)
+			# Decline stays outside the scrolling list so it is always reachable.
+			var pass_up := Button.new()
+			pass_up.text = String(spec["decline"])
+			pass_up.pressed.connect(func() -> void: Game.combat_decline_cleave())
+			pass_up.set_meta("combat_focus_key", "decision:cleave:decline")
+			decision_box.add_child(pass_up)
+		"improved_trip":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var follow_menu := OptionButton.new()
+			var items: Array = spec["items"]
+			for i in items.size():
+				follow_menu.add_item(String(items[i]["text"]))
+				follow_menu.set_item_metadata(i, String(items[i]["mode"]))
+			follow_menu.select(int(spec["selected"]))
+			follow_menu.set_meta("combat_focus_key", "decision:trip:option")
+			decision_box.add_child(follow_menu)
+			var trip_buttons := HBoxContainer.new()
+			trip_buttons.add_theme_constant_override("separation", 6)
+			decision_box.add_child(trip_buttons)
+			var take := Button.new()
+			take.text = String(spec["take"])
+			take.pressed.connect(
+				func() -> void:
+					var picked := String(follow_menu.get_item_metadata(follow_menu.selected))
+					Game.combat_resolve_improved_trip(true, picked)
+			)
+			take.set_meta("combat_focus_key", "decision:trip:take")
+			trip_buttons.add_child(take)
+			var trip_decline := Button.new()
+			trip_decline.text = String(spec["decline"])
+			trip_decline.pressed.connect(func() -> void: Game.combat_resolve_improved_trip(false))
+			trip_decline.set_meta("combat_focus_key", "decision:trip:decline")
+			trip_buttons.add_child(trip_decline)
+		"trip":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var trip_row := HBoxContainer.new()
+			trip_row.add_theme_constant_override("separation", 6)
+			decision_box.add_child(trip_row)
+			var drop := Button.new()
+			drop.text = String(spec["drop"])
+			drop.pressed.connect(func() -> void: Game.combat_resolve_trip(true))
+			drop.set_meta("combat_focus_key", "decision:trip:drop")
+			trip_row.add_child(drop)
+			var keep := Button.new()
+			keep.text = String(spec["keep"])
+			keep.pressed.connect(func() -> void: Game.combat_resolve_trip(false))
+			keep.set_meta("combat_focus_key", "decision:trip:keep")
+			trip_row.add_child(keep)
+		"bull_rush":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var rush_row := HBoxContainer.new()
+			rush_row.add_theme_constant_override("separation", 6)
+			decision_box.add_child(rush_row)
+			var stay := Button.new()
+			stay.text = String(spec["stay"])
+			stay.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(false))
+			stay.set_meta("combat_focus_key", "decision:bull_rush:stay")
+			rush_row.add_child(stay)
+			var follow := Button.new()
+			follow.text = String(spec["follow"])
+			follow.pressed.connect(func() -> void: Game.combat_resolve_bull_rush(true))
+			follow.set_meta("combat_focus_key", "decision:bull_rush:follow")
+			rush_row.add_child(follow)
 
 
 ## PHB p.97: Improved Unarmed Strike lets the character deal lethal or nonlethal

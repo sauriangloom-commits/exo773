@@ -228,6 +228,21 @@ process's `APPDATA` must point at that same profile, which is what the command
 above does. It removes only that profile's `auto` slot, and it does not click the
 Push 5 ft / Follow buttons.
 
+## Combat information access probe
+
+`--combat-info-probe` (windowed, 1280×720, 100 % and 160 % text) builds a five-enemy
+fixture and drives Tab/Enter/Escape through the viewport. It asserts that a target
+row and a pending Cleave choice which start outside the sidebar are focused,
+revealed and activated by real keys, and that no interactive control is unreachable
+at either scale. Output labels seed state (`fixture:`), arranging or inspecting
+calls (`direct:`) and the behaviour under test (`key:`) separately. Rects, not
+rendered pixels: it is not rendered-readability, human keyboard-only or
+screen-reader evidence.
+
+```bash
+"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path . -- --combat-info-probe
+```
+
 ## Layout and resolution
 
 - Reference viewport: **1280×720**; the window opens at that size and cannot be

@@ -63,6 +63,7 @@ const APP_FLAGS: Array[String] = [
 	"--advancement-probe",
 	"--campaign-list-probe",
 	"--cleave-probe",
+	"--combat-info-probe",
 	"--concentration-probe",
 	"--cover-probe",
 	"--defensive-probe",
@@ -367,6 +368,8 @@ func _ready() -> void:
 		_grapple_probe()
 	if "--keyboard-probe" in args:
 		_keyboard_probe()
+	if "--combat-info-probe" in args:
+		_combat_info_probe()
 	if "--nonlethal-probe" in args:
 		_nonlethal_probe()
 	if "--encounter-end-probe" in args:
@@ -7344,6 +7347,218 @@ func _grapple_probe() -> void:
 	_probe_check(finish_text.contains("any grapple is released"), "the encounter end releases the hold with its reason")
 	_probe_check(e.grapples.is_empty(), "state: no pair survives the encounter end")
 	_probe_finish("grapple")
+
+
+## QA-only (--combat-info-probe): batch 1 of docs/COMBAT_INFO_ACCESS_PLAN.md
+## through real InputEvents at 1280x720, at 100 % and 160 % text.
+##
+## Three kinds of statement are labelled apart in the output:
+## - `fixture:` the seeded state (party, enemies, pending Cleave, window size). The
+##   fixture never edits a combat rule or an outcome.
+## - `direct:` a call made to arrange or inspect state (building the encounter,
+##   forcing the turn, refreshing the screen, reading rects).
+## - `key:` the behaviour under test, driven only by Tab/Enter/Escape pushed
+##   through the viewport. No helper focuses a control or activates it.
+##
+## What it proves: a target row and a pending-decision choice that start outside
+## the sidebar are focused by real Tab presses, revealed by `follow_focus`, and
+## activated by a real Enter. Rects, not rendered pixels: this is input and
+## geometry evidence, not rendered readability, human keyboard-only play or
+## screen-reader evidence.
+func _combat_info_probe() -> void:
+	probe_scenario = "combat_info"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog(120.0)
+	get_window().size = probe_size
+	var original_scale := float(Game.settings.get("text_scale", 1.0))
+	for scale in [1.0, 1.6]:
+		Game.settings["text_scale"] = scale
+		_apply_theme()
+		await _combat_info_case(scale)
+	Game.settings["text_scale"] = original_scale
+	_apply_theme()
+	_probe_finish("combat_info")
+
+
+func _combat_info_case(scale: float) -> void:
+	var label := "%d%%" % int(round(scale * 100.0))
+	Game.reset_to_menu()
+	var started := Game.new_game(["kaelen"], 424242)
+	_probe_check(bool(started.get("ok", false)), "%s fixture: the demo game starts" % label)
+	if not bool(started.get("ok", false)):
+		return
+	# Command-line evidence only: never autosave over a player's slots.
+	Game.training_mode = true
+	var content = Game.content
+	var actor := Character.from_content(content.get_character("kaelen"), content.items)
+	actor.hp = actor.max_hp
+	var enemies: Array = []
+	var enemy_cells: Array = []
+	var adjacent := [Vector2i(2, 4), Vector2i(1, 3), Vector2i(1, 5), Vector2i(2, 3), Vector2i(2, 5)]
+	for i in 5:
+		var zombie := Character.from_content(content.get_monster("zombie"), content.items)
+		zombie.hp = zombie.max_hp
+		enemies.append(zombie)
+		enemy_cells.append(adjacent[i])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261124
+	var e := Encounter.new()
+	e.setup(
+		[actor],
+		enemies,
+		BattleMap.from_rows([
+			"############",
+			"#..........#",
+			"#..........#",
+			"#..........#",
+			"#..........#",
+			"#..........#",
+			"#..........#",
+			"#..........#",
+			"############",
+		], "combat_info_probe"),
+		rng,
+		[Vector2i(1, 4)],
+		enemy_cells,
+		content.spells,
+		"Combat info probe"
+	)
+	e.begin()
+	Game.party = [actor]
+	Game.encounter = e
+	Game.mode = "combat"
+	Game.last_ui_message = ""
+	for i in e.order:
+		if e.combatants[i]["char"] == actor:
+			e.turn_ptr = e.order.find(i)
+			e._begin_turn(e.combatants[i])
+			break
+	_show_combat()
+	for f in 10:
+		await get_tree().process_frame
+	var combat := current_screen as CombatScreen
+	_probe_check(combat != null, "%s fixture: the combat screen is current" % label)
+	if combat == null:
+		return
+	_probe_check(e.is_player_turn(), "%s fixture: the fighter is on turn" % label)
+
+	# 1. A target row below both folds, reached and activated by real keys.
+	var target_rows: Array = []
+	for row in combat.target_box.get_children():
+		if row is HBoxContainer and _probe_button(row, "Attack") != null:
+			target_rows.append(row)
+	_probe_check(target_rows.size() == 5, "%s fixture: five enemy rows exist" % label)
+	if target_rows.size() != 5:
+		return
+	var inspect := _probe_button(target_rows[target_rows.size() - 1], "Inspect")
+	_probe_check(inspect != null, "%s fixture: the last row offers Inspect" % label)
+	if inspect == null:
+		return
+	var sidebar := combat.sidebar_panel
+	_probe_check(
+		not sidebar.get_global_rect().encloses(inspect.get_global_rect()),
+		"%s fixture: the target row starts outside the sidebar viewport" % label,
+	)
+	var target_reached := await _combat_info_tab_until(inspect)
+	_probe_check(target_reached, "%s key: Tab reached the off-screen target row" % label)
+	_probe_check(
+		_combat_info_visible(inspect),
+		"%s key: the focused target row is inside the visible sidebar" % label,
+	)
+	var standards_before := bool(e.turn_state["standard_used"])
+	await _probe_key(KEY_ENTER)
+	for f in 8:
+		await get_tree().process_frame
+	_probe_check(modal != null, "%s key: Enter opened the Inspect panel of that row" % label)
+	_probe_check(
+		bool(e.turn_state["standard_used"]) == standards_before,
+		"%s key: Inspecting spent no action" % label,
+	)
+	if modal != null:
+		await _probe_key(KEY_ESCAPE)
+		for f in 8:
+			await get_tree().process_frame
+	_probe_check(modal == null, "%s key: Escape closed the Inspect panel" % label)
+
+	# 2. A pending-decision choice below its own fold, reached and activated by
+	#    real keys. The pending state is seeded directly; the resolution is not.
+	e.pending_cleave = {
+		"type": "cleave_attack",
+		"actor_index": int(e.entry_for(actor)["index"]),
+		"dropped_index": -1,
+		"weapon": e._primary_weapon(actor),
+		"attack_mode": "",
+		"attack_base": 0,
+		"label": "",
+		"off_turn": false,
+	}
+	combat.refresh_screen()
+	for f in 6:
+		await get_tree().process_frame
+	_probe_check(e.has_pending_decision(), "%s fixture: a Cleave decision is pending" % label)
+	var pick_buttons: Array = []
+	for node in combat.decision_box.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button != null and button.text.begins_with("Attack "):
+			pick_buttons.append(button)
+	_probe_check(pick_buttons.size() == 5, "%s fixture: the decision lists five in-reach targets" % label)
+	if pick_buttons.size() != 5:
+		return
+	var choice: Button = pick_buttons[pick_buttons.size() - 1]
+	_probe_check(
+		not _combat_info_visible(choice),
+		"%s fixture: the last decision choice starts outside its list" % label,
+	)
+	var choice_reached := await _combat_info_tab_until(choice, 160)
+	_probe_check(choice_reached, "%s key: Tab reached the off-screen decision choice" % label)
+	_probe_check(
+		_combat_info_visible(choice),
+		"%s key: the focused decision choice is inside the visible sidebar" % label,
+	)
+	await _probe_key(KEY_ENTER)
+	for f in 14:
+		await get_tree().process_frame
+	_probe_check(not e.has_pending_decision(), "%s key: Enter resolved the pending decision" % label)
+	_probe_check(
+		String(Game.last_ui_message) != "" and not e.has_pending_decision(),
+		"%s key: the resolution reported a message" % label,
+	)
+	if modal != null:
+		await _probe_key(KEY_ESCAPE)
+		for f in 6:
+			await get_tree().process_frame
+
+	# 3. Layout after the reveal work: nothing interactive became unreachable.
+	var report: Array = await _layout_report(current_screen, "combat-info-%s" % label)
+	_probe_check(int(report[0]) == 0, "%s direct: no unreachable interactive control at this scale" % label)
+	print(
+		"COMBAT INFO PROBE %s scale=%s controls=%d failures=%d"
+		% [label, str(scale), int(report[1]), int(report[0])]
+	)
+
+
+## Tabs with real key events until `control` owns the ring. Bounded so a broken
+## order fails as a named check instead of hanging the scenario.
+func _combat_info_tab_until(control: Control, limit := 120) -> bool:
+	for i in limit:
+		if get_viewport().gui_get_focus_owner() == control:
+			return true
+		await _probe_key(KEY_TAB)
+	return get_viewport().gui_get_focus_owner() == control
+
+
+## True when the control is inside every ScrollContainer that clips it. Rects, not
+## rendered pixels.
+func _combat_info_visible(control: Control) -> bool:
+	if control == null or not is_instance_valid(control) or not control.is_visible_in_tree():
+		return false
+	var node := control.get_parent()
+	while node != null:
+		var scroll := node as ScrollContainer
+		if scroll != null and not scroll.get_global_rect().encloses(control.get_global_rect()):
+			return false
+		node = node.get_parent()
+	return true
 
 
 ## QA-only (--keyboard-probe, fixture --demo-unarmed): the battle grid's keyboard
