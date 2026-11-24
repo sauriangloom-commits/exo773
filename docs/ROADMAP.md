@@ -1684,3 +1684,13 @@ key/focus choices should be settled first; this audit authorizes no
 implementation. Readied/delayed actions have a higher tactical ceiling but are a
 subsystem; further grapple still lacks a content payoff; the save shortcut is a
 ride-along.
+
+**Batches decided 2026-11-24 (review of `d9dfb39`).** `docs/COMBAT_INFO_ACCESS_PLAN.md`
+splits Candidate A into two independently acceptable batches. The sidebar and
+pending-decision reveal plus focus stability lands first: it removes a hard stop (an
+invisible focus owner, focus lost to `queue_free`, a decision the player cannot see or
+resolve), while the log batch removes a comprehension gap. The log batch follows and
+pins its engine assumptions — `RichTextLabel` focus mode and indirect-child reveal —
+before any behaviour. The engine is Godot **4.7.2**; the `4.7` in `project.godot:18` is
+only the major.minor feature tag. Review only: **no tests, probes, validators, builds or
+exports were run**.
