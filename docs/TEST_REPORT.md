@@ -6793,3 +6793,13 @@ damage figure. Evidence gaps: no ordinary-play playthrough of the storeroom, no 
 testing of the swapped fight, no rendered review of the room, the new narration or the
 stat block, and no human playtest; no screen reader or pixel check. The evidence is
 automated content, rules-state and probe behaviour. No manual testing is requested.
+
+**Closure (2026-11-24).** Batch A is closed within the evidence above (`4327025` for
+source `7547797` and candidate `2026-11-24_living_opponent_batch_a`). Nothing was rebuilt,
+re-exported, re-hashed or re-run to close it. A repository-wide identifier audit found the
+encounter and its trigger, flag and monster ids used consistently - `storeroom_dead` (49
+occurrences), `storeroom_ambush`, `storeroom_cleared`, `store_looter` - with no
+`store_room`, `storeroom-dead` or capitalisation variants, so no identifier correction was
+needed. A stale line range in `OVERRUN_PLAN.md` (it cites encounters.json lines 2-56, now
+2-60) is line-number drift, not an identifier; it is recorded as maintenance debt in the
+review that follows rather than silently edited.

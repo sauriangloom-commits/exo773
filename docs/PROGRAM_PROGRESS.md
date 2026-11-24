@@ -3783,3 +3783,10 @@ No ordinary-play playthrough, balance testing, rendered review or human playtest
 The evidence is automated content and rules behaviour plus the probes above. Overrun stays
 deferred and the opposed-check helper is unchanged. README remains untouched and no push
 was made.
+
+Closed batch A within the evidence recorded in `4327025` (source `7547797`, candidate
+`2026-11-24_living_opponent_batch_a`). No test, probe, validator, build or export was
+rerun; nothing was rebuilt or re-hashed. Documentation-integrity checks only: git status
+and README hashes, a repository-wide identifier audit (`storeroom_dead` 49 occurrences,
+`storeroom_ambush`, `storeroom_cleared`, `store_looter`; no variant spellings), and reads
+of the cited seams for the review that follows.

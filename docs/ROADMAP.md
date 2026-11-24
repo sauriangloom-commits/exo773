@@ -1850,7 +1850,9 @@ Suite 1017/1017 (10,142 asserts, 78 scripts); both validators PASS; all five pro
 combat layout 32/0 at both scales; candidate `2026-11-24_living_opponent_batch_a`
 (110,905,384 bytes, SHA-256 `8a7925de...092a8c`) accepted from the executable. Batches B
 and C were not started. No playthrough, balance test, rendered review or human playtest
-was done.
+was done. **Batch A is closed on that evidence** (source `7547797`, candidate
+`2026-11-24_living_opponent_batch_a`, records in `4327025`); the closure rebuilt and
+re-ran nothing.
 
 ### Candidate 2 - further grapple (8c/8d)
 

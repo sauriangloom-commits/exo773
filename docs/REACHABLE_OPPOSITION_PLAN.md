@@ -1,7 +1,8 @@
 # Reachable opposition: one living, armed opponent (planning note)
 
-**Status: batch A implemented 2026-11-24 (commit `6ff777a`, tests and their `.uid` in
-`7547797`); batches B and C are not implemented.** This note began as planning only and
+**Status: batch A closed 2026-11-24 within the evidence recorded in `4327025` for source
+`7547797` and candidate `2026-11-24_living_opponent_batch_a` (content `6ff777a`, tests and
+their `.uid` in `7547797`). Batches B and C are not implemented.** This note began as planning only and
 resolves the decisions the 2026-11-24 review in `docs/ROADMAP.md` (commit `8c8b3b8`)
 listed, no more. Section 9 records what the batch actually changed and what was run.
 
@@ -424,3 +425,8 @@ scales, and the executable's hash was identical before and after.
 **Not done, and not claimed.** No ordinary-play playthrough, no balance testing, no
 rendered review of the room or the new narration, and no human playtest. The evidence is
 automated content and rules behaviour plus the probes listed above.
+
+**Closure.** Batch A is closed on that evidence. The closure itself ran nothing: no test,
+probe, validator, build or export was repeated, and the candidate was neither rebuilt nor
+re-hashed. Its records use one identifier set throughout (`storeroom_dead`,
+`storeroom_ambush`, `storeroom_cleared`, `store_looter`), checked across the repository.
