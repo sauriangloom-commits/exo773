@@ -230,11 +230,13 @@ Push 5 ft / Follow buttons.
 
 ## Combat information access probe
 
-`--combat-info-probe` (windowed, 1280×720, 100 % and 160 % text) builds a five-enemy
-fixture and drives Tab/Enter/Escape through the viewport. It asserts that a target
-row and a pending Cleave choice which start outside the sidebar are focused,
-revealed and activated by real keys, and that no interactive control is unreachable
-at either scale. Output labels seed state (`fixture:`), arranging or inspecting
+`--combat-info-probe` (windowed, 1280×720, 100 % and 160 % text, 31 checks per scale)
+builds a five-enemy fixture and drives Tab/Enter/Escape/PageUp/End through the
+viewport. It asserts that a target row and a pending Cleave choice which start outside
+the sidebar are focused, revealed and activated by real keys, that no interactive
+control is unreachable at either scale, and that the combat log can be reached, scrolled
+away from the newest line, held frozen while two lines arrive, counted by its indicator,
+resumed with End, and skipped by Tab while the grid cursor is active. Output labels seed state (`fixture:`), arranging or inspecting
 calls (`direct:`) and the behaviour under test (`key:`) separately. Rects, not
 rendered pixels: it is not rendered-readability, human keyboard-only or
 screen-reader evidence.

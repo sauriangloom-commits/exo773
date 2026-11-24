@@ -3691,3 +3691,18 @@ change), suite 1001/1001, both validators, four existing probes plus the new
 automated input and geometry evidence only: no rendered review, human keyboard-only
 playthrough or screen-reader check exists. README remains untouched and no push was
 made.
+
+**Combat log focus and scrolling landed** in `4de76f1` (batch 2 of
+`docs/COMBAT_INFO_ACCESS_PLAN.md`). The log is one Tab stop that keeps the widget's own
+Up/Down/Page/Home keys, holds its rendered text frozen while the player reads older
+entries, counts the lines that arrive meanwhile in a single hint line and resumes with
+End; the grid disables the stop while its cursor owns the keyboard, and a modal
+swallows End instead of unfreezing the log behind it. Rules, content, schemas, saves
+and the batch-1 reveal path are unchanged. Evidence: 10 failing-first tests (2 red
+before the change, both engine pins), suite 1011/1011, both validators, four existing
+probes plus `--combat-info-probe` at 62 checks (31 per scale), 32 layout controls at
+100 % and 160 %, candidate `2026-11-24_combat_log_focus_batch2` (110,903,688 bytes,
+SHA-256 matched to `BUILD.txt` before and after acceptance). This is automated input
+and geometry evidence only: no rendered review of the log, its focus outline or the
+hint, no human keyboard-only playthrough and no screen-reader check. README remains
+untouched and no push was made.

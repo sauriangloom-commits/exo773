@@ -1,11 +1,12 @@
 # Candidate A plan: keyboard combat information access
 
-**Status: batch 1 closed; batch 2 next.** This revision was the batch decision taken
-while reviewing `d9dfb39`. Batch 1 (sidebar and pending-decision reveal plus focus
-stability) shipped in `bad3a05` and is closed on the `da95ed4` record; its evidence is
-in `docs/TEST_REPORT.md`. Batch 2 (log focus and scrolling) is **not implemented**. The review itself ran no
-tests, probes, validators, builds or exports. Overrun remains deferred, and the
-opposed-check helper is untouched.
+**Status: both batches closed.** This revision was the batch decision taken while
+reviewing `d9dfb39`. Batch 1 (sidebar and pending-decision reveal plus focus stability)
+shipped in `bad3a05` and is closed on the `da95ed4` record. Batch 2 (log focus and
+scrolling) shipped in `4de76f1` and is accepted on candidate
+`2026-11-24_combat_log_focus_batch2`; the evidence for both is in `docs/TEST_REPORT.md`.
+The review itself ran no tests, probes, validators, builds or exports. Overrun remains
+deferred, and the opposed-check helper is untouched.
 
 ## 1. Engine, and the 4.7 versus 4.7.2 wording
 
@@ -318,6 +319,22 @@ pushed through `get_viewport().push_input` (`_push_key`) rather than helper call
 9. **Layout expectation.** Still **32 controls** / 0 failures at 1280x720 at both
    scales; the log is asserted as one separate focus stop, never inside the action
    count.
+
+**Implemented in `4de76f1`.** Items 1-7 and 9 are pinned by
+`tests/test_combat_log_focus.gd`. Item 8's hint states are asserted; its
+"grid rect above the panel is unchanged" is covered by the layout run (32 controls,
+0 failures) rather than by a dedicated rect comparison, and neither state was reviewed
+rendered. Two adjustments, neither of which changes a rule or the contract:
+
+- **End is handled in `CombatScreen._input` before the widget.** The rendered text is a
+  frozen snapshot, so End has to rewrite it before the jump; leaving the key to the
+  widget would scroll within stale text. With `main.modal` set the key is swallowed
+  instead of unfreezing the log behind the panel.
+- **The grid route is asserted forward.** A five-enemy fixture puts its target rows
+  between the first action control and the log, and those rows form their own backwards
+  focus ring, so H2's "Shift+Tab from the first action control" is replaced by a bounded
+  forward Tab walk from the control the grid leaves the player on. The two-enemy focused
+  test still starts at that control.
 
 ### 7.3 Real-key probe for both batches
 

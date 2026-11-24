@@ -179,8 +179,8 @@ func _seed_cleave(dropped_index := -1) -> void:
 	combat.refresh_screen()
 
 
-## ENGINE ASSUMPTION 1: the log is one Tab stop. Today `RichTextLabel` keeps
-## `FOCUS_ACCESSIBILITY`, so this fails at the traversal step.
+## ENGINE ASSUMPTION 1: the log is one Tab stop. Before the batch the widget kept
+## `FOCUS_ACCESSIBILITY`, so this failed at the traversal step.
 func test_the_log_is_a_tab_stop_and_page_up_scrolls_it() -> void:
 	await _setup_fixture()
 	assert_true(_bar().max_value > _bar().page, "fixture: the log overflows its visible height")
@@ -336,8 +336,8 @@ func test_a_modal_blocks_end_and_leaves_the_snapshot_alone() -> void:
 	main.free()
 
 
-## The accepted grid route is unchanged, and the log is one Shift+Tab away once
-## targeting is cancelled.
+## The accepted grid route is unchanged, and forward Tab from the control the grid
+## leaves the player on reaches the log.
 func test_the_route_from_grid_targeting_to_the_log() -> void:
 	await _setup_fixture()
 	combat._set_mode("attack", "Click an enemy within reach or range.")

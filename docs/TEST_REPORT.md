@@ -6638,3 +6638,93 @@ rendered review of the reveal or the focus outline, no human keyboard-only
 playthrough and no screen-reader check; the new probe checks input and rects, not
 pixels, and the grid cursor path is covered by `--keyboard-probe`, not by the new
 probe. No screenshot was taken and no manual testing is requested.
+
+## Combat log focus and scrolling (batch 2)
+
+**Scope.** Batch 2 of `docs/COMBAT_INFO_ACCESS_PLAN.md`: the combat log becomes one
+focus stop, keeps the widget's own Up/Down/Page/Home keys, freezes its rendered text
+while the player reads older entries, counts the lines that arrive meanwhile, and
+resumes with End. Implemented in `4de76f1`. No rule, content, schema, save or existing
+focus path changed.
+
+**Failing first.** `tests/test_combat_log_focus.gd` (10 tests) was written and run
+against the batch-1 tree before any implementation: **2/10 tests passing, 24/41
+asserts, exit 1** (`builds/qa/combat_info_batch2_red/red_focused_tests.log`). The two
+passing tests are the engine pins, which is the point of running them first:
+
+- `test_a_focused_log_owns_only_its_scroll_keys` holds in 4.7.2: a focused
+  `RichTextLabel` consumes Up/Down/PageUp/PageDown/Home and none of
+  Enter/Space/Escape/Tab, and Enter/Space spend no standard action or movement.
+- The grid-disabled case fails red on `focus_mode`: the widget is still `3`
+  (`FOCUS_ACCESSIBILITY`) instead of `0`, because nothing sets the mode yet.
+
+The red run also showed the engine refusing `grab_focus()` for a
+`FOCUS_ACCESSIBILITY` control unless a screen reader is active, so the fixture sets
+`FOCUS_ALL` (labelled) before it can test key ownership at all; after the batch that
+line is a no-op. No engine assumption contradicted the plan. The first attempts
+referenced a member that did not exist yet; those were replaced with dynamic lookups so
+a missing indicator fails as behaviour, and the red log was retaken. Fixture, import
+and parse errors are not part of the evidence.
+
+**Green.** **10/10 tests, 42 asserts, exit 0**
+(`builds/qa/combat_info_batch2_red/green_focused_tests.log`). The tests pin: Tab from
+the actions reaches the log and PageUp leaves the newest line; Up/Down/Page/Home move
+the log's own bar, Enter/Space spend nothing, Escape is not consumed and Tab leaves;
+the grid sets `FOCUS_NONE` while its cursor is active, Tab still lands on the first
+sidebar control, and forward Tab from there reaches the log; scroll-up then three
+appended lines plus a refresh keeps the text byte-identical and the offset unchanged
+with `3 new` in the hint; End rewrites the snapshot, returns to the bottom, restores the
+resting hint and following continues for the next line; a pending decision and an enemy
+turn change while frozen keep snapshot, offset and ring, with the decision reachable by
+Tab and End working off turn; `main.modal` makes End swallow without rewriting or
+unfreezing; `_layout_interactive` still refuses the log.
+
+**Suite.** **1011/1011 tests, 10,057 asserts, 77 scripts, exit 0**
+(`builds/qa/combat_log_focus_batch2/full_suite.log`). Existing notices are separate and
+unchanged: one orphan in `test_combat_keyboard_targeting.gd`'s modal case, the
+deprecation notices and the RID/ObjectDB leak warnings. None is counted as a pass or as
+a new failure.
+
+**Validators.** `--validate-campaigns` PASS. `--validate-diagnostics` PASS with the same
+eight accepted authored class-progression inconsistencies.
+
+**Probes (source).** `--keyboard-probe` 31 PASS; `--grapple-probe` 160 PASS;
+`--level-up-probe` 349 at 1.00 and 1.60; `--advancement-probe` PASS;
+`--combat-info-probe` **62 checks PASS (31 per scale)**, exit 0 at both scales. Combat
+layout `--demo-combat --layout-probe --layout-scenario=combat`: **32 controls, 0
+failures** at 1280x720 at 100 % and 160 %.
+
+**Probe extension.** `--combat-info-probe` now also seeds 40 filler lines
+(`fixture:`), Tabs from the controls to the log, presses PageUp off the newest line,
+appends two lines with a `direct:` refresh and asserts the frozen text and offset and
+the `2 new` hint, presses Enter and asserts no action was spent, presses End and
+asserts the newest line is rendered and the resting hint returned, then enters
+targeting, asserts `FOCUS_NONE`, Tab landing on the first sidebar control, and a bounded
+forward walk back to the log. Two adjustments are geometry, not rules: the five-enemy
+fixture's target rows form their own backwards focus ring, so the route is asserted
+forward from the control the grid leaves the player on; and the log's following
+position is recorded from the widget after each write instead of inferred from
+`max_value - page`, because `RichTextLabel` parks that position at the start of the last
+line and reports a zero page here. Seeded state, arranging calls and real input stay
+labelled separately.
+
+**Candidate.** `2026-11-24_combat_log_focus_batch2`, source
+`4de76f1314c44125f6fd0f70eb378a9c4e5c5dee`, 110,903,688 bytes, SHA-256
+`caf129b85b5ee2de71e431a79f39811e91f784db3c5ff43558aeafd361bfad42`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`,
+`untracked_files=0`. Unlike batch 1, the new test's generated
+`tests/test_combat_log_focus.gd.uid` was committed with the implementation, so the
+export's import pass left no untracked file. From that executable: both validators PASS;
+keyboard 31, grapple 160, level-up 349, advancement 228 and combat-info 62 checks PASS;
+both layout scales 32/0. The executable hash was identical before and after acceptance.
+
+**Classification.** Confirmed product defects: none new. Batch 2 is closed. Deferred:
+overrun (`docs/OVERRUN_PLAN.md` §18), readied/delayed actions, further grapple and the
+save shortcut. Maintenance debt: the batch-1 suite orphan, the deprecation/leak notices
+and the probe-heavy `main.gd` remain. Evidence gaps: no rendered review of the log, its
+focus outline or the hint at either scale; no human keyboard-only playthrough and no
+screen-reader check. The tests and probes check input, text equality and rects, not
+pixels, and plan §7.2 item 8's "grid rect unchanged" is covered by the layout run
+rather than by a dedicated rect comparison. No screenshot was taken and no manual
+testing is requested.

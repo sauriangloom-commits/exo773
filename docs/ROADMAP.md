@@ -1700,5 +1700,14 @@ reveal plus focus stability shipped as scoped: follow focus on the outer sidebar
 both inner lists, stable focus keys, rebuild signatures that include every written
 value including disabled flags, focus restoration after layout, and decision seating
 only when no usable owner remains. Suite 1001/1001, layout 32 controls at both scales,
-probe 38 checks, candidate `2026-11-24_combat_info_batch1`. Batch 2 (combat log focus
-and scrolling) remains unimplemented, as does overrun.
+probe 38 checks, candidate `2026-11-24_combat_info_batch1`.
+
+**Batch 2 implemented 2026-11-24 in `4de76f1`, accepted on candidate
+`2026-11-24_combat_log_focus_batch2`.** The combat log is one focus stop with the
+widget's own Up/Down/Page/Home keys, freezes its rendered text when the reader leaves
+the newest line, counts the lines that arrive while frozen and resumes with End; the
+grid disables the stop while its cursor is active, so the accepted targeting path keeps
+its focus owner. Suite 1011/1011, both validators, four existing probes plus the
+extended `--combat-info-probe` (62 checks, 31 per scale), layout 32 controls at both
+scales. Candidate 110,903,688 bytes, SHA-256 matched to `BUILD.txt` before and after
+acceptance. Overrun remains deferred.
