@@ -1695,7 +1695,7 @@ before any behaviour. The engine is Godot **4.7.2**; the `4.7` in `project.godot
 only the major.minor feature tag. Review only: **no tests, probes, validators, builds or
 exports were run**.
 
-**Batch 1 implemented 2026-11-24 in `bad3a05`.** The sidebar and pending-decision
+**Batch 1 implemented 2026-11-24 in `bad3a05`, closed on the `da95ed4` record.** The sidebar and pending-decision
 reveal plus focus stability shipped as scoped: follow focus on the outer sidebar and
 both inner lists, stable focus keys, rebuild signatures that include every written
 value including disabled flags, focus restoration after layout, and decision seating

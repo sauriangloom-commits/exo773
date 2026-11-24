@@ -1,9 +1,9 @@
 # Candidate A plan: keyboard combat information access
 
-**Status: batch 1 implemented; batch 2 still planned.** This revision was the batch
-decision taken while reviewing `d9dfb39`. Batch 1 (sidebar and pending-decision reveal
-plus focus stability) shipped in `bad3a05`; its evidence is in `docs/TEST_REPORT.md`.
-Batch 2 (log focus and scrolling) is **not implemented**. The review itself ran no
+**Status: batch 1 closed; batch 2 next.** This revision was the batch decision taken
+while reviewing `d9dfb39`. Batch 1 (sidebar and pending-decision reveal plus focus
+stability) shipped in `bad3a05` and is closed on the `da95ed4` record; its evidence is
+in `docs/TEST_REPORT.md`. Batch 2 (log focus and scrolling) is **not implemented**. The review itself ran no
 tests, probes, validators, builds or exports. Overrun remains deferred, and the
 opposed-check helper is untouched.
 

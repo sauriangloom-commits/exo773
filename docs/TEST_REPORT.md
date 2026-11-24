@@ -6551,7 +6551,11 @@ grid path was not exercised here; the 900 result is supplementary. Keep the old
 720 failure logs and screenshots. No product UI, content, schema, save,
 progression, award or XP change was made; no overrun work, backup or push.
 
-## Combat sidebar reveal and focus stability (2026-11-24)
+## Combat sidebar reveal and focus stability (2026-11-24) - closed
+
+**Closed 2026-11-24** on the evidence in `da95ed4` for source
+`bad3a05c4488a4b4c5397d740b6ae2d1889375d4` and candidate
+`2026-11-24_combat_info_batch1`. Nothing was rebuilt or re-checked for the closure.
 
 Batch 1 of `docs/COMBAT_INFO_ACCESS_PLAN.md`, implemented in `bad3a05`. It makes the
 sidebar's rebuilt controls reachable and stable for a keyboard player: follow focus on
@@ -6610,6 +6614,19 @@ layout run above and is unchanged.
 files. From that executable: both validators PASS; keyboard 31, grapple 160, level-up
 349, advancement 228 and combat-info 38 checks PASS; both layout scales 32/0. The
 executable hash was identical before and after acceptance.
+
+**Candidate record reconciliation (documentation-only correction).** `BUILD.txt`
+records `untracked_files=0`. That was true at the source commit and when the export
+began, but not once the executable existed: the export's own import pass wrote the
+generated `tests/test_combat_focus_reveal.gd.uid` at 15:55:07.018 and
+`.godot/uid_cache.bin` at 15:55:07.353, then the executable at 15:55:13.889.
+`BUILD.txt` was written at 15:55:24 from the earlier status without re-reading it, so
+the field is a stale snapshot rather than a wrong source binding. The packed source
+still corresponds to `bad3a05`: `export_presets.cfg:11` excludes `tests/*`, and the
+executable contains zero occurrences of `test_combat_focus_reveal` and zero of the
+file's UID `uid://bk8y47a5max7v` in its 110,900,648 bytes. The `.uid` was committed
+afterwards in `46f2d77`; that commit adds one generated metadata line and changes no
+packed resource. No rebuild was needed or done.
 
 **Classification.** Confirmed product defects: none new, and this batch found none.
 Deferred: the combat log's keyboard focus and scrolling (batch 2), overrun (still
