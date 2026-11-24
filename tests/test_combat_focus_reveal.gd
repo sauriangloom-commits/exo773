@@ -374,13 +374,13 @@ func test_modal_and_off_turn_guards_leave_focus_alone() -> void:
 	assert_eq(get_viewport().gui_get_focus_owner(), inspect, "an off-turn refresh keeps the owner")
 
 
-## The batch adds no control of any kind: the action grid keeps its 19 buttons, and
-## each rebuilt subtree keeps exactly the buttons it already had. The 32 action
-## control layout number for the demo fixture is checked by `--layout-probe` at both
-## scales, not reconstructed here.
+## The batch adds one control of its own - the Aid button (PHB p.154) - and nothing
+## else: the action grid keeps its 20 buttons, and each rebuilt subtree keeps
+## exactly the buttons it already had. The 33 action control layout number for the
+## demo fixture is checked by `--layout-probe` at both scales, not reconstructed here.
 func test_batch_adds_no_control() -> void:
 	await _setup_fixture(5)
-	assert_eq(combat.button_box.get_child_count(), 19, "the action grid keeps its 19 buttons")
+	assert_eq(combat.button_box.get_child_count(), 20, "the action grid keeps its 20 buttons")
 	var rows := _enemy_rows()
 	assert_eq(rows.size(), 5, "five enemy rows")
 	for row in rows:

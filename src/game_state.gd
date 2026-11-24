@@ -1863,6 +1863,50 @@ func combat_trip(target_index: int, use_weapon := false) -> Dictionary:
 	return result
 
 
+## Aid Another (PHB p.154): the action is declared against a foe, then the
+## helper chooses an engaged ally and the granted half through decisions.
+func combat_aid(foe_index: int) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.aid_active(foe_index)
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
+func combat_aid_friend(friend_index: int) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.resolve_aid_friend(friend_index)
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
+func combat_resolve_aid(kind: String) -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.resolve_aid_choice(kind)
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
+func combat_cancel_aid() -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.cancel_aid()
+	last_ui_message = String(result.get("message", ""))
+	emit_signal("state_changed")
+	return result
+
+
 func combat_resolve_trip(release_weapon: bool) -> Dictionary:
 	if encounter == null or mode != "combat":
 		return {"ok": false, "message": "No combat is running."}

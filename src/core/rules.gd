@@ -291,6 +291,8 @@ static func armor_class(ch: Character, opts: Dictionary = {}) -> int:
 	# PHB p.156: a pinned creature takes -4 AC from opponents other than the one
 	# pinning it. The encounter decides who that is; 0 means no penalty.
 	ac -= maxi(0, int(opts.get("pinned_penalty", 0)))
+	# PHB p.154: +2 AC against the aided-against opponent's next attack.
+	ac += maxi(0, int(opts.get("aid_ac_bonus", 0)))
 	return ac
 
 
@@ -313,6 +315,8 @@ static func touch_ac(ch: Character, opts: Dictionary = {}) -> int:
 		ac += defensive_dodge_bonus(ch)
 	# The printed pin penalty applies to touch AC as well.
 	ac -= maxi(0, int(opts.get("pinned_penalty", 0)))
+	# Aid Another's +2 AC is not a dodge or armor bonus and applies to touch AC too.
+	ac += maxi(0, int(opts.get("aid_ac_bonus", 0)))
 	return ac
 
 
@@ -721,9 +725,15 @@ static func attack(
 	# `bonus_base`, so a Cleave follow-up evaluates its own new target.
 	if melee:
 		attack_bonus_value += int(opts.get("flank_bonus", 0))
+	# PHB p.154: a successful Aid Another gives +2 on the friend's next attack roll
+	# against that opponent. Not melee-gated because the bonus is to the friend's
+	# next attack, which may be ranged; the encounter binds it to one foe and roll.
+	var aid_bonus := maxi(0, int(opts.get("aid_bonus", 0)))
+	attack_bonus_value += aid_bonus
 	var flat_footed := bool(opts.get("flat_footed", false))
 	var deny_dex := bool(opts.get("deny_dex", false))
 	var pinned_penalty := maxi(0, int(opts.get("pinned_penalty", 0)))
+	var aid_ac := maxi(0, int(opts.get("aid_ac_bonus", 0)))
 	var target_ac := (
 		touch_ac(
 			target,
@@ -732,6 +742,7 @@ static func attack(
 				"deny_dex": deny_dex,
 				"pinned_penalty": pinned_penalty,
 				"attack_mode": attack_mode,
+				"aid_ac_bonus": aid_ac,
 			}
 		)
 		if bool(opts.get("touch", false))
@@ -742,6 +753,7 @@ static func attack(
 				"deny_dex": deny_dex,
 				"pinned_penalty": pinned_penalty,
 				"attack_mode": attack_mode,
+				"aid_ac_bonus": aid_ac,
 			}
 		)
 	)
@@ -783,6 +795,8 @@ static func attack(
 		"into_melee_penalty": int(opts.get("into_melee_penalty", 0)),
 		"cover": cover_bonus,
 		"fight_defensively_penalty": int(opts.get("fight_defensively_penalty", 0)),
+		"aid_bonus": aid_bonus,
+		"aid_ac_bonus": aid_ac,
 		"details": "",
 	}
 	if not hit:

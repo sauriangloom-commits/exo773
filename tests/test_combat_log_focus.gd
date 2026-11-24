@@ -358,11 +358,11 @@ func test_the_route_from_grid_targeting_to_the_log() -> void:
 	)
 
 
-## The batch adds one focusable element, not an action control: the layout
-## predicate still refuses the log, and the action grid keeps its 19 buttons.
+## The batch adds one focusable action control, the Aid button: the layout
+## predicate still refuses the log, and the action grid keeps its 20 buttons.
 func test_the_log_is_not_an_action_control() -> void:
 	await _setup_fixture()
-	assert_eq(combat.button_box.get_child_count(), 19, "the action grid keeps its 19 buttons")
+	assert_eq(combat.button_box.get_child_count(), 20, "the action grid keeps its 20 buttons")
 	var main: Control = load("res://scenes/Main.tscn").instantiate()
 	assert_false(bool(main.call("_layout_interactive", combat.log_label)), "the log is not counted as an action control")
 	main.free()

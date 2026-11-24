@@ -54,6 +54,14 @@ var pending_cleave: Dictionary = {}
 # A Bull rush paused so the rusher can choose whether to move with the defender.
 # Every roll is already final; resuming never rerolls or spends another action.
 var pending_bull_rush: Dictionary = {}
+# Aid Another's choice between the +2 attack and the +2 AC (PHB p.154). The
+# check is already rolled when this is open; resuming never rerolls.
+var pending_aid: Dictionary = {}
+# Granted Aid Another bonuses, one entry per helper so similar bonuses stack:
+# friend index -> [{foe, amount, helper}]. They last until the start of the
+# helper's next turn and are consumed by one attack roll.
+var aid_attack: Dictionary = {}
+var aid_ac: Dictionary = {}
 # Grapple pairs, player-initiated only (PHB pp.155-157). Each entry is
 # {holder, held} by combatant index. The grid holds one creature per square, so
 # the holder keeps its own square (docs/GRAPPLE_PLAN.md adaptation A); the pair is
@@ -232,6 +240,7 @@ func _begin_turn(entry: Dictionary) -> void:
 		pending_trip.clear()
 		pending_cleave.clear()
 		pending_bull_rush.clear()
+		pending_aid.clear()
 		_log("  An unresolved combat decision is discarded at the start of the turn.")
 	var index := int(entry["index"])
 	# PHB p.156: a pin lasts 1 round. It ends at the start of the pinner's next
@@ -245,6 +254,7 @@ func _begin_turn(entry: Dictionary) -> void:
 				"  %s's pin ends; %s is no longer pinned (1 round, PHB p.156)."
 				% [ch.display_name, (combatants[held_index]["char"] as Character).display_name]
 			)
+	_expire_aid(index)
 	# PHB p.133: the state lasts until the combatant's first turn, so it is
 	# cleared here for every combatant whose turn begins, including those that
 	# are skipped because they cannot act.
@@ -673,6 +683,408 @@ func _pending_guard() -> Dictionary:
 func _fail(message: String) -> Dictionary:
 	last_message = message
 	return {"ok": false, "message": message}
+
+
+## Aid Another (PHB p.154): in melee, a helper in position to attack an opponent
+## engaging a friend spends a standard action and rolls an attack against AC 10.
+## A success gives the friend +2 on its next attack roll against that opponent or
+## +2 AC against that opponent's next attack, until the beginning of the helper's
+## next turn; similar bonuses stack. Adaptations (docs/AID_ANOTHER_PLAN.md): the
+## check is an assist, not an attack, so it provokes no opportunity attack and
+## needs a melee weapon in hand; a helpless ally is offered only +2 AC; monsters
+## never aid.
+func aid_available() -> bool:
+	var entry := active_entry()
+	if entry.is_empty() or not is_player_turn():
+		return false
+	if bool(turn_state["standard_used"]) or has_pending_decision():
+		return false
+	if not _aid_helper_ready(entry):
+		return false
+	for other in combatants:
+		if int(other["team"]) != TEAM_ENEMY:
+			continue
+		if not aid_friends(int(other["index"])).is_empty():
+			return true
+	return false
+
+
+func _aid_helper_ready(entry: Dictionary) -> bool:
+	var ch: Character = entry["char"]
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return false
+	if ch.has_effect("total_defense"):
+		return false
+	var index := int(entry["index"])
+	if is_grappled(index) or is_pinned(index):
+		return false
+	var weapon := _aid_weapon(ch)
+	return not weapon.is_empty()
+
+
+## The weapon the check is made with. Empty when the helper has no melee weapon
+## in hand: adaptation A7 keeps the assist inside the modelled weapon path.
+func _aid_weapon(ch: Character) -> Dictionary:
+	var weapon: Dictionary = ch.equipment.get("weapon", {})
+	if weapon.is_empty():
+		return {}
+	for mode in Rules.weapon_attack_modes(weapon):
+		if not Rules.is_ranged_attack(weapon, mode):
+			return weapon
+	return {}
+
+
+## Allies that may be aided against this foe: living party members other than the
+## helper, engaged with the foe (either side threatens the other, or they are
+## grappling). A helpless ally is still listed; the check offers it only +2 AC.
+func aid_friends(foe_index: int) -> Array:
+	var entry := active_entry()
+	if entry.is_empty():
+		return []
+	var helper_index := int(entry["index"])
+	var out: Array = []
+	for other in combatants:
+		var index := int(other["index"])
+		if index == helper_index or int(other["team"]) != TEAM_PARTY:
+			continue
+		var ch: Character = other["char"]
+		if ch.has_condition("dead"):
+			continue
+		if not _aid_engaged(index, foe_index):
+			continue
+		out.append({
+			"index": index,
+			"text": "Aid %s" % ch.display_name,
+			"can_act": ch.can_act(),
+		})
+	return out
+
+
+func _aid_engaged(friend_index: int, foe_index: int) -> bool:
+	if friend_index < 0 or friend_index >= combatants.size():
+		return false
+	if foe_index < 0 or foe_index >= combatants.size():
+		return false
+	var friend_entry: Dictionary = combatants[friend_index]
+	var foe_entry: Dictionary = combatants[foe_index]
+	if _threatens_cell(friend_entry["char"], friend_entry["cell"], foe_entry["cell"]):
+		return true
+	if _threatens_cell(foe_entry["char"], foe_entry["cell"], friend_entry["cell"]):
+		return true
+	return grapple_partner(friend_index) == foe_index
+
+
+func _aid_foe_block(helper_index: int, foe_index: int) -> String:
+	if foe_index < 0 or foe_index >= combatants.size():
+		return "Invalid target."
+	var foe_entry: Dictionary = combatants[foe_index]
+	if int(foe_entry["team"]) != TEAM_ENEMY:
+		return "You can only aid an ally against an enemy."
+	var foe: Character = foe_entry["char"]
+	if foe.has_condition("dead"):
+		return "%s is already dead." % foe.display_name
+	if Rules.is_helpless(foe) or not foe.can_act():
+		return "%s cannot attack and cannot be distracted (PHB p.154)." % foe.display_name
+	if foe.has_condition("cowering"):
+		return "%s is cowering and cannot attack (PHB p.159)." % foe.display_name
+	var helper_entry: Dictionary = combatants[helper_index]
+	var helper: Character = helper_entry["char"]
+	var reach := maxi(helper.reach_ft, BattleMap.CELL_FT)
+	if map.distance_ft(helper_entry["cell"], foe_entry["cell"]) > reach:
+		return "%s is out of reach; move within %d ft. first." % [foe.display_name, reach]
+	return ""
+
+
+func aid_active(foe_index: int) -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if not is_player_turn():
+		return _fail("It is not your turn.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot aid another." % ch.display_name)
+	if ch.has_effect("total_defense"):
+		return _fail("%s is using total defense and cannot aid (PHB p.143)." % ch.display_name)
+	var helper_index := int(entry["index"])
+	if is_grappled(helper_index) or is_pinned(helper_index):
+		return _fail("%s is grappling and cannot aid another." % ch.display_name)
+	if _aid_weapon(ch).is_empty():
+		return _fail("%s needs a melee weapon in hand to aid another." % ch.display_name)
+	var block := _aid_foe_block(helper_index, foe_index)
+	if block != "":
+		return _fail(block)
+	var friends := aid_friends(foe_index)
+	if friends.is_empty():
+		return _fail("No ally is engaged with that opponent in melee.")
+	if friends.size() == 1:
+		return _aid_roll(helper_index, foe_index, int(friends[0]["index"]))
+	pending_aid = {"stage": "friend", "helper": helper_index, "foe": foe_index}
+	var foe_name := String((combatants[foe_index]["char"] as Character).display_name)
+	last_message = "Choose the ally to aid against %s." % foe_name
+	_log("Aid Another: %s distracts %s; choose an ally (PHB p.154)." % [ch.display_name, foe_name])
+	_changed()
+	return {"ok": true, "pending": "aid_friend", "friends": friends, "message": last_message}
+
+
+func resolve_aid_friend(friend_index: int) -> Dictionary:
+	if String(pending_aid.get("stage", "")) != "friend":
+		return _fail("No aid is waiting for an ally choice.")
+	var helper_index := int(pending_aid.get("helper", -1))
+	var foe_index := int(pending_aid.get("foe", -1))
+	var legal := false
+	for friend in aid_friends(foe_index):
+		if int(friend["index"]) == friend_index:
+			legal = true
+			break
+	if not legal:
+		return _fail("That ally is not engaged with the opponent.")
+	return _aid_roll(helper_index, foe_index, friend_index)
+
+
+func _aid_roll(helper_index: int, foe_index: int, friend_index: int) -> Dictionary:
+	var entry: Dictionary = combatants[helper_index]
+	var helper: Character = entry["char"]
+	if not _aid_helper_ready(entry) or bool(turn_state["standard_used"]):
+		pending_aid.clear()
+		return _fail("%s can no longer aid another." % helper.display_name)
+	var foe: Character = combatants[foe_index]["char"]
+	var friend: Character = combatants[friend_index]["char"]
+	var weapon := _aid_weapon(helper)
+	var distance := map.distance_ft(entry["cell"], combatants[foe_index]["cell"])
+	# PHB p.154: "You make an attack roll against AC 10." The helper's own melee
+	# attack bonus is used; Power Attack and Combat Expertise are not offered on
+	# the check, so no trade is applied here.
+	var bonus := Rules.attack_bonus(helper, weapon, distance, "melee")
+	var roll := Dice.d20(rng)
+	var total := roll + bonus
+	var success := roll == 20 or (total >= 10 and roll != 1)
+	turn_state["standard_used"] = true
+	_log(
+		"Aid Another: %s rolls %d %+d = %d against AC 10 (PHB p.154)."
+		% [helper.display_name, roll, bonus, total]
+	)
+	if not success:
+		pending_aid.clear()
+		_log("  The aid fails; %s is not distracted. The standard action is spent." % foe.display_name)
+		last_message = "Aid Another fails (PHB p.154)."
+		_after_action(helper)
+		_changed()
+		return {
+			"ok": true,
+			"success": false,
+			"roll": roll,
+			"bonus": bonus,
+			"total": total,
+			"message": last_message,
+		}
+	if not friend.can_act() or Rules.is_helpless(friend):
+		_grant_aid("defense", helper_index, friend_index, foe_index)
+		pending_aid.clear()
+		_log(
+			(
+				"  %s cannot attack this round, so only the +2 AC is offered "
+				+ "(PHB p.154)."
+			)
+			% friend.display_name
+		)
+		last_message = "%s gains +2 AC against %s." % [friend.display_name, foe.display_name]
+		_after_action(helper)
+		_changed()
+		return {
+			"ok": true,
+			"success": true,
+			"pending": "",
+			"granted": "defense",
+			"roll": roll,
+			"bonus": bonus,
+			"total": total,
+			"message": last_message,
+		}
+	pending_aid = {
+		"stage": "bonus",
+		"helper": helper_index,
+		"friend": friend_index,
+		"foe": foe_index,
+		"roll": roll,
+		"bonus": bonus,
+		"total": total,
+	}
+	last_message = "The aid succeeds: choose the +2 attack or the +2 AC."
+	_changed()
+	return {
+		"ok": true,
+		"success": true,
+		"pending": "aid_bonus",
+		"roll": roll,
+		"bonus": bonus,
+		"total": total,
+		"message": last_message,
+	}
+
+
+func resolve_aid_choice(kind: String) -> Dictionary:
+	if String(pending_aid.get("stage", "")) != "bonus":
+		return _fail("No aid is waiting for a bonus choice.")
+	if kind != "attack" and kind != "defense":
+		return _fail("Choose the +2 attack or the +2 AC.")
+	var helper_index := int(pending_aid.get("helper", -1))
+	var friend_index := int(pending_aid.get("friend", -1))
+	var foe_index := int(pending_aid.get("foe", -1))
+	for index in [helper_index, friend_index, foe_index]:
+		if index < 0 or index >= combatants.size():
+			pending_aid.clear()
+			return _fail("The aid's participants are no longer in the fight.")
+	var friend: Character = combatants[friend_index]["char"]
+	if friend.has_condition("dead"):
+		pending_aid.clear()
+		return _fail("%s has fallen; the aid is void." % friend.display_name)
+	if kind == "attack" and (not friend.can_act() or Rules.is_helpless(friend)):
+		return _fail("%s cannot attack this round; choose the +2 AC." % friend.display_name)
+	_grant_aid(kind, helper_index, friend_index, foe_index)
+	pending_aid.clear()
+	last_message = "%s gains +2 %s against %s." % [
+		friend.display_name, "on the next attack" if kind == "attack" else "AC",
+		String((combatants[foe_index]["char"] as Character).display_name),
+	]
+	_after_action(combatants[helper_index]["char"])
+	_changed()
+	return {"ok": true, "granted": kind, "message": last_message}
+
+
+func cancel_aid() -> Dictionary:
+	if String(pending_aid.get("stage", "")) != "friend":
+		return _fail("Only the ally choice can be cancelled.")
+	pending_aid.clear()
+	last_message = "Aid Another cancelled."
+	_changed()
+	return {"ok": true, "message": last_message}
+
+
+func _grant_aid(kind: String, helper_index: int, friend_index: int, foe_index: int) -> void:
+	var bucket := aid_attack if kind == "attack" else aid_ac
+	var rows: Array = bucket.get(friend_index, [])
+	rows.append({"foe": foe_index, "amount": 2, "helper": helper_index})
+	bucket[friend_index] = rows
+	var helper: Character = combatants[helper_index]["char"]
+	var friend: Character = combatants[friend_index]["char"]
+	var foe: Character = combatants[foe_index]["char"]
+	_log(
+		"  %s gains +2 %s against %s until the start of %s's next turn (PHB p.154)."
+		% [
+			friend.display_name,
+			"on the next attack roll" if kind == "attack" else "AC",
+			foe.display_name,
+			helper.display_name,
+		]
+	)
+
+
+func _aid_attack_bonus(attacker_index: int, target_index: int) -> int:
+	var total := 0
+	for row in aid_attack.get(attacker_index, []):
+		if int(row["foe"]) == target_index:
+			total += int(row["amount"])
+	return total
+
+
+func _aid_ac_bonus(defender_index: int, attacker_index: int) -> int:
+	var total := 0
+	for row in aid_ac.get(defender_index, []):
+		if int(row["foe"]) == attacker_index:
+			total += int(row["amount"])
+	return total
+
+
+## One attack roll consumes every stacked grant for that (attacker, target) pair,
+## whether it hits or misses.
+func _consume_aid(attacker_index: int, target_index: int) -> void:
+	_remove_aid_rows(aid_attack, attacker_index, "foe", target_index)
+	_remove_aid_rows(aid_ac, target_index, "foe", attacker_index)
+
+
+func _remove_aid_rows(bucket: Dictionary, key: int, field: String, value: int) -> int:
+	if not bucket.has(key):
+		return 0
+	var rows: Array = bucket[key]
+	var kept: Array = []
+	var removed := 0
+	for row in rows:
+		if int(row[field]) == value:
+			removed += 1
+		else:
+			kept.append(row)
+	if kept.is_empty():
+		bucket.erase(key)
+	else:
+		bucket[key] = kept
+	return removed
+
+
+## PHB p.154: the grant lasts "as long as that attack comes before the beginning
+## of your next turn". The start of the helper's turn ends it, whether or not the
+## helper can still act.
+func _expire_aid(helper_index: int) -> void:
+	var removed := _remove_aid_rows_by(aid_attack, "helper", helper_index)
+	removed += _remove_aid_rows_by(aid_ac, "helper", helper_index)
+	if removed > 0:
+		var helper: Character = combatants[helper_index]["char"]
+		_log("  Aid Another expires at the start of %s's turn (PHB p.154)." % helper.display_name)
+
+
+func _remove_aid_rows_by(bucket: Dictionary, field: String, value: int) -> int:
+	var removed := 0
+	for key in bucket.keys():
+		var kept: Array = []
+		for row in bucket[key]:
+			if int(row[field]) == value:
+				removed += 1
+			else:
+				kept.append(row)
+		if kept.is_empty():
+			bucket.erase(key)
+		else:
+			bucket[key] = kept
+	return removed
+
+
+func _prune_aid() -> void:
+	for bucket in [aid_attack, aid_ac]:
+		for key in bucket.keys():
+			if key < 0 or key >= combatants.size() or (bucket[key][0] as Dictionary).is_empty():
+				bucket.erase(key)
+				continue
+			var kept: Array = []
+			for row in bucket[key]:
+				var foe_index := int(row["foe"])
+				if foe_index < 0 or foe_index >= combatants.size():
+					continue
+				var friend: Character = combatants[key]["char"]
+				var foe: Character = combatants[foe_index]["char"]
+				if friend.has_condition("dead") or foe.has_condition("dead"):
+					continue
+				kept.append(row)
+			if kept.is_empty():
+				bucket.erase(key)
+			else:
+				bucket[key] = kept
+	if not pending_aid.is_empty():
+		var friend_index := int(pending_aid.get("friend", -1))
+		var foe_index := int(pending_aid.get("foe", -1))
+		if foe_index < 0 or foe_index >= combatants.size():
+			pending_aid.clear()
+		else:
+			var foe: Character = combatants[foe_index]["char"]
+			if foe.has_condition("dead"):
+				pending_aid.clear()
+			elif friend_index >= 0 and friend_index < combatants.size():
+				var friend: Character = combatants[friend_index]["char"]
+				if friend.has_condition("dead"):
+					pending_aid.clear()
 
 
 func _primary_weapon(ch: Character) -> Dictionary:
@@ -1414,8 +1826,11 @@ func trip_active(target_index: int, opts: Dictionary = {}) -> Dictionary:
 			"combat_expertise": combat_expertise,
 			"flat_footed": is_flat_footed(int(target_entry["index"])),
 			"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
+			"aid_bonus": _aid_attack_bonus(int(entry["index"]), int(target_entry["index"])),
+			"aid_ac_bonus": _aid_ac_bonus(int(target_entry["index"]), int(entry["index"])),
 		}
 	)
+	_consume_aid(int(entry["index"]), int(target_entry["index"]))
 	_log("  " + Rules.format_attack(touch))
 	if not bool(touch["hit"]):
 		# A missed touch attack ends the attempt: no opposed check and no
@@ -2030,8 +2445,11 @@ func grapple_active(target_index: int) -> Dictionary:
 			"label": "grapple touch attack",
 			"flat_footed": is_flat_footed(target_index),
 			"flank_bonus": _flank_bonus(int(entry["index"]), target_index),
+			"aid_bonus": _aid_attack_bonus(int(entry["index"]), target_index),
+			"aid_ac_bonus": _aid_ac_bonus(target_index, int(entry["index"])),
 		}
 	)
+	_consume_aid(int(entry["index"]), target_index)
 	_log("  " + Rules.format_attack(touch))
 	if not bool(touch["hit"]):
 		_log("  The touch attack misses; the grapple attempt ends.")
@@ -2712,6 +3130,7 @@ func has_pending_decision() -> bool:
 		not pending_trip.is_empty()
 		or not pending_cleave.is_empty()
 		or not pending_bull_rush.is_empty()
+		or not pending_aid.is_empty()
 	)
 
 
@@ -2952,6 +3371,9 @@ func _clear_combat_scope_states() -> void:
 	combat_expertise_pending.clear()
 	combat_expertise_committed.clear()
 	fight_defensively_selected.clear()
+	pending_aid.clear()
+	aid_attack.clear()
+	aid_ac.clear()
 	for entry in combatants:
 		var ch: Character = entry["char"]
 		ch.remove_effect("combat_expertise")
@@ -3043,14 +3465,23 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		"cover": cover,
 		"deny_dex": denies_dex_to(target_index, attacker_index),
 		"pinned_penalty": pinned_ac_penalty(target_index, attacker_index),
+		"aid_bonus": _aid_attack_bonus(attacker_index, target_index),
+		"aid_ac_bonus": _aid_ac_bonus(target_index, attacker_index),
 	}
 	if opts.has("force_attack_base"):
 		attack_opts["force_attack_base"] = int(opts["force_attack_base"])
 	var result := Rules.attack(rng, ch, target, weapon, distance, attack_opts)
+	var aid_roll_bonus := int(result.get("aid_bonus", 0))
+	var aid_roll_ac := int(result.get("aid_ac_bonus", 0))
+	_consume_aid(attacker_index, target_index)
 	# PHB p.139: an unarmed strike's damage is nonlethal; carry that into the result so
 	# damage application never has to guess from the damage type alone.
 	result["nonlethal"] = bool(weapon.get("nonlethal", false))
 	_log("  " + Rules.format_attack(result))
+	if aid_roll_bonus > 0:
+		_log("  Aid Another +%d on this attack roll (PHB p.154)." % aid_roll_bonus)
+	if aid_roll_ac > 0:
+		_log("  Aid Another +%d AC against this attack (PHB p.154)." % aid_roll_ac)
 	if fight_defensively != 0:
 		_log("  fighting defensively -4 on the attack roll (PHB p.140).")
 	if int(into_melee["penalty"]) != 0:
@@ -3530,12 +3961,21 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> Dict
 			"attack_mode": mode,
 			"flat_footed": is_flat_footed(int(target_entry["index"])),
 			"flank_bonus": _flank_bonus(int(attacker_entry["index"]), int(target_entry["index"])),
+			"aid_bonus": _aid_attack_bonus(int(attacker_entry["index"]), int(target_entry["index"])),
+			"aid_ac_bonus": _aid_ac_bonus(int(target_entry["index"]), int(attacker_entry["index"])),
 		}
 	)
+	var aid_roll_bonus := int(result.get("aid_bonus", 0))
+	var aid_roll_ac := int(result.get("aid_ac_bonus", 0))
+	_consume_aid(int(attacker_entry["index"]), int(target_entry["index"]))
 	# PHB p.139: an unarmed strike's damage is nonlethal; carry that into the result so
 	# damage application never has to guess from the damage type alone.
 	result["nonlethal"] = bool(weapon.get("nonlethal", false))
 	_log("  " + Rules.format_attack(result))
+	if aid_roll_bonus > 0:
+		_log("  Aid Another +%d on this attack roll (PHB p.154)." % aid_roll_bonus)
+	if aid_roll_ac > 0:
+		_log("  Aid Another +%d AC against this attack (PHB p.154)." % aid_roll_ac)
 	if bool(result["hit"]):
 		_apply_damage(target, result)
 		_try_paralysis(attacker, target, weapon)
@@ -3880,8 +4320,11 @@ func _cast_scorching_ray(attacker_index: int, target_index: int, spell: Dictiona
 			"flat_footed": is_flat_footed(target_index),
 			"into_melee_penalty": int(into_melee["penalty"]),
 			"cover": cover,
+			"aid_bonus": _aid_attack_bonus(attacker_index, target_index),
+			"aid_ac_bonus": _aid_ac_bonus(target_index, attacker_index),
 		}
 	)
+	_consume_aid(attacker_index, target_index)
 	_log("  " + Rules.format_attack(result))
 	if int(into_melee["penalty"]) != 0:
 		_log(
@@ -4559,7 +5002,7 @@ func _nearest_target(entry: Dictionary, targets: Array) -> Dictionary:
 	return best
 
 
-func _monster_single_attack(entry: Dictionary, target_entry: Dictionary) -> void:
+func _monster_single_attack(entry: Dictionary, target_entry: Dictionary) -> Dictionary:
 	var ch: Character = entry["char"]
 	var attacks := ch.attacks if not ch.attacks.is_empty() else [_primary_weapon(ch)]
 	var attack_data: Dictionary = attacks[0]
@@ -4572,14 +5015,18 @@ func _monster_single_attack(entry: Dictionary, target_entry: Dictionary) -> void
 		{
 			"flat_footed": is_flat_footed(int(target_entry["index"])),
 			"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
+			"aid_bonus": _aid_attack_bonus(int(entry["index"]), int(target_entry["index"])),
+			"aid_ac_bonus": _aid_ac_bonus(int(target_entry["index"]), int(entry["index"])),
 		}
 	)
+	_consume_aid(int(entry["index"]), int(target_entry["index"]))
 	_log("%s attacks %s." % [ch.display_name, target_entry["char"].display_name])
 	_log("  " + Rules.format_attack(result))
 	if bool(result["hit"]):
 		_apply_damage(target_entry["char"], result)
 		_try_paralysis(ch, target_entry["char"], attack_data)
 	_check_end()
+	return result
 
 
 func _monster_full_attack(entry: Dictionary, target_entry: Dictionary) -> void:
@@ -4598,8 +5045,11 @@ func _monster_full_attack(entry: Dictionary, target_entry: Dictionary) -> void:
 			{
 				"flat_footed": is_flat_footed(int(target_entry["index"])),
 				"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
+				"aid_bonus": _aid_attack_bonus(int(entry["index"]), int(target_entry["index"])),
+				"aid_ac_bonus": _aid_ac_bonus(int(target_entry["index"]), int(entry["index"])),
 			}
 		)
+		_consume_aid(int(entry["index"]), int(target_entry["index"]))
 		result["nonlethal"] = bool(attack_data.get("nonlethal", false))
 		_log("  " + Rules.format_attack(result))
 		if bool(result["hit"]):
@@ -4636,6 +5086,7 @@ func _check_end() -> void:
 	if finished:
 		return
 	_prune_grapples()
+	_prune_aid()
 	# "Cannot act this instant" is not the same as "defeated". Paralysis from a
 	# ghoul's attack lasts 1d4+1 rounds and expires by itself, and a temporary
 	# unconsciousness effect can end, so both keep the encounter running with the

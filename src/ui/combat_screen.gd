@@ -328,6 +328,7 @@ func _build() -> void:
 	_add_action_button("Trip", _trip)
 	_add_action_button("Bull rush", _bull_rush)
 	_add_action_button("Grapple", _grapple)
+	_add_action_button("Aid", func() -> void: _set_mode("aid", "Click an enemy to aid an ally against it."))
 	pin_button = _add_action_button("Pin", _pin)
 	pin_button.tooltip_text = (
 		"Hold the creature you are grappling immobile for 1 round (standard action). "
@@ -1005,6 +1006,7 @@ func _update_button_states() -> void:
 		"Trip": standard,
 		"Bull rush": standard,
 		"Grapple": standard,
+		"Aid": standard and e.aid_available(),
 		"Pin": (
 			standard
 			and active_index >= 0
@@ -1161,6 +1163,14 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 		Game.combat_move(cell, true)
 		refresh_screen()
 		return
+	if mode == "aid":
+		if entry.is_empty() or int(entry["team"]) != Encounter.TEAM_ENEMY:
+			Game.last_ui_message = "Choose an enemy to aid an ally against."
+			refresh_screen()
+			return
+		Game.combat_aid(int(entry["index"]))
+		refresh_screen()
+		return
 	if mode == "attack":
 		if entry.is_empty() or int(entry["team"]) != Encounter.TEAM_ENEMY:
 			Game.last_ui_message = "Choose an enemy to attack."
@@ -1310,6 +1320,8 @@ func _decision_spec() -> Dictionary:
 	var e := Game.encounter
 	if e == null or not e.has_pending_decision():
 		return {}
+	if not e.pending_aid.is_empty():
+		return _aid_spec(e)
 	if not e.pending_cleave.is_empty():
 		var cleaver_index := int(e.pending_cleave.get("actor_index", -1))
 		if cleaver_index < 0 or cleaver_index >= e.combatants.size():
@@ -1381,6 +1393,48 @@ func _decision_spec() -> Dictionary:
 		),
 		"drop": "Drop weapon",
 		"keep": "Keep weapon",
+	}
+
+
+## PHB p.154: the helper first names the ally to aid, then chooses which printed
+## half of the bonus the check bought. Both stages are plain choices over rolls
+## that are already final, so neither can reroll or respend.
+func _aid_spec(e: Encounter) -> Dictionary:
+	var stage := String(e.pending_aid.get("stage", ""))
+	var foe_index := int(e.pending_aid.get("foe", -1))
+	var foe_name := "the opponent"
+	if foe_index >= 0 and foe_index < e.combatants.size():
+		foe_name = String((e.combatants[foe_index]["char"] as Character).display_name)
+	if stage == "friend":
+		var rows: Array = []
+		for friend in e.aid_friends(foe_index):
+			rows.append({
+				"index": int(friend["index"]),
+				"text": String(friend["text"]),
+			})
+		return {
+			"kind": "aid_friend",
+			"label": (
+				"Aid Another: choose the ally to aid against %s (PHB p.154)." % foe_name
+			),
+			"targets": rows,
+			"decline": "Cancel",
+		}
+	var friend_index := int(e.pending_aid.get("friend", -1))
+	var friend_name := "the ally"
+	if friend_index >= 0 and friend_index < e.combatants.size():
+		friend_name = String((e.combatants[friend_index]["char"] as Character).display_name)
+	return {
+		"kind": "aid_bonus",
+		"label": (
+			(
+				"Aid Another: the check succeeds. %s gains +2 on the next attack roll "
+				+ "against %s, or +2 AC against that opponent's next attack (PHB p.154)."
+			)
+			% [friend_name, foe_name]
+		),
+		"attack": "+2 attack",
+		"defense": "+2 AC",
 	}
 
 
@@ -1506,6 +1560,42 @@ func _build_decision(spec: Dictionary) -> void:
 			keep.pressed.connect(func() -> void: Game.combat_resolve_trip(false))
 			keep.set_meta("combat_focus_key", "decision:trip:keep")
 			trip_row.add_child(keep)
+		"aid_friend":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var friend_targets: Array = spec["targets"]
+			var aid_scroll := _decision_scroll(friend_targets.size())
+			decision_box.add_child(aid_scroll)
+			var aid_choices := VBoxContainer.new()
+			aid_choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			aid_choices.add_theme_constant_override("separation", 6)
+			aid_scroll.add_child(aid_choices)
+			for target in friend_targets:
+				var pick := Button.new()
+				pick.text = String(target["text"])
+				var friend_index := int(target["index"])
+				pick.pressed.connect(func() -> void: Game.combat_aid_friend(friend_index))
+				pick.set_meta("combat_focus_key", "decision:aid:friend:%d" % friend_index)
+				aid_choices.add_child(pick)
+			var aid_cancel := Button.new()
+			aid_cancel.text = String(spec["decline"])
+			aid_cancel.pressed.connect(func() -> void: Game.combat_cancel_aid())
+			aid_cancel.set_meta("combat_focus_key", "decision:aid:cancel")
+			decision_box.add_child(aid_cancel)
+		"aid_bonus":
+			decision_box.add_child(_decision_label(String(spec["label"])))
+			var aid_row := HBoxContainer.new()
+			aid_row.add_theme_constant_override("separation", 6)
+			decision_box.add_child(aid_row)
+			var aid_attack := Button.new()
+			aid_attack.text = String(spec["attack"])
+			aid_attack.pressed.connect(func() -> void: Game.combat_resolve_aid("attack"))
+			aid_attack.set_meta("combat_focus_key", "decision:aid:attack")
+			aid_row.add_child(aid_attack)
+			var aid_defense := Button.new()
+			aid_defense.text = String(spec["defense"])
+			aid_defense.pressed.connect(func() -> void: Game.combat_resolve_aid("defense"))
+			aid_defense.set_meta("combat_focus_key", "decision:aid:defense")
+			aid_row.add_child(aid_defense)
 		"bull_rush":
 			decision_box.add_child(_decision_label(String(spec["label"])))
 			var rush_row := HBoxContainer.new()

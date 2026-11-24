@@ -61,6 +61,7 @@ const UNKNOWN_ARG_EXIT_CODE := 2
 ## Keep it in step with the dispatch in `_ready()` and docs/SETUP.md.
 const APP_FLAGS: Array[String] = [
 	"--advancement-probe",
+	"--aid-another-probe",
 	"--campaign-list-probe",
 	"--cleave-probe",
 	"--combat-info-probe",
@@ -370,6 +371,8 @@ func _ready() -> void:
 		_unarmed_probe()
 	if "--flanking-probe" in args:
 		_flanking_probe()
+	if "--aid-another-probe" in args:
+		_aid_another_probe()
 	if "--grapple-probe" in args:
 		_grapple_probe()
 	if "--keyboard-probe" in args:
@@ -11127,3 +11130,268 @@ func _sneak_range_probe_shot(distance_cells: int) -> Dictionary:
 		"limit_log": fresh.contains("no sneak attack beyond 30 ft."),
 		"standard_used": bool(e.turn_state["standard_used"]),
 	}
+## QA-only (`--aid-another-probe`): Aid Another (PHB p.154) through
+## `Game.combat_aid`, `Game.combat_aid_friend` and `Game.combat_resolve_aid` -
+## the calls the Aid button makes - on the shipped storeroom encounter. Seeded:
+## the cells that put both helpers beside the looter and Sera beside it, whose
+## turn it is, one d20 seed per attempt, and 200 hit points for the looter so the
+## fight survives a sneak attack. Every check reads the engine's own roll, state
+## or log; nothing grants a bonus.
+func _aid_another_probe() -> void:
+	probe_scenario = "aid_another"
+	probe_started_ms = Time.get_ticks_msec()
+	_aid_probe_attack_case()
+	_aid_probe_failure_case()
+	_aid_probe_defense_case()
+	_aid_probe_expiry_case()
+	_aid_probe_stack_case()
+	print(
+		"PROBE RESULT %s scenario=aid_another elapsed_ms=%d checks=%d failures=%d"
+		% [
+			"PASS" if probe_failures.is_empty() else "FAIL",
+			Time.get_ticks_msec() - probe_started_ms,
+			probe_checks,
+			probe_failures.size(),
+		]
+	)
+	get_tree().quit(0 if probe_failures.is_empty() else 1)
+
+
+## One seeded storeroom fight: looter at (4,1), Kaelen (3,1), Aldric (5,1),
+## Sera (4,2), Kaelen on turn. The looter's hit points are raised so a sneak
+## attack cannot end the encounter mid-probe; that is printed seeding, not play.
+func _aid_probe_setup(seed_value: int) -> Dictionary:
+	var started := Game.new_game(["kaelen", "sera", "aldric"], seed_value)
+	if not bool(started.get("ok", false)):
+		return {"ok": false, "message": String(started.get("message", "new game failed"))}
+	Game.training_mode = true
+	Game.start_encounter("storeroom_dead")
+	var e := Game.encounter
+	if e == null:
+		return {"ok": false, "message": "the storeroom encounter did not start"}
+	var kaelen: Character = Game.party[0]
+	var sera: Character = Game.party[1]
+	var aldric: Character = Game.party[2]
+	var looter: Character = null
+	for entry in e.combatants:
+		var ch: Character = entry["char"]
+		if ch != null and ch.is_monster and not ch.tags.has("undead"):
+			looter = ch
+	if looter == null:
+		return {"ok": false, "message": "the storeroom has no living opponent"}
+	var looter_index := int(e.entry_for(looter)["index"])
+	e.combatants[looter_index]["cell"] = Vector2i(4, 1)
+	e.combatants[int(e.entry_for(kaelen)["index"])]["cell"] = Vector2i(3, 1)
+	e.combatants[int(e.entry_for(aldric)["index"])]["cell"] = Vector2i(5, 1)
+	e.combatants[int(e.entry_for(sera)["index"])]["cell"] = Vector2i(4, 2)
+	looter.max_hp = 200
+	looter.hp = 200
+	_flanking_probe_force_turn(e, kaelen)
+	return {
+		"ok": true,
+		"e": e,
+		"kaelen": kaelen,
+		"sera": sera,
+		"aldric": aldric,
+		"looter": looter,
+		"looter_index": looter_index,
+		"sera_index": int(e.entry_for(sera)["index"]),
+		"kaelen_index": int(e.entry_for(kaelen)["index"]),
+	}
+
+
+## Declares the aid with Kaelen and picks Sera, for a given d20 seed. Returns the
+## roll result, with `success` telling whether the check passed.
+func _aid_probe_try(built: Dictionary, seed_value: int, resolve := true) -> Dictionary:
+	var e: Encounter = built["e"]
+	e.turn_state["standard_used"] = false
+	e.pending_aid.clear()
+	e.rng.seed = seed_value
+	var result := Game.combat_aid(int(built["looter_index"]))
+	if String(result.get("pending", "")) == "aid_friend":
+		result = Game.combat_aid_friend(int(built["sera_index"]))
+	if resolve and bool(result.get("success", false)):
+		Game.combat_resolve_aid("attack")
+	return result
+
+
+func _aid_probe_attack_case() -> void:
+	var built := {}
+	var result := {}
+	for seed_value in range(1, 200):
+		built = _aid_probe_setup(seed_value)
+		if not bool(built.get("ok", false)):
+			break
+		result = _aid_probe_try(built, seed_value, false)
+		if bool(result.get("success", false)):
+			break
+		built = {}
+	if built.is_empty():
+		_probe_check(false, "state: a seeded aid check succeeds")
+		return
+	_probe_check(true, "state: a seeded aid check succeeds")
+	print(
+		"PROBE SEEDED encounter=storeroom_dead helper=kaelen friend=sera foe=store_looter roll=%d total=%d looter_hp=200"
+		% [int(result.get("roll", 0)), int(result.get("total", 0))]
+	)
+	var e: Encounter = built["e"]
+	# The successful check opens the bonus decision; its buttons must carry the
+	# shared focus keys before it is resolved.
+	if current_screen is CombatScreen:
+		var screen := current_screen as CombatScreen
+		screen.refresh_screen()
+		var keys: Array = []
+		for node in screen.decision_box.find_children("*", "Control", true, false):
+			var control := node as Control
+			if control == null:
+				continue
+			var key := String(control.get_meta("combat_focus_key", ""))
+			if key != "":
+				keys.append(key)
+		_probe_check(
+			keys.has("decision:aid:attack") and keys.has("decision:aid:defense"),
+			"ui: both bonus buttons carry decision focus keys"
+		)
+	else:
+		_probe_check(false, "ui: the combat screen owns the aid decision")
+	var resolved := Game.combat_resolve_aid("attack")
+	_probe_check(bool(resolved.get("ok", false)), "state: the +2 attack choice resolves")
+	_flanking_probe_force_turn(e, built["sera"])
+	var before := e.log_lines.size()
+	var attack := Game.combat_attack(int(built["looter_index"]))
+	var rolled: Dictionary = attack.get("result", {})
+	var base := Rules.attack_bonus(
+		built["sera"], (built["sera"] as Character).equipment.get("weapon", {}), 5, "melee"
+	)
+	_probe_check(int(rolled.get("aid_bonus", 0)) == 2, "state: the aided roll lists +2")
+	_probe_check(
+		int(rolled.get("bonus", 0)) == base + 2,
+		"state: the +2 is in the roll bonus (%d vs %d)" % [int(rolled.get("bonus", 0)), base + 2]
+	)
+	var fresh := " ".join(Array(e.log_lines.slice(before)))
+	_probe_check(fresh.contains("Aid Another +2"), "log: the aid bonus is named on the roll")
+	_flanking_probe_force_turn(e, built["sera"])
+	var second := Game.combat_attack(int(built["looter_index"]))
+	_probe_check(
+		int((second.get("result", {}) as Dictionary).get("aid_bonus", 0)) == 0,
+		"state: the following roll gets nothing"
+	)
+
+
+func _aid_probe_failure_case() -> void:
+	var built := {}
+	var result := {}
+	for seed_value in range(1, 200):
+		built = _aid_probe_setup(seed_value)
+		if not bool(built.get("ok", false)):
+			break
+		result = _aid_probe_try(built, seed_value, false)
+		if bool(result.get("ok", false)) and not bool(result.get("success", true)):
+			break
+		built = {}
+	if built.is_empty():
+		_probe_check(false, "state: a seeded aid check fails")
+		return
+	var e: Encounter = built["e"]
+	_probe_check(true, "state: a seeded aid check fails")
+	_probe_check(
+		bool(e.turn_state["standard_used"]), "state: the failed check spends the standard action"
+	)
+	_probe_check(not e.has_pending_decision(), "state: the failed check opens no decision")
+	_probe_check(
+		e.aid_attack.is_empty() and e.aid_ac.is_empty(), "state: the failed check grants nothing"
+	)
+	_probe_check(e.get_log_text().contains("The aid fails"), "log: the failed aid is named")
+
+
+func _aid_probe_defense_case() -> void:
+	var built := {}
+	var result := {}
+	for seed_value in range(1, 200):
+		built = _aid_probe_setup(seed_value)
+		if not bool(built.get("ok", false)):
+			break
+		result = _aid_probe_try(built, seed_value, false)
+		if bool(result.get("success", false)):
+			break
+		built = {}
+	if built.is_empty():
+		_probe_check(false, "state: a seeded aid check succeeds for the AC half")
+		return
+	var e: Encounter = built["e"]
+	Game.combat_resolve_aid("defense")
+	var first := e._monster_single_attack(
+		e.combatants[int(built["looter_index"])], e.combatants[int(built["sera_index"])]
+	)
+	_probe_check(int(first.get("aid_ac_bonus", 0)) == 2, "state: the foe's next attack sees +2 AC")
+	_probe_check(
+		(e.aid_ac.get(int(built["sera_index"]), []) as Array).is_empty(),
+		"state: the foe's attack consumes the AC grant"
+	)
+
+
+## A grant that no attack consumes must expire at the start of the helper's next
+## turn, and say so.
+func _aid_probe_expiry_case() -> void:
+	var built := {}
+	for seed_value in range(1, 200):
+		built = _aid_probe_setup(seed_value)
+		if not bool(built.get("ok", false)):
+			break
+		var result := _aid_probe_try(built, seed_value, false)
+		if bool(result.get("success", false)):
+			Game.combat_resolve_aid("attack")
+			break
+		built = {}
+	if built.is_empty():
+		_probe_check(false, "state: a seeded grant exists to expire")
+		return
+	var e: Encounter = built["e"]
+	var before := e.log_lines.size()
+	_flanking_probe_force_turn(e, built["kaelen"])
+	var fresh := " ".join(Array(e.log_lines.slice(before)))
+	_probe_check(
+		(e.aid_attack.get(int(built["sera_index"]), []) as Array).is_empty(),
+		"state: the helper's next turn expires an unused grant"
+	)
+	_probe_check(fresh.contains("Aid Another expires"), "log: the expiry is named")
+
+
+func _aid_probe_stack_case() -> void:
+	var built := {}
+	var first_ok := false
+	for seed_value in range(1, 200):
+		built = _aid_probe_setup(seed_value)
+		if not bool(built.get("ok", false)):
+			break
+		var result := _aid_probe_try(built, seed_value, false)
+		if bool(result.get("success", false)):
+			Game.combat_resolve_aid("attack")
+			first_ok = true
+			break
+		built = {}
+	if not first_ok:
+		_probe_check(false, "state: two seeded helpers can both aid")
+		return
+	var e: Encounter = built["e"]
+	var second := false
+	for seed_value in range(1, 200):
+		_flanking_probe_force_turn(e, built["aldric"])
+		e.rng.seed = seed_value
+		var result := Game.combat_aid(int(built["looter_index"]))
+		if String(result.get("pending", "")) == "aid_friend":
+			result = Game.combat_aid_friend(int(built["sera_index"]))
+		if bool(result.get("success", false)):
+			Game.combat_resolve_aid("attack")
+			second = true
+			break
+		e.pending_aid.clear()
+	if not second:
+		_probe_check(false, "state: the second helper's seeded check succeeds")
+		return
+	_flanking_probe_force_turn(e, built["sera"])
+	var attack := Game.combat_attack(int(built["looter_index"]))
+	_probe_check(
+		int((attack.get("result", {}) as Dictionary).get("aid_bonus", 0)) == 4,
+		"state: two helpers stack to +4 on one roll"
+	)
