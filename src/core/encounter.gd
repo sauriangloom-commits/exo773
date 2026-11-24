@@ -3344,7 +3344,11 @@ func _into_melee_penalty(
 		var ally: Character = other["char"]
 		var distance := map.distance_ft(other["cell"], target_entry["cell"])
 		nearest = mini(nearest, distance)
-		if engaged_with != "" or not ally.can_act():
+		# A helpless ally is immobilized and cannot threaten; apply the same
+		# eligibility rule as the target-side guard above. Tracking whether the
+		# target is actually attacking the ally is a separate question and is not
+		# invented here.
+		if engaged_with != "" or not ally.can_act() or Rules.is_helpless(ally):
 			continue
 		# "Either threatens the other" (PHB p. 140): engagement can come from the
 		# ally's melee capability or from the target's, so a crossbow-armed ally is

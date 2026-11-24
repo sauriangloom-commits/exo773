@@ -25,6 +25,11 @@ func before_each() -> void:
 	content = Game.content
 
 
+func after_each() -> void:
+	Game.reset_to_menu()
+	Game.load_campaign("ravenloft_demo")
+
+
 func _char(id: String) -> Character:
 	var ch := Character.from_content(content.get_character(id), content.items)
 	ch.hp = ch.max_hp
@@ -163,6 +168,117 @@ func test_shooting_into_melee_takes_the_minus_4_penalty() -> void:
 		_logged(alone.log_lines, "shooting into melee"),
 		"no penalty line is emitted when the target is not engaged"
 	)
+
+
+## Regression: a paralyzed ally is an immobilized character and is not engaged
+## for the firing-into-melee penalty (PHB p.140). The fixture keeps every other
+## term fixed: Sera shoots 25 ft horizontally with a loaded crossbow, clear line
+## of sight, no cover, no suppression feat and no other attack-penalty stance.
+## The actual player path is Game.combat_attack -> Encounter.attack_active; the
+## assertions read the applied modifier from the resolved result, not a hit roll.
+func _player_into_melee_shot(
+	first_ally_paralyzed: bool, include_first_ally: bool, include_second_ally: bool
+) -> Dictionary:
+	var sera := _char("sera")
+	_equip_crossbow(sera)
+	var first := _char("kaelen")
+	var second := _char("aldric")
+	if first_ally_paralyzed:
+		first.add_effect("paralyzed", "Paralyzed", 2)
+	var party: Array = [sera, first]
+	var party_cells: Array = [
+		Vector2i(1, 1), Vector2i(7, 1) if include_first_ally else Vector2i(7, 5)
+	]
+	if include_second_ally:
+		party.append(second)
+		party_cells.append(Vector2i(6, 2))
+	var ghoul := _monster("ghoul")
+	# Keep the target alive and state changes attributable: the check is about
+	# the attack modifier, not whether this particular seeded d20 hits.
+	ghoul.max_hp = 200
+	ghoul.hp = 200
+	var target_cell := Vector2i(6, 1)
+	var e := _encounter_at(party, party_cells, [ghoul], [target_cell])
+	_force_turn(e, sera)
+	assert_true(e.is_weapon_loaded(sera), "fixture: the crossbow starts loaded")
+	assert_true(
+		e.map.has_line_of_sight(Vector2i(1, 1), target_cell), "fixture: line of sight is clear"
+	)
+	assert_false(Feats.has_active(sera, "precise_shot"), "fixture: no Precise Shot")
+	assert_false(
+		sera.has_effect("fighting_defensively"), "fixture: no attack-penalty stance"
+	)
+	Game.party = party
+	Game.encounter = e
+	Game.mode = "combat"
+	Game.last_ui_message = ""
+	var shot := Game.combat_attack(_index_of(e, ghoul))
+	assert_true(bool(shot.get("ok", false)), String(shot.get("message", "")))
+	return {"encounter": e, "shot": shot, "target": ghoul, "shooter": sera}
+
+
+func test_paralyzed_ally_is_not_engaged_for_firing_into_melee() -> void:
+	var conscious := _player_into_melee_shot(false, true, false)
+	var paralyzed := _player_into_melee_shot(true, true, false)
+	var none := _player_into_melee_shot(false, false, false)
+	var with_second := _player_into_melee_shot(true, true, true)
+	var conscious_result: Dictionary = conscious["shot"]["result"]
+	var paralyzed_result: Dictionary = paralyzed["shot"]["result"]
+	var none_result: Dictionary = none["shot"]["result"]
+	var second_result: Dictionary = with_second["shot"]["result"]
+	var base_bonus := int(none_result["bonus"])
+	assert_eq(int(conscious_result["into_melee_penalty"]), -4, "a conscious adjacent ally is engaged")
+	assert_eq(
+		int(paralyzed_result["into_melee_penalty"]),
+		0,
+		"a paralyzed adjacent ally is immobilized and is not engaged",
+	)
+	assert_eq(int(none_result["into_melee_penalty"]), 0, "no adjacent ally means no penalty")
+	assert_eq(
+		int(second_result["into_melee_penalty"]),
+		-4,
+		"a second conscious ally still supplies the penalty when the first is paralyzed",
+	)
+	assert_eq(int(conscious_result["bonus"]), base_bonus - 4, "the conscious ally reaches the roll")
+	assert_eq(
+		int(paralyzed_result["bonus"]), base_bonus, "the paralyzed ally must not reach the roll"
+	)
+	assert_eq(
+		int(second_result["bonus"]), base_bonus - 4, "the remaining conscious ally reaches the roll"
+	)
+	assert_true(
+		_logged(conscious["encounter"].log_lines, "shooting into melee -4"),
+		"the conscious case logs the applied penalty",
+	)
+	assert_false(
+		_logged(paralyzed["encounter"].log_lines, "shooting into melee"),
+		"the paralyzed case must not log an into-melee penalty",
+	)
+	assert_true(
+		_logged(with_second["encounter"].log_lines, "shooting into melee -4"),
+		"the second conscious ally still logs the applied penalty",
+	)
+	for label in ["conscious ally", "paralyzed ally", "no ally", "second conscious ally"]:
+		var case: Dictionary = {
+			"conscious ally": conscious,
+			"paralyzed ally": paralyzed,
+			"no ally": none,
+			"second conscious ally": with_second,
+		}[label]
+		var result: Dictionary = case["shot"]["result"]
+		var e: Encounter = case["encounter"]
+		var target: Character = case["target"]
+		var shooter: Character = case["shooter"]
+		assert_eq(int(result["distance_ft"]), 25, "%s: range term is fixed" % label)
+		assert_eq(int(result["cover"]), 0, "%s: cover term is fixed at zero" % label)
+		assert_true(bool(result["ranged"]), "%s: the ordinary path resolved a ranged attack" % label)
+		assert_false(e.is_weapon_loaded(shooter), "%s: firing spends the loaded shot" % label)
+		assert_true(
+			bool(e.turn_state["standard_used"]), "%s: the attack spends the standard action" % label
+		)
+		assert_false(target.has_condition("dead"), "%s: the target remains alive" % label)
+		var expected_hp := 200 - (int(result["damage_applied"]) if bool(result["hit"]) else 0)
+		assert_eq(target.hp, expected_hp, "%s: target HP reflects the resolved hit" % label)
 
 
 func test_ten_feet_from_the_nearest_friendly_avoids_the_penalty() -> void:

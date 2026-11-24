@@ -8038,6 +8038,8 @@ func _ranged_probe() -> void:
 	var shooter: Character = null
 	var target: Character = null
 	var clear_target: Character = null
+	var clear_shooter: Character = null
+	var caster: Character = null
 	var ally: Character = null
 	for entry in e.combatants:
 		var ch: Character = entry["char"]
@@ -8045,10 +8047,19 @@ func _ranged_probe() -> void:
 			"qa_ranged_shooter": shooter = ch
 			"qa_ranged_target": target = ch
 			"qa_ranged_clear_target": clear_target = ch
+			"qa_ranged_clear": clear_shooter = ch
+			"qa_ranged_caster": caster = ch
 			"qa_ranged_ally": ally = ch
 	_probe_check(shooter != null and e.active_character() == shooter, "the QA ranged shooter acts first")
-	if shooter == null or target == null or clear_target == null or ally == null:
-		_probe_check(false, "the ranged fixture has a shooter, a target, a clear target and an ally")
+	if (
+		shooter == null
+		or target == null
+		or clear_target == null
+		or clear_shooter == null
+		or caster == null
+		or ally == null
+	):
+		_probe_check(false, "the ranged fixture has a shooter, a target, a clear target, a clear shooter, the caster and an ally")
 		_probe_finish("ranged")
 		return
 	# Click the cells the encounter actually holds, then assert the geometry the
@@ -8170,6 +8181,60 @@ func _ranged_probe() -> void:
 				"exactly one provocation line belongs to the cast",
 			)
 			await _probe_shot("ranged", "04_ray_into_melee")
+	# --------------------------------- seeded paralysis: no into-melee penalty
+	# Fixture-only seeded condition: move the other conscious allies away,
+	# paralyze the existing ally beside the clickable main target, and load the
+	# first shooter's empty crossbow. This does not replay the authored ghoul slam
+	# and Fortitude save; the shot itself uses the ordinary Load weapon, Attack and
+	# target-cell controls, not the private penalty helper.
+	var seeded_ready := await _probe_advance_to(combat, "qa_ranged_shooter", 2)
+	_probe_check(seeded_ready, "the first shooter's second turn arrives")
+	if seeded_ready:
+		e.entry_for(caster)["cell"] = Vector2i(8, 5)
+		e.entry_for(clear_shooter)["cell"] = Vector2i(8, 4)
+		ally.add_effect("paralyzed", "Paralyzed", 5)
+		e.entry_for(ally)["cell"] = Vector2i(5, 1)
+		_probe_check(ally.has_condition("paralyzed"), "fixture: the ally state is seeded paralysis")
+		_probe_check(
+			e.map.distance_ft(Vector2i(e.entry_for(ally)["cell"]), target_cell)
+			<= maxi(ally.reach_ft, BattleMap.CELL_FT),
+			"fixture: the seeded paralyzed ally is adjacent to the target",
+		)
+		_probe_check(not target.has_condition("dead"), "fixture: the target is still alive")
+		var conscious_neighbor := false
+		for entry in e.combatants:
+			if int(entry["team"]) != int(e.combatants[0]["team"]):
+				continue
+			var other: Character = entry["char"]
+			if other == ally or other == shooter:
+				continue
+			if e.map.distance_ft(Vector2i(entry["cell"]), target_cell) <= 5:
+				conscious_neighbor = true
+		_probe_check(
+			not conscious_neighbor,
+			"fixture: only the paralyzed ally is adjacent to the seeded target",
+		)
+		await _probe_click(_probe_button(combat.button_box, "Load weapon"), "Load weapon")
+		for i in 8:
+			await get_tree().process_frame
+		_probe_check(e.is_weapon_loaded(shooter), "fixture: the second-turn crossbow is loaded")
+		before_index = e.log_lines.size()
+		await _probe_click(_probe_button(combat.button_box, "Attack"), "Attack")
+		await _probe_click_cell(combat, target_cell, "shoot the target with a paralyzed ally")
+		for i in 12:
+			await get_tree().process_frame
+		fresh = _probe_ranged_new_lines(e, before_index)
+		_probe_check(fresh.contains("with Light Crossbow"), "the seeded-paralysis shot uses the crossbow")
+		_probe_check(fresh.contains("vs AC"), "the seeded-paralysis shot resolves normally")
+		_probe_check(
+			not fresh.contains("shooting into melee"),
+			"a seeded paralyzed ally does not add the into-melee penalty",
+		)
+		_probe_check(
+			not fresh.contains("is engaged with"),
+			"the seeded paralyzed ally is not named as engaged",
+		)
+		await _probe_shot("ranged", "05_paralyzed_ally_no_penalty")
 	_probe_finish("ranged")
 
 
