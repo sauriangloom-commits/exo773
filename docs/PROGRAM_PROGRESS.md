@@ -3511,3 +3511,30 @@ larger subsystem; further grapple has no content that rewards it because every s
 monster is undead and ignores nonlethal hold damage; the save shortcut remains
 convenience. The bounded keyboard log/sidebar-reveal item is deferred, not recommended,
 because it closes information rather than a path.
+
+### Overrun planning note (2026-11-24)
+
+`docs/OVERRUN_PLAN.md` records the planning-only overrun design requested after
+`d51d77e`. **No checks were run**, no executable behaviour, content, schema or save
+data changed, and no candidate was exported. It verifies the printed 3.5 overrun text
+against the SRD (d20srd.org) and PHB pp. 157/96, separates the project adaptations
+(adjacent-only declaration, one fixed exit square, 10 ft of movement, the standard
+committed only on a block, no transient overlap, AI block/avoid and counter policies,
+a per-round counter), and cites the exact seams: `Encounter` turn state and
+`_advance_cell`, `occupied_except`, `BattleMap` legality, the opportunity-attack pass,
+`Character.size_category`/`stability_bonus`, `Rules.opposed_ability_check`, prone,
+`has_pending_decision`, `_run_monster_turn`, the action grid/target mode, the `Game`
+wrapper and the probe/fixture harness.
+
+It grounds the benefit in `storeroom_dead`'s one-square lanes: pass one blocker, knock
+it prone and set up a flank; it does not claim a back-line objective. It defines the
+failing-first tests, seeded fixture, direct-call and real-input probe classes, the
+33-control layout expectation (up from 32), and the two implementation batches:
+engine plus deterministic tests first, then UI, probes, layout and a hash-bound
+candidate. No implementation has started.
+
+Kept separate: confirmed defects none; deferred features approach/destination,
+Improved Overrun, charge/mount/Trample, multi-square, AI overrun, a player-defender
+decision, an avoid policy in shipped content, difficult terrain and grapple-target
+overrun; maintenance debt the batch must not add; evidence gaps no human playtest and
+fixture-only avoid coverage.

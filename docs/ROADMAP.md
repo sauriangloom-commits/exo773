@@ -1594,6 +1594,9 @@ defect found**; the earlier grapple and pin acceptances are unchanged.
   rush needed its own 268-line plan; this is comparable, not smaller.
 - **Verdict.** The strongest rules step that can be scoped as one special attack, but it
   is not safe to implement without settling the decisions above. Recommend planning only.
+- **Plan status.** `docs/OVERRUN_PLAN.md` records the printed rules, the project
+  adaptations, the exact engine/UI seams, the failing-first tests and the two
+  implementation batches (2026-11-24; documentation only, no checks run).
 
 ### Candidate C - readied and delayed actions
 
@@ -1634,7 +1637,8 @@ content that rewards it, and the save shortcut stays a ride-along.
 
 - **Confirmed defects.** None open. The Turn Undead wrapper claim stays closed as no
   product defect found; this review found no failing case.
-- **Deferred features.** Overrun (planning next); readied/delayed actions; further grapple
+- **Deferred features.** Overrun (planned in `docs/OVERRUN_PLAN.md`; implementation
+  not started); readied/delayed actions; further grapple
   (8b-2/8c/8f); disarm, sunder, concealment, terrain hard cover, AoE, encumbrance,
   disease; levels 5+; a save shortcut; keyboard combat-log scrolling and sidebar focus
   reveal.
