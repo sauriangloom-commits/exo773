@@ -8123,17 +8123,56 @@ func _ranged_probe() -> void:
 	_probe_check(clear_ready, "the clear-shot shooter's turn arrives")
 	if clear_ready:
 		before_index = e.log_lines.size()
-		await _probe_click(_probe_button(combat.button_box, "Attack"), "Attack")
-		# The grid click was not registering on this far cell, so the control shot
-		# uses the enemy row's own Attack button, which is also an ordinary control.
+		# Use the grid itself for the control shot. The enemy row is an ordinary
+		# control too, but at 720 it is below the viewport; selecting the visible
+		# cell is the navigation path that works at both required sizes.
+		var grid_view = combat.view
+		var grid_rect: Rect2 = grid_view.get_global_rect()
+		var intended_at: Vector2 = grid_rect.position + grid_view.origin + Vector2(
+			clear_cell.x + 0.5, clear_cell.y + 0.5
+		) * float(grid_view.cell_size)
+		var mapped_cell: Vector2i = grid_view.call("_cell_at", intended_at - grid_rect.position)
 		_probe_check(
 			e.cell_of(clear_target) == clear_cell,
 			"the unengaged target is still on %s when the control shot is taken" % str(clear_cell),
 		)
+		_probe_check(grid_view.is_visible_in_tree(), "the combat grid is visible")
+		_probe_check(grid_rect.has_point(intended_at), "the unengaged target cell center is on screen")
+		_probe_check(
+			get_viewport().get_visible_rect().has_point(intended_at),
+			"the unengaged target cell center is inside the client area",
+		)
+		_probe_check(
+			mapped_cell == clear_cell,
+			"the grid maps the intended point to the unengaged target cell",
+		)
 		var clear_button := _probe_enemy_row_button(combat, "QA Clear Target", "Attack")
 		_probe_check(clear_button != null, "the enemy row for the unengaged target offers Attack")
-		if clear_button != null:
-			await _probe_click(clear_button, "shoot the unengaged target")
+		var sidebar := combat.sidebar_panel as ScrollContainer
+		var row_on_screen := (
+			clear_button != null
+			and get_viewport().get_visible_rect().encloses(clear_button.get_global_rect())
+		)
+		var sidebar_travel := 0
+		if sidebar != null:
+			sidebar_travel = maxi(
+				0, int(sidebar.get_v_scroll_bar().max_value - sidebar.get_v_scroll_bar().page)
+			)
+		print(
+			"PROBE TARGET ROW cell=%s view=%s intended=%s mapped=%s row=%s row_on_screen=%s sidebar_scroll=%d/%d follow=%s"
+			% [
+				str(clear_cell), str(grid_rect), str(intended_at), str(mapped_cell),
+				str(clear_button.get_global_rect() if clear_button != null else Rect2()),
+				str(row_on_screen), sidebar.scroll_vertical if sidebar != null else -1,
+				sidebar_travel, str(sidebar.follow_focus if sidebar != null else false),
+			]
+		)
+		_probe_check(
+			row_on_screen or sidebar_travel > 0,
+			"the offscreen enemy row has a usable sidebar scroll range",
+		)
+		await _probe_click(_probe_button(combat.button_box, "Attack"), "Attack")
+		await _probe_click_cell(combat, clear_cell, "shoot the unengaged target through the grid")
 		for i in 12:
 			await get_tree().process_frame
 		fresh = _probe_ranged_new_lines(e, before_index)
