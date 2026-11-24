@@ -5998,3 +5998,56 @@ executable grapple defect, one corrected documentation claim (potions are permit
 grappling, contrary to plan §4), and the reachability gap for the feat chain: neither feat
 is selectable and the only supported level step is 3rd -> 4th, where only the fighter gains
 one feat.
+
+## Batch 8b-1 pin (2026-11-24)
+
+**Failing-first evidence.** `tests/test_pin.gd` (30 tests) was written before any pin
+code and run alone. The recorded red run `builds/qa/pin_red_1.log` ends with `Tests 30`,
+`Passing Tests none`, `Failing Tests 30`, `Asserts 0/59`; every failure is the logger's
+`SCRIPT ERROR: Invalid call. Nonexistent function 'pin_active' in base 'RefCounted
+(Encounter)'` - the missing entry point, not an exit code. Intermediate runs are kept
+separately: `pin_run_2.log` (28/30, 91/93; two wrong fixture assumptions - a pin does
+not clear flat-footed, and a weaponless monster is refused by the equipment path
+first) and `pin_run_3.log` (30/30, 94 asserts).
+
+**Source checks.** `test_pin.gd` 30/30 (94 asserts); full suite 966/966 (9,737 asserts,
+72 scripts); `--validate-campaigns` PASS; `--validate-diagnostics` PASS (8 accepted
+authored inconsistencies); `--grapple-probe` PASS, 147 checks; combat layout PASS at
+100 % and 160 %, **32 controls, 0 failures** (the deliberate 31 -> 32 change for
+`Pin`); `--level-up-probe` PASS (349 checks, both scales); `--advancement-probe` PASS.
+
+**Candidate `2026-11-24_batch8b1_acceptance_c`**, source
+`f149d1df9b944f0046d9ba2b3d137769e6f838a4`, 110,885,688 bytes, SHA-256
+`8f9de152fa89b1c273eaf85208826c3645216170e759a925b1cf1a3b781aa2e0`, equal to
+`BUILD.txt`; `worktree_entries=1` (the preserved README quick-start removal only), no
+untracked files, hash identical before and after every run. From the exe:
+`--grapple-probe` PASS (147 checks), both validators PASS, `--level-up-probe` PASS
+(349 checks), `--advancement-probe` PASS, combat layout PASS at 100 % and 160 % (32
+controls, 0 failures). The README file hash
+`d7cd5f89815b3d7616c2a8abeccaacf309c9af4e6cf234e152b321eeb78b1b57` and diff hash
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c` were unchanged
+before and after the implementation commit and the candidate runs.
+
+**What the checks exercise.** The 30 focused tests cover the pin attempt and its
+standard action, a failed attempt on the intact pair, refusal names, normal and touch
+AC through the attack resolution with a Dexterity-denied control, the pinner exception
+and the absence of flat-footed/sneak attack, every audited action path, an
+ally-administered potion (seeded pair, since play cannot create one), successful,
+failed and Escape Artist escapes, holder release, the AI pin escape, expiry in both
+initiative orderings and with a pinner unable to act, dying, death, turning, begin and
+finish cleanup. The probe adds P1-P7: button pin, state/AC checks, a seeded pinner
+attack refusal, direct-call refusals from a seeded pinned turn, an AI turn whose seeded
+check forces a successful pin escape, the free release, expiry across turns and a pin
+destroyed by the encounter finish.
+
+**Classification.** Confirmed defects: none. Deferred features: break-pin (8b-2), pin
+damage, use-opponent's-weapon and moving the pin (8c), casting and Concentration (8d),
+the feat chain (8e), joining and multiple grapplers (8f). Maintenance debt:
+`Feats.CATALOG` `combat_casting` still says pinning is not modelled;
+`Game.combat_turn_undead()` calls `auto_advance()` after a refusal, so the probe uses
+`Encounter.turn_undead()` for the pinned turn (no player-reachable difference, recorded
+rather than changed). Evidence gaps: pin is player-initiated only (the AI never pins),
+break-pin and multiple grapplers do not exist, exported behavior is the seeded
+147-check probe at 1280x720 headless, the pinned-ally potion and P3b/P7 states are
+seeded, and no rendered appearance, ordinary combat feasibility or human playtesting
+is claimed.

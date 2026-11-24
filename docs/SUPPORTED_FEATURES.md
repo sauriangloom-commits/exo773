@@ -324,15 +324,26 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   a hold.
 - Improved Grapple's +4 on every grapple check and its reaction skip are live
   through raw feat text only; the feat is not selectable.
-- Not supported: pin, pin damage, constriction, multiple grapplers, joining a
-  grapple, monster-initiated grapple, improved grab, swallow whole, casting or
-  turning undead from a grapple (scope limits, stated as such in the refusal), and
-  the remaining printed grapple actions scheduled for batch 8c.
-- Acceptance evidence (`--grapple-probe`, 2026-11-24): initiation against the shipped
-  zombie by button and pointer, the partner attack at -4, the third-party and movement
-  refusals, the holder's release, an AI escape turn, turning, death and finish cleanup,
-  and raw Improved Grapple text. Hold damage on a living target is shown with the
-  disclosed QA brawler only, because no shipped campaign contains a living opponent.
+- Pin (PHB p. 156, batch 8b-1) is a standard action by the holder against the creature
+  it already holds: one opposed grapple check, and a win records `pinned` on the
+  existing pair (a loss leaves the grapple intact). The pin ends at the start of the
+  pinner's next turn, even if that pinner cannot act, or when the pair clears. A
+  pinned creature may only attempt to escape the pin (opposed check or Escape
+  Artist, standard action); success clears the pin but leaves it grappled. The pinner
+  cannot attack. Third parties take -4 to the pinned creature's normal and touch AC;
+  the pinner does not. The holder's free release ends the whole hold. The AI attempts
+  a pin escape and never pins.
+- Not supported: pin damage, breaking another's pin, constriction, multiple
+  grapplers, joining a grapple, monster-initiated grapple, improved grab, swallow
+  whole, casting or turning undead from a grapple (scope limits, stated as such in
+  the refusal), and the remaining printed grapple actions scheduled for batch 8c.
+- Acceptance evidence (`--grapple-probe`, 147 checks, 2026-11-24): initiation against
+  the shipped zombie by button and pointer, the partner attack at -4, the third-party
+  and movement refusals, the holder's release, an AI escape turn, turning, death and
+  finish cleanup, raw Improved Grapple text, and the pin scenarios P1-P7 (button pin,
+  seeded refusal calls, AC state, forced AI pin escape, release, expiry, finish). Hold
+  damage on a living target is shown with the disclosed QA brawler only, because no
+  shipped campaign contains a living opponent.
 
 ## Trip and prone (player-initiated)
 

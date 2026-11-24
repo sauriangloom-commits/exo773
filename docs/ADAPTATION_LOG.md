@@ -916,3 +916,40 @@ presentation choices are omitted; nothing here changes a rule silently.
     Escape Artist check in place of the grapple check as a standard action. It uses the
     skill's own modifier (untrained allowed, armor penalty applied by the skill) and gains
     no grapple bonus, including Improved Grapple's +4.
+71. **Pin is a flag on the existing pair (batch 8b-1, 2026-11-24).** PHB p. 156 lets
+    only a grappling creature pin the opponent it holds. The state is `pinned: true`
+    inside `{holder, held}`, never a second array or a Character condition, so every
+    existing pair-clearing path still owns cleanup. The attempt is a standard action
+    and rolls the existing opposed grapple check; a loss spends the action and leaves
+    the pair and flag as they were.
+72. **Expiry is at the start of the pinner's next turn (batch 8b-1, 2026-11-24).**
+    The printed duration is 1 round. `_begin_turn` clears the flag when the holder's
+    turn begins, including when that pinner cannot act, and logs it. No fixed number of
+    pinned turns is promised: the turn order decides how many the pinned creature
+    actually loses.
+73. **Pin escape clears only the pin (batch 8b-1, 2026-11-24).** An opposed grapple
+    check or an Escape Artist check, either as a standard action, removes `pinned` and
+    leaves the pair, so the creature is still grappling. Failure stays pinned and spends
+    the action. The holder's free release removes the whole pair, pin included.
+74. **The pinned action set is refused by name (batch 8b-1, 2026-11-24).** PHB p. 156
+    allows a pinned character no action except escaping. Attacks, movement, steps,
+    standing, pick-up, sheathe, load, casting, turning undead, potions, first aid and
+    total defense are refused with the printed pin reason; the pinner cannot attack.
+    Administering a potion to the pinned creature from another creature still works,
+    because the restriction is on the pinned actor, not on its allies.
+75. **The -4 composes with the existing Dexterity denial (batch 8b-1, 2026-11-24).**
+    PHB p. 156 gives a -4 AC penalty against everyone except the pinner, while the
+    general grapple rule already denies Dexterity to non-partners. `pinned_penalty` is
+    a separate term in `Rules.armor_class` and `Rules.touch_ac`, passed by
+    `_attack_context`; `denies_dex_to` keeps its pinner exception, and a pin never sets
+    flat-footed, so it grants no sneak attack.
+76. **The AI escapes a pin instead of acting (batch 8b-1, 2026-11-24).** The AI never
+    pins. A pinned monster spends its turn on one pin escape through the existing
+    wrapper and takes no attack; success leaves it grappling, and its turn ends either
+    way.
+77. **Cleanup and presentation reuse the existing paths (batch 8b-1, 2026-11-24).**
+    Death, turning, encounter begin and encounter finish clear a pinned pair through
+    `_prune_grapples`, `_clear_grapple_for`, `_begin_turn` and `finish`. The UI adds a
+    stable `Pin` control and keeps one `Escape` label whose tooltip names the actor's
+    role; no target mode, modal or new focus system, and combat layout moves from 31
+    to 32 controls at both scales.

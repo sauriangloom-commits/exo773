@@ -4,8 +4,9 @@
 escape sections. Tests were written and run failing first, then the engine, the `Game`
 wrappers and the two sidebar buttons were added. §3-§9 are what shipped; the notes below
 record where the code is more specific than the plan and where the acceptance evidence
-lives. Pin, the remaining printed actions, casting from a grapple, the feat catalog entry
-and multiple grapplers (§10, 8b-8f) remain unimplemented. Batch 8a is **closed as
+lives. Pin shipped separately as batch 8b-1 (`docs/PIN_PLAN.md`); the remaining printed
+actions, casting from a grapple, the feat catalog entry and multiple grapplers (§10,
+8b-2/8c-8f) remain unimplemented. Batch 8a is **closed as
 accepted 2026-11-24** within the evidence recorded in `514ebc9`, including the exported
 98-check `--grapple-probe`; no checks were run for that closure. Candidate identity:
 `2026-11-24_batch8a_acceptance_b`, source `a71b942`, 110,874,840 bytes, SHA-256

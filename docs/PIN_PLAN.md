@@ -1,8 +1,10 @@
 # Pin — planning note for batch 8b (planning only)
 
-**Status: planning only, 2026-11-24; accepted as the baseline for batch 8b-1 on
-2026-11-24 with the timing language clarified below. No engine, content, schema, save or
-UI change is made by this note, and no checks were run for it.** It builds on
+**Status: implemented and accepted as batch 8b-1 on 2026-11-24.** The note was accepted
+as the planning baseline in `607ea19` with its timing language clarified - expiry is at
+the start of the pinner's next turn, and no fixed number of pinned turns is promised -
+then implemented in `f149d1d`. Sections 1-8 are what shipped; section 10 records the
+implemented seams, adaptations, evidence and classification. It builds on
 `docs/GRAPPLE_PLAN.md` (batch 8a, closed as accepted) and the review recorded in
 `dfadbe3` (`docs/ROADMAP.md`). Batch 8a's scope is not widened retrospectively: this
 note plans a separate batch that depends on the shipped two-participant grapple.
@@ -367,3 +369,45 @@ expanding the batch.
   behaviour will exist only through the extended probe at 1280×720 headless; raw feat
   text seeded by tests and the probe is not player reachability; no human playtesting is
   planned or requested.
+
+## 10. Implementation record (batch 8b-1, 2026-11-24)
+
+**What shipped.** `Encounter.pin_active()` is a standard action available only to the
+holder of an existing pair. It rolls the existing opposed grapple check; a win records
+`pinned` on that pair and logs both totals, a loss leaves the pair and flag untouched.
+`_begin_turn` clears the flag at the start of the pinner's next turn, even when that
+pinner cannot act. A pinned creature is refused attacks, movement, steps, standing,
+pick-up, sheathe, load, casting, turning undead, potions, first aid and total defense by
+name, while another creature may still administer a potion to it. `grapple_exit`'s pinned
+branch clears only the flag for either method (opposed check or Escape Artist), and the
+holder's release still clears the pair. Third parties take the printed -4 to normal and
+touch AC through `pinned_penalty` in `Rules.armor_class`/`touch_ac`, passed by
+`_attack_context`; the pinner is excluded and the existing Dexterity denial, flat-footed
+and sneak-attack behavior are unchanged. The AI attempts a pin escape and takes no attack.
+The UI adds a stable `Pin` button and role-aware `Escape` tooltips, so combat layout is
+32 controls at both scales.
+
+**Adaptations.** A (standard action), B (the pinner keeps its square), C (expiry at the
+pinner's next turn start, including an unable pinner), D (the pinner cannot attack, and
+the pinned action set is refused by name), E (one escape action, two methods, pin only),
+F (the AI's pinned turn). `ADAPTATION_LOG.md` records them as 71-77.
+
+**Evidence.** `tests/test_pin.gd` 30/30 (94 asserts; red run `builds/qa/pin_red_1.log`
+recorded 30 failing with `Nonexistent function 'pin_active'`), full suite 966/966 (9,737
+asserts), both validators, `--grapple-probe` 147 checks, combat layout 32/0 at 100 % and
+160 %, `--level-up-probe` (349 checks) and `--advancement-probe`. Candidate
+`2026-11-24_batch8b1_acceptance_c`, source `f149d1d`, 110,885,688 bytes, SHA-256
+`8f9de152fa89b1c273eaf85208826c3645216170e759a925b1cf1a3b781aa2e0`, `worktree_entries=1`
+(the preserved README removal only), hash equal to `BUILD.txt` and unchanged before and
+after every run; the probe, validators, both probes and both layout scales PASS from the
+exe.
+
+**Classification.** Confirmed defects: none. Deferred: break-pin (8b-2), pin damage,
+opponent's weapon and moving a pin (8c); casting/Concentration (8d); the feat chain (8e);
+joining and multiple grapplers (8f). Maintenance debt: the stale `Combat Casting` benefit
+text; `Game.combat_turn_undead()` calls `auto_advance()` after a refusal, so the probe
+uses `Encounter.turn_undead()` for a pinned turn (no player-reachable difference, not
+changed here). Evidence gaps: the AI never pins and no pinned ally arises in play, so
+those states are seeded; exported behavior exists only through the 147-check probe at
+1280x720 headless; no rendered appearance, ordinary combat feasibility or human
+playtesting is claimed.

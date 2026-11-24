@@ -3396,3 +3396,30 @@ existing potion path permits them; corrected with no code change), the stale `Co
 Casting` benefit text as maintenance debt, and confirms that no shipped character can
 legally own Improved Grapple inside the supported 3rd -> 4th level step. The recommended
 next task is a planning note for pin only.
+
+### Batch 8b-1 pin implemented (2026-11-24)
+
+Pin rides the existing `{holder, held}` pair as a `pinned` flag. `Encounter.pin_active()`
+is a standard action for the holder only, rolls the existing opposed grapple check, and
+a loss leaves the pair intact. Expiry is at the start of the pinner's next turn in
+`_begin_turn`, including when that pinner cannot act; no fixed pinned-turn count is
+promised. A pinned actor is refused attacks, movement, steps, standing, casting,
+turning, potions, first aid and total defense by name, while another creature can still
+administer a potion (seeded, because play cannot create a pinned ally). Pin escape
+clears only the flag and keeps the grapple; the holder's release clears the pair.
+Third parties take the printed -4 to normal and touch AC through `Rules.armor_class`,
+`touch_ac` and `_attack_context`, with the pinner excluded; the existing Dexterity
+denial and sneak-attack limits are unchanged. The AI attempts a pin escape and attacks
+nothing. `Pin` is a stable control beside `Grapple`; the single `Escape` label carries
+role-aware tooltips.
+
+Source: `test_pin.gd` 30/30 (94 asserts; red run logged 30 failing on missing
+`pin_active`), full suite 966/966 (9,737 asserts, 72 scripts), both validators,
+`--grapple-probe` 147 checks, layout 32/0 at both scales, `--level-up-probe` (349
+checks) and `--advancement-probe` PASS. Candidate `2026-11-24_batch8b1_acceptance_c`
+from `f149d1d`, 110,885,688 bytes, SHA-256
+`8f9de152fa89b1c273eaf85208826c3645216170e759a925b1cf1a3b781aa2e0`,
+`worktree_entries=1` (README only), hash unchanged and equal to `BUILD.txt`; from the
+exe the probe, both validators, both probes and both layout scales PASS. Exported pin
+behavior is exercised only through that probe. Break-pin (8b-2) and 8c-8f remain
+unimplemented; no content, schema, save, award, threshold or XP change.

@@ -1336,3 +1336,11 @@ pinned action set, AC/Dex composition, break-pin targeting and the AI's post-esc
 and those decide its tests and UI. A planning note should settle them before any
 implementation. Do not start 8e (no legal reach inside 3rd -> 4th level) and do not fold
 8c/8d in: casting needs a component/Concentration model and 8d needs an AI policy.
+
+**Batch 8b-1 (pin) implemented 2026-11-24.** The recommendation above was followed:
+pin shipped alone on the existing two-participant pair, with `tests/test_pin.gd` (30
+tests), the extended `--grapple-probe` (147 checks), layout 32 controls and candidate
+`2026-11-24_batch8b1_acceptance_c` (source `f149d1d`, 110,885,688 bytes, SHA-256
+`8f9de152fa89b1c273eaf85208826c3645216170e759a925b1cf1a3b781aa2e0`). Break-pin (8b-2)
+and 8c-8f remain deferred; `PIN_PLAN.md` section 10 and `TEST_REPORT.md` carry the
+record.
