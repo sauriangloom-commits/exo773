@@ -6851,5 +6851,6 @@ identical before and after those runs. Logs are in
 
 **Evidence gaps.** Automated rules behaviour only - no balance testing, no playthrough and no
 human playtest, and the new `flanking +2` log line was not reviewed in a rendered window. The
-30-ft ranged sneak limit and concealment remain unimplemented; overrun stays deferred; no
+concealment clause remained unimplemented when this record was written and the 30-ft
+ranged limit was added afterwards; overrun stays deferred; no
 content, schema, save, award or XP change was made.

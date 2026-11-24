@@ -3828,8 +3828,8 @@ grapple 160, level-up 349, advancement 228, combat-info 62 and the new flanking 
 checks, and combat layout at 1.00/1.60 with 32 controls all pass; candidate
 `2026-11-24_flanking_attacker_specific` (source `1e7dc4b`, exe sha256 `58ce0ce2...`,
 110,911,512 bytes) repeated the validators, six probes and both layouts from the executable
-with its hash identical before and after. Adapted and still unmodelled: the 30-ft ranged sneak
-limit and concealment. Evidence gaps: no balance testing, no playthrough, no human playtest,
+with its hash identical before and after. Adapted and still unmodelled at that point: the
+30-ft ranged sneak limit (added in the next batch) and concealment. Evidence gaps: no balance testing, no playthrough, no human playtest,
 and no rendered review of the new log line. Overrun stays deferred; no content, schema, save,
 award or XP changes.
 

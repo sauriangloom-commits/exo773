@@ -39,7 +39,9 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   bonus and still applies, and a zero modifier changes nothing (PHB p. 136: "If
   you don't have a Dexterity bonus, nothing happens"). A rogue can sneak attack
   a flat-footed target; undead and constructs remain immune to that sneak
-  attack. The storeroom's living looter is a legal target, so the rogue's sneak
+  attack. A ranged sneak attack counts only when the target is within 30 feet of
+  the attacker (PHB p. 50); beyond that the same shot resolves without the extra
+  dice. The storeroom's living looter is a legal target, so the rogue's sneak
   attack is reachable by playing. Awareness only removes a surprise round, so an all-aware battle still
   starts flat-footed. PHB p. 134 says the state lasts "until he or she takes an
   action"; this project ends it at the start of that combatant's first turn and

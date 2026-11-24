@@ -130,6 +130,7 @@ const APP_FLAGS: Array[String] = [
 	"--save-compat-ui-probe",
 	"--settings-notice-probe",
 	"--shield-probe",
+	"--sneak-range-probe",
 	"--training-probe",
 	"--trip-probe",
 	"--unarmed-probe",
@@ -363,6 +364,8 @@ func _ready() -> void:
 		_weapon_probe()
 	if "--shield-probe" in args:
 		_shield_probe()
+	if "--sneak-range-probe" in args:
+		_sneak_range_probe()
 	if "--unarmed-probe" in args:
 		_unarmed_probe()
 	if "--flanking-probe" in args:
@@ -11017,3 +11020,110 @@ func _flanking_probe_force_turn(e: Encounter, ch: Character) -> void:
 		return
 	e.turn_ptr = e.order.find(int(entry["index"]))
 	e._begin_turn(entry)
+
+
+## QA-only (`--sneak-range-probe`): the printed 30-foot limit on ranged sneak
+## attacks (PHB p.50), driven through `Encounter.attack_active` - the ranged path
+## the Attack button uses. Seeded: an open QA map, combatant cells, Sera's equipped
+## crossbow and the looter's untouched flat-footed state. Every check reads the
+## engine's own damage rolls and log.
+func _sneak_range_probe() -> void:
+	probe_scenario = "sneak_range"
+	probe_started_ms = Time.get_ticks_msec()
+	for distance_cells in [5, 7]:
+		var run := _sneak_range_probe_shot(distance_cells)
+		var label := "%d ft." % int(run.get("distance", -1))
+		_probe_check(bool(run.get("ok", false)), "state: the %s shot resolves" % label)
+		if bool(run.get("inside", false)):
+			_probe_check(bool(run.get("dice", false)), "result: %s keeps the rogue's dice" % label)
+			_probe_check(bool(run.get("sneak_log", false)), "log: %s names the sneak dice" % label)
+		else:
+			_probe_check(not bool(run.get("dice", true)), "result: %s withholds the rogue's dice" % label)
+			_probe_check(not bool(run.get("sneak_log", true)), "log: %s claims no sneak dice" % label)
+			_probe_check(bool(run.get("limit_log", false)), "log: %s names the 30-foot limit" % label)
+		_probe_check(
+			bool(run.get("standard_used", false)),
+			"action: the %s shot spends the standard action" % label
+		)
+	print(
+		"PROBE RESULT %s scenario=sneak_range elapsed_ms=%d checks=%d failures=%d"
+		% [
+			"PASS" if probe_failures.is_empty() else "FAIL",
+			Time.get_ticks_msec() - probe_started_ms,
+			probe_checks,
+			probe_failures.size(),
+		]
+	)
+	get_tree().quit(0 if probe_failures.is_empty() else 1)
+
+
+## One seeded ranged shot. The map is the same open 10x5 grid the rule tests use,
+## because the shipped storeroom is only 9 columns wide and cannot place a target
+## 35 ft. from the shooter.
+func _sneak_range_probe_shot(distance_cells: int) -> Dictionary:
+	var content := Game.content
+	var kaelen := Character.from_content(content.get_character("kaelen"), content.items)
+	kaelen.hp = kaelen.max_hp
+	var sera := Character.from_content(content.get_character("sera"), content.items)
+	sera.hp = sera.max_hp
+	sera.equip("weapon", content.get_item("light_crossbow"))
+	var looter := Character.from_content(content.get_monster("store_looter"), content.items)
+	looter.hp = looter.max_hp
+	var map := BattleMap.from_rows(
+		["##########", "#........#", "#........#", "#........#", "##########"]
+	)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7717
+	var e := Encounter.new()
+	e.setup(
+		[kaelen, sera],
+		[looter],
+		map,
+		rng,
+		[Vector2i(1, 3), Vector2i(1, 2)],
+		[Vector2i(1 + distance_cells, 2)],
+		content.spells,
+		"Sneak range probe"
+	)
+	e.begin()
+	# Seeded: the crossbow is loaded through the encounter's own state, and the
+	# looter's first turn is never begun, so it stays flat-footed.
+	for entry in e.combatants:
+		var ch: Character = entry["char"]
+		var weapon: Dictionary = ch.equipment.get("weapon", {})
+		if String(weapon.get("reload", "")) != "":
+			e.loaded_weapons[String(ch.id)] = String(weapon.get("id", ""))
+	var sera_index := int(e.entry_for(sera)["index"])
+	var looter_index := int(e.entry_for(looter)["index"])
+	var distance: int = e.map.distance_ft(
+		e.combatants[sera_index]["cell"], e.combatants[looter_index]["cell"]
+	)
+	print(
+		"PROBE SEEDED map=open10x5 shooter=%s shooter_cell=%s target_cell=%s distance_ft=%d flat_footed=%s"
+		% [
+			String(sera.id),
+			str(e.combatants[sera_index]["cell"]),
+			str(e.combatants[looter_index]["cell"]),
+			distance,
+			str(e.is_flat_footed(looter_index)),
+		]
+	)
+	e.turn_ptr = e.order.find(sera_index)
+	e._begin_turn(e.combatants[sera_index])
+	var before := e.log_lines.size()
+	var result := e.attack_active(looter_index, "ranged")
+	var fresh := " ".join(Array(e.log_lines.slice(before)))
+	var attack: Dictionary = result.get("result", {})
+	var dice := false
+	for roll in Array(attack.get("damage_rolls", [])):
+		if String(roll).begins_with("extra "):
+			dice = true
+	return {
+		"ok": bool(result.get("ok", false)),
+		"distance": distance,
+		"inside": distance_cells <= 6,
+		"dice": dice,
+		"sneak_log": fresh.contains("sneak attack applies"),
+		"limit_log": fresh.contains("no sneak attack beyond 30 ft."),
+		"standard_used": bool(e.turn_state["standard_used"]),
+	}

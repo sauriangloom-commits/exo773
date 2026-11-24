@@ -3008,12 +3008,20 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		into_melee = _into_melee_penalty(ch, target, entry, target_entry)
 		cover = creature_cover(attacker_index, target_index)
 	var extra := ""
+	# PHB p.50: "Ranged attacks can count as sneak attacks only if the target is
+	# within 30 feet." The limit is the attacker-to-target distance the encounter
+	# already measures for range increments, and it applies to every ranged route -
+	# a flat-footed or helpless target included - while a melee attack is unaffected.
+	var sneak_range_ok := (
+		not Rules.is_ranged_attack(weapon, attack_mode) or distance <= 30
+	)
 	# A rogue can sneak attack a flat-footed opponent as well as one she flanks
 	# (PHB pp. 49-50, 133). "When the rogue flanks her target" means she is one of
 	# the flankers: a third party's flank does not supply it, and a ranged attack
 	# never flanks. Undead and constructs remain immune.
 	if (
 		ch.sneak_attack_dice != ""
+		and sneak_range_ok
 		and (Rules.is_helpless(target) or flank_bonus > 0 or target_flat_footed)
 		and not target.tags.has("undead")
 		and not target.tags.has("construct")
@@ -3061,6 +3069,12 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		_log("  flanking +%d (PHB p.153)." % flank_bonus)
 	if extra != "":
 		_log("  sneak attack applies: +%s" % extra)
+	elif (
+		ch.sneak_attack_dice != ""
+		and not sneak_range_ok
+		and (Rules.is_helpless(target) or target_flat_footed)
+	):
+		_log("  no sneak attack beyond 30 ft. (PHB p.50).")
 	var hp_before := target.hp
 	if bool(result["hit"]):
 		_apply_damage(target, result)

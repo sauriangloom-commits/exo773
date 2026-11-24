@@ -269,8 +269,8 @@ func test_a_rogue_who_does_not_flank_gets_no_sneak_attack() -> void:
 
 
 ## Sneak attack, ranged: a crossbow shot while two allies flank the target gets no
-## sneak damage. (The printed 30-foot ranged limit is a separate rule this batch
-## does not model.)
+## sneak damage, because a ranged attacker never flanks. (The printed 30-foot
+## ranged limit has its own tests in `tests/test_sneak_range.gd`.)
 func test_a_ranged_rogue_gets_no_sneak_attack_from_another_pair() -> void:
 	var kaelen := _char("kaelen")
 	var aldric := _char("aldric")

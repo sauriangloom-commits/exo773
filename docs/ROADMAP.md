@@ -2135,9 +2135,9 @@ attack pass `flank_bonus`), not a party-only concession. A rogue's flank-based s
 attack requires her own flank and is melee only; helpless and flat-footed targets
 remain independent routes, and undead and constructs stay immune. Cleave's granted
 attack runs through `_resolve_attack`, so it re-evaluates the new target instead of
-inheriting a stale bonus. Adapted and still deferred: the 30-ft ranged sneak limit and
-concealment are unmodelled, so a ranged rogue can sneak at any distance when the
-target is flat-footed or helpless. Overrun, the opposed-check helper, occupancy,
+inheriting a stale bonus. The 30-ft ranged sneak limit was implemented in the next
+batch (see the ranged sneak section below); concealment and the vitals clause remain
+unmodelled. Overrun, the opposed-check helper, occupancy,
 opportunity-attack eligibility and the engagement model are untouched.
 
 **Defect status.** The review recorded the sneak gate as a suspected defect read from
