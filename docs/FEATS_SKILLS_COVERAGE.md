@@ -188,7 +188,7 @@ interactions only).
 | Improved Initiative | — | +4 initiative | Integrated and verified | `Encounter.begin` |
 | Improved Turning | Ability to turn/rebuke undead | +1 effective cleric level for turning | Integrated and verified | `Feats.turn_level_bonus`; cap, damage and destruction use the effective level (p. 96) |
 | Improved Unarmed Strike | — | Armed while unarmed, no provocation against armed foes, lethal or nonlethal damage at will (no damage die change; PHB p. 97) | Supported | `test_unarmed_attack.gd`, `test_nonlethal_state.gd`, `--unarmed-probe` |
-| Improved Grapple | Dex 13, Improved Unarmed Strike | +4 grapple; no AoO | Deferred | grapple special attack |
+| Improved Grapple | Dex 13, Improved Unarmed Strike | +4 grapple; no AoO | Hooks implemented, not selectable | Both effects are live through `Feats.has_feat("improved_grapple")` in `Encounter._grapple_bonus` and the grapple reaction gate, and `test_grapple.gd` authors the raw feat text. The feat is not in `Feats.CATALOG` because Improved Unarmed Strike is not there either, so it cannot be chosen at level-up; adding the chain is batch 8e |
 | Deflect Arrows | Dex 13, Improved Unarmed Strike | Deflect one ranged attack/round | Deferred | reaction/ranged defence subsystem |
 | Snatch Arrows | Dex 15, Deflect Arrows, Improved Unarmed Strike | Catch a deflected arrow | Deferred | Deflect Arrows |
 | Stunning Fist | Dex 13, Wis 13, Improved Unarmed Strike, BAB +8 | Stun with unarmed strike | Deferred | unarmed strike and stunning condition |

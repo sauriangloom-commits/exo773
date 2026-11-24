@@ -3309,3 +3309,48 @@ rush, trip, cover and turn undead as deferred although all four are implemented.
 comment now lists them as supported and keeps grapple, disarm, sunder, two-weapon
 fighting, readied/delayed actions, concealment and hard cover, and iterative attacks
 as deferred. Only the comment changed — no executable line in the file is different.
+
+### Batch 8a: grapple and escape (2026-11-23)
+
+Implemented from `docs/GRAPPLE_PLAN.md` only: no pin, no 8b-8f work. The tests were
+written first and run red; the recorded failure text was
+`SCRIPT ERROR: Parse Error: Static function "grapple_size_modifier()" not found in base "Rules".`
+and `Parse Error: Cannot infer the type of "expected" variable because the value doesn't
+have a set type.`, not an exit code. Then the engine, wrappers and controls were added.
+
+What shipped: `Encounter.grapple_active` follows trip's shape - guard block, standard
+action spent on declaration, reaction before the touch attack, `touch: true` through
+`Rules.attack`, opposed check through `Rules.opposed_ability_check`, no pending decision
+because a hold resolves inside the turn. `Rules.grapple_size_modifier` derives the printed
++-4-per-category table from `size_category_steps`; `Rules.roll_damage` is the extracted
+damage path the hold shares with `attack`; `deny_dex` denies Dexterity and Dodge without
+setting flat-footed. `Encounter.grapple_exit` handles escape (opposed, or untrained Escape
+Artist, standard action) and the holder's free release through one control. Movement,
+steps, standing up, picking up, sheathing, loading, drawing, third-party and ranged
+attacks are refused with their reasons; casting and turning are refused with the stated
+limit "not modelled yet (scope limit, not a printed prohibition)" - that wording is the
+acceptance note for adaptation 66. The pair clears on death, turning and `finish()`;
+`_prune_grapples` runs before every end check. The AI never initiates; a grappled monster
+calls the same escape wrapper and then stops.
+
+Checks against the final source: focused `tests/test_grapple.gd` 25/25 (92 asserts);
+`tests/test_save_recovery.gd` 14/14 including the new
+`test_reloading_the_pre_apply_save_reapplies_the_same_level`; full suite 936/936 with
+9,641 asserts across 71 scripts; `--validate-campaigns` PASS; `--validate-diagnostics`
+PASS; `--demo-combat --layout-probe --layout-scenario=combat` at 1280x720 PASS at 100 %
+and 160 % with **31 controls, 0 failures** - the deliberate 29 -> 31 change from the two
+new buttons; `--level-up-probe` PASS (349 checks, both scales); `--advancement-probe`
+PASS.
+
+Candidate `2026-11-23_batch8a_grapple_b` from implementation `6cf3f7f`, 110,865,752
+bytes, SHA-256 `209843f5b3ac67bdede6e7d004e32600bd719be0a436f7a75d9747127b01a8e2`,
+identical before and after the runs and equal to `BUILD.txt`; `worktree_entries=1` (the
+README edit only), no untracked files. From the exe: both validators PASS, both probes
+PASS, combat layout PASS at 100 % and 160 % (31 controls, 0 failures).
+
+Limits: no living opponent exists in shipped content for a hold to damage - all three
+monsters are undead and ignore the nonlethal hold damage, so that path is tested with a
+party-stat fixture only. The exported binary's grapple outcomes are not exercised; the
+probe shows layout. No rendered appearance was reviewed, no ordinary combat outcome is
+claimed, and no human playtesting was done or requested. No content, schema, save policy,
+award, threshold or XP value changed.

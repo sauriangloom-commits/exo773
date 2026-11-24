@@ -301,6 +301,34 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   third-party reactions, mounted bull rush, AI-initiated bull rush, creatures
   that occupy more than one square, and terrain effects.
 
+## Grapple (player-initiated, 2026-11-23)
+
+- Grapple (PHB pp. 155-157) is a standard action in the combat screen: the target
+  may make an opportunity attack (damage fails the attempt), the grappler makes an
+  unarmed melee touch attack, and both make opposed grapple checks built from base
+  attack, Strength and the printed special size modifier. A win records the pair
+  and deals unarmed-strike damage, which is nonlethal and therefore ignored by the
+  undead in the shipped campaigns. A target two or more size categories larger
+  loses the hold automatically after the touch.
+- While grappled, a creature threatens nothing, cannot move or step, cannot attack
+  a third party or use a ranged weapon, and loses its Dexterity bonus against
+  everyone except its partner (never flat-footed, so no sneak attack). It may
+  attack the partner with an unarmed strike, natural weapon or light weapon at -4,
+  escape, or end its turn.
+- Escape is an opposed grapple check or an untrained Escape Artist check, as a
+  standard action; the holder may let go for free. One attempt per turn. The pair
+  ends on escape, release, death, turning, or the end of the encounter; a dying or
+  paralyzed participant stays held and cannot escape.
+- The AI never initiates a grapple. A grappled monster spends its turn on one
+  escape attempt and does not attack, so the ghoul's paralysis cannot trigger from
+  a hold.
+- Improved Grapple's +4 on every grapple check and its reaction skip are live
+  through raw feat text only; the feat is not selectable.
+- Not supported: pin, pin damage, constriction, multiple grapplers, joining a
+  grapple, monster-initiated grapple, improved grab, swallow whole, casting or
+  turning undead from a grapple (scope limits, stated as such in the refusal), and
+  the remaining printed grapple actions scheduled for batch 8c.
+
 ## Trip and prone (player-initiated)
 
 - Trip (PHB pp. 158-159) is a standard action in the combat screen: unarmed or

@@ -1,8 +1,20 @@
 # Player-initiated grapple — implementation plan
 
-**Status: planning only, 2026-11-23. No engine, content, schema or save change is made
-by this note.** The first implementation batch is named in §10; nothing here has been
-written or run.
+**Status: implemented 2026-11-23 (batch 8a)** for the initiation, grappled-state and
+escape sections. Tests were written and run failing first, then the engine, the `Game`
+wrappers and the two sidebar buttons were added. §3-§9 are what shipped; the notes below
+record where the code is more specific than the plan and where the acceptance evidence
+lives. Pin, the remaining printed actions, casting from a grapple, the feat catalog entry
+and multiple grapplers (§10, 8b-8f) remain unimplemented.
+
+**Implementation notes.** The automatic hold damage reuses a new `Rules.roll_damage`,
+extracted from `Rules.attack` so there is one damage path and the attack results are
+unchanged. `_provoke_single_opportunity` now returns its attack result, because only "did
+the reaction deal damage" decides the attempt (PHB p. 155). Escape and release share one
+control; the holder's release is free and rolls nothing, while a held creature spends its
+standard action on the check. The AI escape attempt goes through the same wrapper, so a
+failed escape ends the monster's turn with no attack. No save field exists: combat is not
+saved at all.
 
 Scope: a player-initiated grapple against one defender, as a standard action, with the
 grappled state and an escape attempt for either participant. Pin, pin damage,
@@ -293,7 +305,7 @@ Each batch is independently acceptable: it leaves the suite green, the validator
 passing and the game shippable, and the next one is not required for it to be correct.
 **The first is 8a.**
 
-**8a — grapple and escape (the first batch).** Everything in §3-§8: initiation
+**8a — grapple and escape (the first batch, shipped 2026-11-23).** Everything in §3-§8: initiation
 (touch, reaction, size gate, opposed check, hold damage), the grappled state and its
 allowed/forbidden actions, escape and release for both sides, the AI's escape-only
 turn, death/turn/finish cleanup, the two buttons and one mode branch, the wrappers, the

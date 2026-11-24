@@ -880,3 +880,39 @@ presentation choices are omitted; nothing here changes a rule silently.
     level-up row keeps raw `text` for the draft and adds `label` for the screen, the
     sheet resolves at display time, and prerequisites, the weapon matcher, damage,
     filters and `Feats.CATALOG` are untouched.
+64. **The holder stays in its own square (batch 8a, 2026-11-23).** PHB p. 155 step 4 has
+    the grappler move into the target's space to maintain the hold. The grid holds one
+    creature per square and combat is not saved, so the pair is encounter state and both
+    keep their own cells. The entry movement is never performed, the "cannot move in, so
+    let go" clause cannot trigger, and an escape ends without the printed follow-up move
+    into an adjacent square because the escaper already stands in one. Nothing printed is
+    re-interpreted beyond the square-sharing limit itself.
+65. **The size auto-loss is resolved after the touch attack (batch 8a, 2026-11-23).**
+    PHB p. 155 says a target two or more size categories larger is held automatically
+    lost. The engine still rolls the touch attack, because that step precedes the hold,
+    and then logs the automatic failure without an opposed roll and without consuming
+    dice for it. The standard action is spent, as it is at the table.
+66. **Casting and turning from a grappled position are scope limits (batch 8a,
+    2026-11-23).** PHB p. 156 allows a spell with no somatic component, a one-standard-
+    action casting time and a Concentration check at DC 20 + spell level; this build has
+    no component model and no Concentration path for that case, so both casting and
+    turning undead are refused while grappling. The refusal text says "not modelled yet
+    (scope limit, not a printed prohibition)" so it is never presented as a rule.
+67. **Turning overrides a hold (batch 8a, 2026-11-23).** A turned creature must flee and
+    cannot do so while held, so the pair separates before the fleeing turn runs. The
+    printed text does not cover this interaction; the ruling keeps `_run_turned_turn`
+    from moving a creature that is still in a hold.
+68. **Death, dying and paralysis inside a hold (batch 8a, 2026-11-23).** Death clears the
+    pair immediately and is logged. A dying, stable, unconscious or paralyzed participant
+    stays in the hold and simply cannot escape; it is not released, and the state ends
+    normally at the encounter's end. The printed text covers voluntary release and escape
+    only, so this is a ruling.
+69. **A hold excludes other holds and bull rushes, but not trip (batch 8a,
+    2026-11-23).** A grapple attempt against an existing participant and a bull rush
+    against one are refused with a named reason, because there is no multiple-grappler
+    arithmetic and no forced movement of a held creature. Trip is an independent
+    condition and stays legal, including against a participant.
+70. **Escape Artist is not a grapple check (batch 8a, 2026-11-23).** PHB p. 156 allows an
+    Escape Artist check in place of the grapple check as a standard action. It uses the
+    skill's own modifier (untrained allowed, armor penalty applied by the skill) and gains
+    no grapple bonus, including Improved Grapple's +4.

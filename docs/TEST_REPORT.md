@@ -5873,3 +5873,52 @@ The review's reachability findings and the recommended planning note for grapple
 summarised in `ROADMAP.md` and `PROGRAM_PROGRESS.md`; the reload-then-reapply gap is
 confirmed as an evidence gap a focused test can close without new save policy, not a
 defect and not a batch of its own.
+
+## Batch 8a: grapple and escape (2026-11-23)
+
+Implementation `6cf3f7f`; plan `docs/GRAPPLE_PLAN.md`. Scope: initiation, the grappled
+state and escape only - no pin, no 8b-8f.
+
+**Red evidence, by logged text.** Before the engine existed, the focused run recorded
+`SCRIPT ERROR: Parse Error: Static function "grapple_size_modifier()" not found in base "Rules".`
+(repeated once per referencing test) and
+`Parse Error: Cannot infer the type of "expected" variable because the value doesn't have a set type.`
+The first red run also showed `25` tests, `22` passing and `3` failing while the three
+behaviour tests were repaired against the real implementation; the exit code was never
+used as evidence.
+
+| Check (source, final) | Result |
+| --- | --- |
+| `tests/test_grapple.gd` | **25/25**, 92 asserts |
+| `tests/test_save_recovery.gd` (includes reload-then-reapply) | **14/14**, 80 asserts |
+| Full suite | **936/936**, 9,641 asserts, 71 scripts |
+| `--validate-campaigns` | PASS |
+| `--validate-diagnostics` | PASS |
+| `--demo-combat --layout-probe --layout-scenario=combat`, 1280x720, 100 % | PASS, **31 controls**, 0 failures |
+| same, 160 % | PASS, **31 controls**, 0 failures |
+| `--level-up-probe` (100 % and 160 %) | PASS, 349 checks, 0 failures |
+| `--advancement-probe` | PASS |
+
+The combat layout control count moved deliberately from 29 to 31 with the two new buttons
+(`Grapple`, `Escape`); the sidebar's reserved scrollbar carries the extra grid row at both
+scales.
+
+**Reload-then-reapply.** `test_reloading_the_pre_apply_save_reapplies_the_same_level` saves
+at 6000 XP and level 3, applies the level in memory, reloads the pre-apply save, sees the
+step offered again with the XP still paid, reapplies the same choices, then confirms the
+saved level-4 state loads as `already_level_4`. Existing behaviour only: no new save
+policy, no new field.
+
+**Candidate `2026-11-23_batch8a_grapple_b`** (source `6cf3f7f`, plan commit `3f9d44f`):
+110,865,752 bytes, SHA-256
+`209843f5b3ac67bdede6e7d004e32600bd719be0a436f7a75d9747127b01a8e2`, matched before and
+after every run and equal to `BUILD.txt`; `worktree_entries=1` (README only), no untracked
+files. From the exe: both validators PASS, `--level-up-probe` PASS, `--advancement-probe`
+PASS, combat layout PASS at 100 % and 160 % (31 controls, 0 failures).
+
+**Stated limits.** All three shipped monsters are undead, so the hold's nonlethal damage is
+ignored against every one of them; that path is covered by a party-stat fixture, and there
+is no living opponent in shipped content for it. The exported binary's grapple outcomes are
+not tested - the probe shows layout, not rules. Nothing here claims a rendered appearance,
+an ordinary combat outcome, or human playtesting. No content, schema, save policy, award,
+threshold or XP value changed; the README edit was excluded from both commits.
