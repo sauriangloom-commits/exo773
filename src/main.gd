@@ -7023,6 +7023,168 @@ func _grapple_probe() -> void:
 	_probe_check(not release_text.contains("Escape check:"), "the release rolls nothing")
 	_probe_check(e.grapples.is_empty(), "state: the release clears the pair")
 	_probe_check(bool(e.turn_state["standard_used"]) == false, "state: the free release spends no standard action")
+	# 5b. Pin (batch 8b-1). The hold has to reach a turn with the standard action
+	# free, so the defender's seeded grapple check is lowered to make its escape
+	# between turns fail; that is fixture state, not a rule change.
+	zombie.base_attack = -20
+	var pin_ready := false
+	for attempt_no in 4:
+		var hold_for_pin := await _probe_grapple_until_held(
+			combat, e, sera, zombie, "grapple the zombie for the pin"
+		)
+		if not bool(hold_for_pin.get("held", false)):
+			break
+		await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+		for f in 600:
+			await get_tree().process_frame
+			if e.finished or e.is_player_turn():
+				break
+		if e.grapple_partner(zombie_index) == sera_index:
+			pin_ready = true
+			break
+	_probe_check(pin_ready, "the hold survives the defender's escape attempt into the pin turn")
+	if pin_ready:
+		# P1: the Pin control needs no target mode; the partner is fixed.
+		var pin_lines := e.log_lines.size()
+		await _probe_click(_probe_button(current_screen.button_box, "Pin"), "Pin")
+		for f in 15:
+			await get_tree().process_frame
+		var pin_text := _probe_ranged_new_lines(e, pin_lines)
+		_probe_check(e.is_pinned(zombie_index), "button: the pin records the state on the held creature")
+		_probe_check(pin_text.contains("Pin check:"), "the pin rolls and logs an opposed check")
+		_probe_check(pin_text.contains("pins QA Unarmed Zombie"), "the pin is announced")
+		_probe_check(bool(e.turn_state["standard_used"]), "state: the pin spent the standard action")
+		# P2: the printed -4 beside the existing Dexterity denial, and the exception.
+		_probe_check(
+			e.pinned_ac_penalty(zombie_index, brawler_index) == 4,
+			"state: a third party takes the printed -4 AC",
+		)
+		_probe_check(
+			e.pinned_ac_penalty(zombie_index, sera_index) == 0,
+			"state: the pinner is excluded from the -4",
+		)
+		var plain_ac := Rules.armor_class(zombie, {"deny_dex": true, "attack_mode": "melee"})
+		var pinned_ac := Rules.armor_class(
+			zombie, {"deny_dex": true, "pinned_penalty": 4, "attack_mode": "melee"}
+		)
+		_probe_check(pinned_ac == plain_ac - 4, "armor_class applies the -4 beside Dexterity denial")
+		_probe_check(
+			Rules.touch_ac(zombie, {"deny_dex": true, "pinned_penalty": 4, "attack_mode": "ranged"})
+			== Rules.touch_ac(zombie, {"deny_dex": true, "attack_mode": "ranged"}) - 4,
+			"touch AC carries the same -4",
+		)
+		_probe_check(not e.is_flat_footed(zombie_index), "state: a pin is not flat-footed")
+		_probe_check(e.denies_dex_to(zombie_index, sera_index) == false, "state: the pinner keeps its target's Dexterity")
+		# P3: the pinner's attack refusal through the real button, after seeding the
+		# standard action back so the control can be pressed at all.
+		e.turn_state["standard_used"] = false
+		combat.refresh_screen()
+		await _probe_click(_probe_button(current_screen.button_box, "Attack"), "Attack")
+		await _probe_click_cell(combat, e.cell_of(zombie), "attack while pinning")
+		for f in 15:
+			await get_tree().process_frame
+		_probe_check(
+			String(Game.last_ui_message).contains("is pinning"),
+			"a pinner cannot attack: " + String(Game.last_ui_message),
+		)
+		# P3b: the pinned creature's own turn, seeded directly, refuses the audited
+		# action paths by direct Game calls.
+		e.turn_ptr = e.order.find(zombie_index)
+		e._begin_turn(e.combatants[zombie_index])
+		combat.refresh_screen()
+		var pinned_attack := Game.combat_attack(sera_index)
+		_probe_check(
+			String(pinned_attack.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot attack: " + String(pinned_attack.get("message", "")),
+		)
+		var pinned_potion := Game.combat_item("potion_of_cure_light_wounds", zombie_index)
+		_probe_check(
+			String(pinned_potion.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot drink a potion: " + String(pinned_potion.get("message", "")),
+		)
+		var pinned_aid := Game.combat_stabilize(zombie_index)
+		_probe_check(
+			String(pinned_aid.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot attempt first aid: " + String(pinned_aid.get("message", "")),
+		)
+		var pinned_defense := Game.combat_total_defense()
+		_probe_check(
+			String(pinned_defense.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot take total defense: " + String(pinned_defense.get("message", "")),
+		)
+		var pinned_cast := Game.combat_cast("cure_light_wounds", sera_index)
+		_probe_check(
+			String(pinned_cast.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot cast: " + String(pinned_cast.get("message", "")),
+		)
+		var pinned_turn := e.turn_undead()
+		_probe_check(
+			String(pinned_turn.get("message", "")).contains("pinned"),
+			"direct call: a pinned creature cannot turn undead: " + String(pinned_turn.get("message", "")),
+		)
+		var pinned_move := Game.combat_move(Vector2i(1, 2))
+		_probe_check(
+			String(pinned_move.get("message", "")).contains("grappling"),
+			"direct call: a pinned creature cannot move: " + String(pinned_move.get("message", "")),
+		)
+		# Restore the player's turn without starting it, so the pin does not expire
+		# before the AI scenario (a real _begin_turn for the pinner would clear it).
+		e.turn_ptr = e.order.find(sera_index)
+		e.turn_state = e._fresh_turn_state()
+		combat.refresh_screen()
+		# P4: the AI's pinned turn. Its seeded check is raised so the pin escape
+		# succeeds, which must still leave the grapple in place.
+		zombie.base_attack = 40
+		var escape_lines := e.log_lines.size()
+		await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+		for f in 600:
+			await get_tree().process_frame
+			if e.finished or e.is_player_turn():
+				break
+		var escape_text := _probe_ranged_new_lines(e, escape_lines)
+		_probe_check(escape_text.contains("tries to escape the pin"), "the pinned AI attempts a pin escape")
+		_probe_check(escape_text.contains("escapes the pin; still grappling"), "a successful pin escape leaves the grapple")
+		_probe_check(not escape_text.contains("QA Unarmed Zombie attacks"), "the pinned AI takes no attack")
+		_probe_check(e.is_grappled(zombie_index) and not e.is_pinned(zombie_index), "state: grappled, no longer pinned")
+		# P5: the holder's free release ends the whole hold.
+		var release_pin_lines := e.log_lines.size()
+		await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (pin release)")
+		for f in 10:
+			await get_tree().process_frame
+		_probe_check(e.grapples.is_empty(), "button: the holder's release ends the hold")
+		_probe_check(
+			_probe_ranged_new_lines(e, release_pin_lines).contains("lets go of"),
+			"the pin release is logged",
+		)
+		# P6: pin again, let the defender fail its pin escape, and reach the
+		# pinner's next turn; the pin expires there and the grapple remains.
+		zombie.base_attack = -20
+		var rehold := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie for expiry")
+		_probe_check(bool(rehold.get("held", false)), "the zombie is held for the expiry scenario")
+		await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+		for f in 600:
+			await get_tree().process_frame
+			if e.finished or e.is_player_turn():
+				break
+		var expiry_lines := e.log_lines.size()
+		await _probe_click(_probe_button(current_screen.button_box, "Pin"), "Pin")
+		for f in 15:
+			await get_tree().process_frame
+		_probe_check(e.is_pinned(zombie_index), "the second pin records the state")
+		await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+		for f in 600:
+			await get_tree().process_frame
+			if e.finished or e.is_player_turn():
+				break
+		var expiry_text := _probe_ranged_new_lines(e, expiry_lines)
+		_probe_check(expiry_text.contains("fails to escape the pin"), "the defender fails its pin escape")
+		_probe_check(expiry_text.contains("pin ends"), "the pin expires at the pinner's next turn")
+		_probe_check(not e.is_pinned(zombie_index), "state: the pin is cleared")
+		_probe_check(e.is_grappled(zombie_index), "state: the grapple itself remains after expiry")
+		await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (release after expiry)")
+		for f in 10:
+			await get_tree().process_frame
+		_probe_check(e.grapples.is_empty(), "state: the pair is clear before the feat scenario")
 	# 6. Improved Grapple as raw feat text (seeded): +4 on every check, no reaction.
 	var modifier_before := e.grapple_check_modifier(sera)
 	sera.feats.append("Improved Grapple")
@@ -7099,6 +7261,16 @@ func _grapple_probe() -> void:
 	# 11. Encounter finish releases any remaining hold.
 	var finish_attempt := await _probe_grapple_until_held(combat, e, sera, brawler, "grapple the brawler before the encounter ends")
 	_probe_check(bool(finish_attempt.get("held", false)), "the brawler is held before the encounter ends")
+	# P7: cleanup through the encounter finish. The standard action is seeded back
+	# only so the Pin control can be pressed on this already-spent turn.
+	e.turn_state["standard_used"] = false
+	combat.refresh_screen()
+	var finish_pin_button := _probe_button(current_screen.button_box, "Pin")
+	_probe_reveal(finish_pin_button)
+	await _probe_click(finish_pin_button, "Pin")
+	for f in 12:
+		await get_tree().process_frame
+	_probe_check(e.is_pinned(brawler_index), "finish scenario: the living brawler is pinned")
 	var finish_lines := e.log_lines.size()
 	e.finish("victory")
 	var finish_text := _probe_ranged_new_lines(e, finish_lines)

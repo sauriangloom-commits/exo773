@@ -49,6 +49,7 @@ var trip_weapon_check: CheckBox
 ## creature escapes with an opposed check. The label stays "Escape" because the
 ## enable map is keyed by button text (see _refresh_actions).
 var grapple_exit_button: Button
+var pin_button: Button
 var decision_box: VBoxContainer
 var sidebar_panel: ScrollContainer
 
@@ -275,6 +276,11 @@ func _build() -> void:
 	_add_action_button("Trip", _trip)
 	_add_action_button("Bull rush", _bull_rush)
 	_add_action_button("Grapple", _grapple)
+	pin_button = _add_action_button("Pin", _pin)
+	pin_button.tooltip_text = (
+		"Hold the creature you are grappling immobile for 1 round (standard action). "
+		+ "While pinning you cannot attack (PHB p.156)."
+	)
 	grapple_exit_button = _add_action_button("Escape", _grapple_exit)
 	grapple_exit_button.tooltip_text = (
 		"Escape a grapple with an opposed grapple check or Escape Artist, or let go "
@@ -621,6 +627,22 @@ func _update_button_states() -> void:
 	var active_index := (
 		int(active_entry_now["index"]) if not active_entry_now.is_empty() else -1
 	)
+	# One stable Escape label, explained by role: pinned, holding (release), held.
+	if grapple_exit_button != null and active_index >= 0:
+		if e.is_pinned(active_index):
+			grapple_exit_button.tooltip_text = (
+				"Escape the pin with an opposed grapple check or Escape Artist; a success "
+				+ "still leaves you grappling (PHB p.156)."
+			)
+		elif e.grapple_role(active_index) == "holder":
+			grapple_exit_button.tooltip_text = (
+				"Let go for free; releasing a pin also ends the whole hold (PHB p.156)."
+			)
+		else:
+			grapple_exit_button.tooltip_text = (
+				"Escape a grapple with an opposed grapple check or Escape Artist, or let go "
+				+ "for free if you are the one holding (PHB p.156)."
+			)
 	var prone := turn_ch != null and turn_ch.is_prone()
 	var trip_weapon_ready := turn_ch != null and bool(e._primary_weapon(turn_ch).get("trip", false))
 	trip_weapon_check.disabled = not trip_weapon_ready or pending
@@ -653,6 +675,12 @@ func _update_button_states() -> void:
 		"Trip": standard,
 		"Bull rush": standard,
 		"Grapple": standard,
+		"Pin": (
+			standard
+			and active_index >= 0
+			and e.grapple_role(active_index) == "holder"
+			and not e.is_pinned(e.grapple_partner(active_index))
+		),
 		"Escape": player_turn and active_index >= 0 and e.is_grappled(active_index),
 		"Stand up": player_turn and prone and not moved,
 		"Pick up":
@@ -822,6 +850,14 @@ func _grapple() -> void:
 		return
 	mode = "grapple"
 	Game.last_ui_message = "Click an enemy within reach to Grapple (PHB p.155)."
+	refresh_screen()
+
+
+## No target mode: the pinned creature is always the grapple partner.
+func _pin() -> void:
+	if _refuse_while_pending():
+		return
+	Game.combat_pin()
 	refresh_screen()
 
 

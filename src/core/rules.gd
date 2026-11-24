@@ -288,6 +288,9 @@ static func armor_class(ch: Character, opts: Dictionary = {}) -> int:
 	if not is_helpless(ch) and not flat_footed and not deny_dex:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
 		ac += defensive_dodge_bonus(ch)
+	# PHB p.156: a pinned creature takes -4 AC from opponents other than the one
+	# pinning it. The encounter decides who that is; 0 means no penalty.
+	ac -= maxi(0, int(opts.get("pinned_penalty", 0)))
 	return ac
 
 
@@ -308,6 +311,8 @@ static func touch_ac(ch: Character, opts: Dictionary = {}) -> int:
 		ac += Feats.combat_expertise_dodge_bonus(ch)
 		# Touch AC keeps dodge bonuses (Rules Compendium, "Touch Attacks").
 		ac += defensive_dodge_bonus(ch)
+	# The printed pin penalty applies to touch AC as well.
+	ac -= maxi(0, int(opts.get("pinned_penalty", 0)))
 	return ac
 
 
@@ -712,10 +717,27 @@ static func attack(
 		attack_bonus_value += 2
 	var flat_footed := bool(opts.get("flat_footed", false))
 	var deny_dex := bool(opts.get("deny_dex", false))
+	var pinned_penalty := maxi(0, int(opts.get("pinned_penalty", 0)))
 	var target_ac := (
-		touch_ac(target, {"flat_footed": flat_footed, "deny_dex": deny_dex, "attack_mode": attack_mode})
+		touch_ac(
+			target,
+			{
+				"flat_footed": flat_footed,
+				"deny_dex": deny_dex,
+				"pinned_penalty": pinned_penalty,
+				"attack_mode": attack_mode,
+			}
+		)
 		if bool(opts.get("touch", false))
-		else armor_class(target, {"flat_footed": flat_footed, "deny_dex": deny_dex, "attack_mode": attack_mode})
+		else armor_class(
+			target,
+			{
+				"flat_footed": flat_footed,
+				"deny_dex": deny_dex,
+				"pinned_penalty": pinned_penalty,
+				"attack_mode": attack_mode,
+			}
+		)
 	)
 	# Soft cover from creatures (PHB p.151) is +4 AC, and to touch AC as well
 	# because a touch attack keeps every modifier except armor, shield and natural

@@ -234,6 +234,17 @@ func _begin_turn(entry: Dictionary) -> void:
 		pending_bull_rush.clear()
 		_log("  An unresolved combat decision is discarded at the start of the turn.")
 	var index := int(entry["index"])
+	# PHB p.156: a pin lasts 1 round. It ends at the start of the pinner's next
+	# turn, whether or not that pinner can still act; no fixed number of pinned
+	# turns is promised (docs/PIN_PLAN.md adaptation C).
+	for pair in grapples:
+		if int(pair["holder"]) == index and bool(pair.get("pinned", false)):
+			var held_index := int(pair["held"])
+			pair["pinned"] = false
+			_log(
+				"  %s's pin ends; %s is no longer pinned (1 round, PHB p.156)."
+				% [ch.display_name, (combatants[held_index]["char"] as Character).display_name]
+			)
 	# PHB p.133: the state lasts until the combatant's first turn, so it is
 	# cleared here for every combatant whose turn begins, including those that
 	# are skipped because they cannot act.
@@ -396,6 +407,33 @@ func grapple_role(index: int) -> String:
 	return ""
 
 
+## PHB p.156: a pin is a state of the existing pair, never a second array or a
+## Character condition. `pinned` is only ever true on the pair's held side.
+func is_pinned(index: int) -> bool:
+	for pair in grapples:
+		if int(pair["held"]) == index:
+			return bool(pair.get("pinned", false))
+	return false
+
+
+## The holder that owns the pin, or -1. Used for the printed -4 exception.
+func pin_holder(index: int) -> int:
+	for pair in grapples:
+		if int(pair["held"]) == index and bool(pair.get("pinned", false)):
+			return int(pair["holder"])
+	return -1
+
+
+## PHB p.156: "While you're pinned, you take a -4 penalty to your AC against
+## opponents other than the one pinning you." The pinner never takes it, and it
+## is not the Dexterity denial (which `denies_dex_to` already applies to every
+## non-partner), so the two never stand in for each other.
+func pinned_ac_penalty(target_index: int, attacker_index: int) -> int:
+	if not is_pinned(target_index):
+		return 0
+	return 0 if pin_holder(target_index) == attacker_index else 4
+
+
 ## The printed grapple check is base attack + Strength modifier + special size
 ## modifier (PHB p.155). Improved Grapple adds +4 to every grapple check, on
 ## either side (PHB p.95). `Rules.opposed_ability_check` adds the ability modifier
@@ -418,6 +456,18 @@ func _grapple_blocks(action: String) -> String:
 	if entry.is_empty() or not is_grappled(int(entry["index"])):
 		return ""
 	return "%s is grappling and cannot %s; escape or release first (PHB p.156)." % [
+		(entry["char"] as Character).display_name, action
+	]
+
+
+## PHB p.156: "A pinned character ... can't take any action except to attempt to
+## escape." The printed restriction, not a project scope limit, so the message
+## says so and names the pin even where the action is also blocked by scope.
+func _pin_blocks(action: String) -> String:
+	var entry := active_entry()
+	if entry.is_empty() or not is_pinned(int(entry["index"])):
+		return ""
+	return "%s is pinned and cannot %s; the only allowed action is escaping the pin (PHB p.156)." % [
 		(entry["char"] as Character).display_name, action
 	]
 
@@ -744,6 +794,18 @@ func attack_active(target_index: int, attack_mode := "", unarmed_damage := "") -
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot attack." % ch.display_name)
+	# PHB p.156: a pinned creature can take no action except escaping, and a
+	# pinner cannot draw or use a weapon of any kind.
+	var pin_block := _pin_blocks("attack")
+	if pin_block != "":
+		return _fail(pin_block)
+	if is_grappled(int(entry["index"])) and grapple_role(int(entry["index"])) == "holder":
+		var pinned_index := grapple_partner(int(entry["index"]))
+		if is_pinned(pinned_index):
+			return _fail(
+				"%s is pinning %s and cannot attack (PHB p.156)."
+				% [ch.display_name, (combatants[pinned_index]["char"] as Character).display_name]
+			)
 	# PHB p.143: total defense allows no attacks at all. The standard action is
 	# also spent, so name the stance instead of only the action economy.
 	if ch.has_effect("total_defense"):
@@ -1903,6 +1965,8 @@ func grapple_active(target_index: int) -> Dictionary:
 		return _fail("You cannot grapple an ally.")
 	if target.has_condition("dead"):
 		return _fail("%s is already dead." % target.display_name)
+	if is_pinned(target_index):
+		return _fail("%s is already pinned." % target.display_name)
 	var index := int(entry["index"])
 	if is_grappled(index):
 		return _fail("%s is already in a grapple." % ch.display_name)
@@ -2032,7 +2096,7 @@ func grapple_active(target_index: int) -> Dictionary:
 			"opposed": opposed,
 			"message": "The grapple fails.",
 		}
-	grapples.append({"holder": index, "held": target_index})
+	grapples.append({"holder": index, "held": target_index, "pinned": false})
 	_log("  %s grapples %s (PHB pp.155-157)." % [ch.display_name, target.display_name])
 	# PHB p.155: a won hold deals damage as if with an unarmed strike, which is
 	# nonlethal (PHB p.139). Undead and constructs therefore ignore it.
@@ -2063,6 +2127,94 @@ func grapple_active(target_index: int) -> Dictionary:
 	return response
 
 
+## Pin (PHB p.156), batch 8b-1. Only the holder of the existing pair may pin, on
+## its own turn, against its held partner. The printed check is "in place of an
+## attack", and this engine has one attack per turn, so the pin costs the standard
+## action (docs/PIN_PLAN.md adaptation A). A loss leaves the grapple and the flag
+## untouched and still spends the action.
+func pin_active() -> Dictionary:
+	var entry := active_entry()
+	if entry.is_empty():
+		return _fail("No active combatant.")
+	if has_pending_decision():
+		return _fail("Resolve the pending combat decision first.")
+	var ch: Character = entry["char"]
+	if not ch.can_act() or ch.has_condition("paralyzed"):
+		return _fail("%s cannot pin." % ch.display_name)
+	if bool(turn_state["standard_used"]):
+		return _fail("Your standard action is already spent this turn.")
+	var staggered_pin := _staggered_blocks_standard(ch)
+	if staggered_pin != "":
+		return _fail(staggered_pin)
+	var index := int(entry["index"])
+	var partner_index := grapple_partner(index)
+	if partner_index < 0:
+		return _fail("%s is not grappling." % ch.display_name)
+	if grapple_role(index) != "holder":
+		return _fail("Only the creature holding the grapple can pin.")
+	var target: Character = combatants[partner_index]["char"]
+	if target.has_condition("dead"):
+		return _fail("%s is already dead." % target.display_name)
+	if is_pinned(partner_index):
+		return _fail("%s is already pinned." % target.display_name)
+	# Declared before the check: the attempt spends the action either way.
+	turn_state["standard_used"] = true
+	_log("%s tries to pin %s." % [ch.display_name, target.display_name])
+	var opposed := Rules.opposed_ability_check(
+		rng,
+		ch,
+		["str"],
+		target,
+		["str"],
+		{
+			"attacker_bonus": _grapple_bonus(ch),
+			"defender_bonus": _grapple_bonus(target),
+			"label": "pin",
+		}
+	)
+	if not bool(opposed.get("ok", false)):
+		return _fail(String(opposed.get("reason", "The pin could not be resolved.")))
+	_log(
+		"  Pin check: %s %s d20(%d)%+d = %d vs %s %s d20(%d)%+d = %d"
+		% [
+			ch.display_name,
+			String(opposed["attacker_ability"]),
+			int(opposed["attacker_roll"]),
+			int(opposed["attacker_modifier"]),
+			int(opposed["attacker_total"]),
+			target.display_name,
+			String(opposed["defender_ability"]),
+			int(opposed["defender_roll"]),
+			int(opposed["defender_modifier"]),
+			int(opposed["defender_total"]),
+		]
+	)
+	if String(opposed["winner"]) != "attacker":
+		_log("  %s fails to pin %s." % [ch.display_name, target.display_name])
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"pinned": false,
+			"check": opposed,
+			"message": "%s fails to pin %s." % [ch.display_name, target.display_name],
+		}
+	for pair in grapples:
+		if int(pair["held"]) == partner_index:
+			pair["pinned"] = true
+	_log("  %s pins %s (PHB p.156)." % [ch.display_name, target.display_name])
+	_after_action(ch)
+	_check_end()
+	changed.emit()
+	return {
+		"ok": true,
+		"pinned": true,
+		"check": opposed,
+		"message": "%s pins %s." % [ch.display_name, target.display_name],
+	}
+
+
 ## Escape, or the holder's free release (PHB p.156). Either participant may act on
 ## its own turn. Escape spends the standard action and is an opposed grapple check
 ## or an untrained Escape Artist check; release is free and rolls nothing.
@@ -2080,6 +2232,82 @@ func grapple_exit(use_escape_artist := false) -> Dictionary:
 	if partner_index < 0:
 		return _fail("%s is not grappling." % ch.display_name)
 	var opponent: Character = combatants[partner_index]["char"]
+	# PHB p.156: escaping a pin still leaves the creature grappling, so this branch
+	# clears only the flag. It is reached before the holder's release branch
+	# because a pinned creature is never the holder.
+	if is_pinned(index):
+		if bool(turn_state["standard_used"]):
+			return _fail("Your standard action is already spent this turn.")
+		var staggered_pin := _staggered_blocks_standard(ch)
+		if staggered_pin != "":
+			return _fail(staggered_pin)
+		turn_state["standard_used"] = true
+		var pin_check := {}
+		if use_escape_artist:
+			_log("%s tries to slip out of the pin with Escape Artist." % ch.display_name)
+			pin_check = _escape_artist_check(ch, opponent)
+		else:
+			_log("%s tries to escape the pin." % ch.display_name)
+			var opposed_pin := Rules.opposed_ability_check(
+				rng,
+				ch,
+				["str"],
+				opponent,
+				["str"],
+				{
+					"attacker_bonus": _grapple_bonus(ch),
+					"defender_bonus": _grapple_bonus(opponent),
+					"label": "escape pin",
+				}
+			)
+			if not bool(opposed_pin.get("ok", false)):
+				return _fail(String(opposed_pin.get("reason", "The pin escape could not be resolved.")))
+			_log(
+				"  Escape check: %s %s d20(%d)%+d = %d vs %s %s d20(%d)%+d = %d"
+				% [
+					ch.display_name,
+					String(opposed_pin["attacker_ability"]),
+					int(opposed_pin["attacker_roll"]),
+					int(opposed_pin["attacker_modifier"]),
+					int(opposed_pin["attacker_total"]),
+					opponent.display_name,
+					String(opposed_pin["defender_ability"]),
+					int(opposed_pin["defender_roll"]),
+					int(opposed_pin["defender_modifier"]),
+					int(opposed_pin["defender_total"]),
+				]
+			)
+			pin_check = {
+				"roll": int(opposed_pin["attacker_roll"]),
+				"modifier": int(opposed_pin["attacker_modifier"]),
+				"total": int(opposed_pin["attacker_total"]),
+				"opponent_total": int(opposed_pin["defender_total"]),
+				"success": String(opposed_pin["winner"]) == "attacker",
+			}
+		var escaped_pin := bool(pin_check.get("success", false))
+		if escaped_pin:
+			for pair in grapples:
+				if int(pair["held"]) == index:
+					pair["pinned"] = false
+			_log("  %s escapes the pin; still grappling." % ch.display_name)
+		else:
+			_log("  %s fails to escape the pin." % ch.display_name)
+		_after_action(ch)
+		_check_end()
+		changed.emit()
+		return {
+			"ok": true,
+			"escaped": escaped_pin,
+			"released": false,
+			"pin": true,
+			"escape_artist": use_escape_artist,
+			"check": pin_check,
+			"message": (
+				"%s escapes the pin." % ch.display_name
+				if escaped_pin
+				else "%s fails to escape the pin." % ch.display_name
+			),
+		}
 	if grapple_role(index) == "holder":
 		# PHB p.156: opponents do not have to hold you. Letting go is free.
 		_remove_pair(index)
@@ -2796,6 +3024,7 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		"into_melee_penalty": int(into_melee["penalty"]),
 		"cover": cover,
 		"deny_dex": denies_dex_to(target_index, attacker_index),
+		"pinned_penalty": pinned_ac_penalty(target_index, attacker_index),
 	}
 	if opts.has("force_attack_base"):
 		attack_opts["force_attack_base"] = int(opts["force_attack_base"])
@@ -3068,6 +3297,9 @@ func total_defense() -> Dictionary:
 		return _fail("Resolve the pending combat decision first.")
 	var ch: Character = entry["char"]
 	var index := int(entry["index"])
+	var pin_block := _pin_blocks("take total defense")
+	if pin_block != "":
+		return _fail(pin_block)
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot take total defense." % ch.display_name)
 	if bool(turn_state["standard_used"]):
@@ -3305,6 +3537,9 @@ func cast_active_spell(spell_id: String, target_index: int, opts := {}) -> Dicti
 	var ch: Character = entry["char"]
 	if not ch.can_act() or ch.has_condition("paralyzed"):
 		return _fail("%s cannot cast." % ch.display_name)
+	var pin_block := _pin_blocks("cast a spell")
+	if pin_block != "":
+		return _fail(pin_block)
 	if is_grappled(int(entry["index"])):
 		# Stated limit, not a printed prohibition: casting while grappling has a
 		# component and Concentration path this build does not model yet.
@@ -3660,6 +3895,11 @@ func use_potion_active(item_id: String, target_index: int) -> Dictionary:
 	if entry.is_empty():
 		return _fail("No active combatant.")
 	var ch: Character = entry["char"]
+	# PHB p.156: a pinned character can take no action except escaping. Potions
+	# are allowed while merely grappling; pin is the narrower state.
+	var pin_block := _pin_blocks("drink a potion")
+	if pin_block != "":
+		return _fail(pin_block)
 	if bool(turn_state["standard_used"]):
 		return _fail("Your standard action is already spent this turn.")
 	var staggered_potion := _staggered_blocks_standard(ch)
@@ -3721,6 +3961,9 @@ func stabilize_active(target_index: int) -> Dictionary:
 	if entry.is_empty():
 		return _fail("No active combatant.")
 	var ch: Character = entry["char"]
+	var pin_block := _pin_blocks("attempt first aid")
+	if pin_block != "":
+		return _fail(pin_block)
 	if bool(turn_state["standard_used"]):
 		return _fail("Your standard action is already spent this turn.")
 	var staggered_first_aid := _staggered_blocks_standard(ch)
@@ -3835,6 +4078,9 @@ func turn_undead() -> Dictionary:
 	if not blocked.is_empty():
 		return blocked
 	var turn_entry := active_entry()
+	var pin_block := _pin_blocks("turn undead")
+	if pin_block != "":
+		return _fail(pin_block)
 	if not turn_entry.is_empty() and is_grappled(int(turn_entry["index"])):
 		# Stated limit, not a printed prohibition: see docs/GRAPPLE_PLAN.md,
 		# adaptation C and batch 8d.
@@ -3967,7 +4213,9 @@ func _run_monster_turn(entry: Dictionary) -> void:
 		if _run_turned_turn(entry):
 			return
 	# The AI never initiates a grapple; a grappled monster spends its turn trying to
-	# escape and does not attack (docs/GRAPPLE_PLAN.md section 7).
+	# escape and does not attack (docs/GRAPPLE_PLAN.md section 7). A pinned monster
+	# attempts the pin escape through the same wrapper; a success leaves it
+	# grappling and its turn ends either way (docs/PIN_PLAN.md adaptation F).
 	if is_grappled(int(entry["index"])):
 		grapple_exit(false)
 		return

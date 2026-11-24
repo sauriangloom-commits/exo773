@@ -1918,6 +1918,17 @@ func combat_grapple_exit(use_escape_artist := false) -> Dictionary:
 	return result
 
 
+func combat_pin() -> Dictionary:
+	if encounter == null or mode != "combat":
+		return {"ok": false, "message": "No combat is running."}
+	var result := encounter.pin_active()
+	last_ui_message = String(result.get("message", ""))
+	if not bool(result.get("ok", false)):
+		_log(last_ui_message)
+	emit_signal("state_changed")
+	return result
+
+
 func combat_resolve_improved_trip(take_attack: bool, choice := "") -> Dictionary:
 	if encounter == null or mode != "combat":
 		return {"ok": false, "message": "No combat is running."}
