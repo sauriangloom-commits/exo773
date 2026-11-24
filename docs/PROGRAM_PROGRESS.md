@@ -3622,3 +3622,27 @@ helpless opportunity-attack closure and message-only `_threatening_enemies`
 classification are preserved. Overrun remains unimplemented; movement-continuation
 and tie-break are unresolved. README is untouched; no content, schema, save,
 progression, award or XP change and no push.
+
+### 720px ranged-probe targeting corrected (2026-11-24)
+
+The three 720 ranged-probe failures were a probe navigation defect, not a
+product target-selection defect. The old control clicked an enemy-row button at
+y=754, below the 720 viewport; the visible grid target was already usable. A
+diagnostic real grid click at cell (7,3), center (552,337.7), resolved the
+crossbow attack normally. The sidebar had 149 px of scroll travel and
+`follow_focus=false`, but the grid was the simpler existing path, so no product
+UI, viewport, actor or control change was made. The probe now uses the grid at
+720 and 900 and asserts the target cell, grid/client containment, cell mapping,
+row existence, row visibility or scroll range, and the actual log result. Old
+720 failure evidence is preserved.
+
+Focused 18/18 (123 asserts), suite 992/992 (9,957 asserts, 75 scripts), both
+validators, grapple 160, keyboard 31, level-up 349, advancement 228, layout 32/0
+at both scales, and the ranged probe PASS at 720 and 900. Candidate
+`2026-11-24_ranged_720_probe_a` from `1a2a239`, 110,892,280 bytes, SHA-256
+`93fa5c21b9c6b0b2cd8cf1aa9c2c2a6b1595210456eeef0316dac0b438bd6898`,
+`worktree_entries=1` (README only), no untracked files, hash unchanged before and
+after. The prior paralyzed-ally candidate and its product fix remain unchanged.
+Keep separate: no human rendered/sidebar-scroll test; enemy-row focus does not
+auto-reveal; the keyboard grid path was not exercised. README is untouched; no
+content, schema, save, progression, award or XP change and no push.

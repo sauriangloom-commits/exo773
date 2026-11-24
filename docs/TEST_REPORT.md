@@ -6480,3 +6480,73 @@ uncommitted, with file SHA-256
 `d7cd5f89815b3d7616c2a8abeccaacf309c9af4e6cf234e152b321eeb78b1b57` and diff
 SHA-256 `0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`
 unchanged before and after this work.
+
+## 1280x720 ranged-probe targeting corrected (2026-11-24)
+
+**Finding.** Probe defect, not a product target-selection defect. The previous
+720px control shot did click an offscreen enemy-row button: the row's global rect
+was `P(1127, 754), S(101, 49)`, below the 720-high client area. The stored mode
+message remained `Click an enemy within reach or range.`, so the click produced
+no attack segment and the three old assertions failed. The previous comment
+that the grid click was "not registering" was not supported by a grid attempt:
+the probe had already switched that control to the row button.
+
+**Reproduction and geometry.** The old failure is preserved in
+`builds/qa/runs/2026-11-24_into_melee_paralyzed/ranged_probe_720.log` and
+`ranged_probe_720_old_probe_failure.log` (3 failures). A diagnostic 720 run then
+measured the working path: grid `P(12, 69), S(664, 472)`; target cell `(7, 3)`;
+intended center `(552, 337.667)`; `CombatView._cell_at` mapped that point to
+`(7, 3)`; the center was inside both the grid rect and the client area. A real
+left click on that point resolved
+`QA Clear Shooter attacks QA Clear Target with Light Crossbow: d20(20)+5 = 25 vs
+AC 15 | 1 damage` and produced the expected control log. That diagnostic log is
+`ranged_720_diagnostic.log`. The old 900 result remains supplementary evidence,
+not a substitute for 720.
+
+The enemy row remains an ordinary control, but it is not the only path. At 720
+the sidebar `ScrollContainer` reported `scroll_vertical=0`, `max=788`,
+`page=639`, so it has 149 px of vertical travel, and `follow_focus=false`. At
+900 the same row was on screen and the sidebar had no travel. The nested target
+list and the sidebar are code-inspected as scrollable; no focus-reveal path for
+these rows was found. This was not input-tested by scrolling to the row because
+the visible grid already provides a working ordinary targeting path. The combat
+grid also has a keyboard cursor path, but this probe uses the real mouse path.
+
+**Correction.** `--demo-ranged --ranged-probe` now selects the clear target on
+the visible grid at both 720 and 900, through `Attack` plus `_probe_click_cell`;
+it does not click the offscreen row or call the target callback directly. The
+probe asserts the target is still on `(7,3)`, the grid is visible, the center is
+inside the grid and client area, the point maps to the target cell, the row
+exists, and the row is either on screen or has a usable sidebar scroll range. It
+prints the measured grid/row/scroll geometry. No viewport, actor, control or
+product UI was changed.
+
+**Checks.** Focused `tests/test_ranged_melee.gd`: 18/18, 123 asserts. Full suite:
+992/992 tests, 9,957 asserts, 75 scripts, exit 0, with the existing one orphan
+and leak/deprecation warnings kept separate. Both validators PASS, retaining the
+eight accepted authored class-progression inconsistencies. Four established
+probes PASS: grapple 160, keyboard 31, level-up 349, advancement 228. Combat
+layout: 32 controls / 0 failures at 100 % and 160 %. Ranged probe: PASS at 720
+(primary) and 900 (supplementary).
+
+**Candidate.** `2026-11-24_ranged_720_probe_a`, source
+`1a2a2393e461328f0bf747d8414a2c83b5246f2a`, 110,892,280 bytes, SHA-256
+`93fa5c21b9c6b0b2cd8cf1aa9c2c2a6b1595210456eeef0316dac0b438bd6898`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`, no
+untracked files. From that executable: both validators PASS; ranged 720 and 900
+PASS; grapple 160, keyboard 31, level-up 349, advancement 228, all PASS; layout
+32/0 at both scales. The executable hash was identical before and after
+acceptance. The previous candidate `2026-11-24_into_melee_paralyzed` and its
+implementation source `4c42965` remain the accepted paralyzed-ally correction;
+this candidate changes only packed probe code.
+
+**Classification.** Confirmed product defects: none new; the paralyzed-ally
+firing-into-melee defect remains closed from `8571232`/`4c42965`. Confirmed probe
+defect: the 720 control shot navigated an offscreen row instead of the visible
+grid; corrected. Maintenance debt: the combat enemy rows do not auto-reveal when
+focused, and their sidebar scroll is not exercised by this probe. Evidence gaps:
+no human playtest or rendered review of sidebar scrolling/focus; the keyboard
+grid path was not exercised here; the 900 result is supplementary. Keep the old
+720 failure logs and screenshots. No product UI, content, schema, save,
+progression, award or XP change was made; no overrun work, backup or push.
