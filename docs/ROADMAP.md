@@ -2271,3 +2271,111 @@ runs (both validators, all seven probes, layout at both scales). Logs are in
 no playthrough and no human playtest, and the new log line was not reviewed in a
 rendered window. Concealment and the vitals clause remain unimplemented; overrun
 stays deferred; no content, schema, save, award or XP change was made.
+
+**Closed 2026-11-24 within this evidence.** The audit below re-reads the gate, the documentation and the candidate record without rebuilding or re-running anything, so the acceptance stands on candidate `2026-11-24_ranged_sneak_limit` (source `81b00f6`, records in `5483c6c`).
+
+## Documentation consistency audit and next-task review (2026-11-24)
+
+Documentation only. No tests, probes, validators, builds or exports were run for this
+section, and no executable, test, probe, content, schema or save file was changed. The
+checks that were made are documentation-integrity checks: `git log`/`git status`, the
+README file and diff hashes, greps over documentation and source, JSON reads of the
+shipped content, and source reading. Nothing here is a game check.
+
+### What was compared
+
+The claims in `SUPPORTED_FEATURES.md`, `TRACEABILITY.md`, `FEATS_SKILLS_COVERAGE.md`,
+`ROADMAP.md` and the plan files were read against the code for the features this session
+touched: pin, keyboard targeting, helpless attacks of opportunity, the paralyzed-ally
+firing penalty, combat information access, the living opponent, flanking and the ranged
+sneak limit. The earlier closures are carried forward unchanged.
+
+### Correction made (a claim the code contradicts)
+
+`SUPPORTED_FEATURES.md`'s combat bullet said a rogue's sneak attack needs her to be one of
+the flankers "or the target to be helpless or flat-footed" without qualification. Since
+`81b00f6`, a ranged attack against a flat-footed or helpless target beyond 30 ft. carries no
+sneak dice (`Encounter._resolve_attack`, `src/core/encounter.gd:3015-3025`), so the bullet
+now adds "(inside 30 ft. when the attack is ranged, see above)". That is the only claim the
+code clearly contradicted in the audited set.
+
+### Claims checked and confirmed (no change)
+
+| Feature | Claim and where | Code evidence |
+| --- | --- | --- |
+| Pin | Standard action on the existing hold, win records `pinned`, loss keeps the grapple; ends at the start of the pinner's next turn even if the pinner cannot act; escape clears only the pin; the pinner cannot attack; third parties take -4 to normal and touch AC and the pinner does not (`SUPPORTED_FEATURES.md:343-352`) | `is_pinned`/`pin_holder`/`pinned_ac_penalty` (`encounter.gd:412-434`), `_pin_blocks` (`:466-472`), pin expiry and cleanup (`:238-245`, `:2293`), `Rules.armor_class`/`touch_ac` applying `pinned_penalty` (`rules.gd:291-293`, `:315`), AI escape and no AI pin (`encounter.gd:4305-4306`) |
+| Keyboard targeting | Cursor seats on the actor, arrows move it, Enter/Space resolve through the click path, Escape cancels without spending, focus returns; cursor may rest on a blocked cell and ordinary validation refuses it (`SUPPORTED_FEATURES.md:246-256`) | `combat_view.gd:81-133` (key handling, `begin_keyboard_cursor`, `end_keyboard_cursor`), `combat_screen.gd:405-435` (seat, sync, cancel), `:448-461` (`ui_cancel` path) |
+| Keyboard combat log | One focus stop; Up/Down/PgUp/PgDn/Home use the widget, leaving newest freezes and counts arrivals in the hint, End resumes; grid cursor disables the stop (`SUPPORTED_FEATURES.md:252-256`) | `combat_screen.gd:149-161`, `:1054-1060` (hint and frozen count), `:406`/`:435` (stop disabled while the cursor is active), `:464-470` (`ui_end`) |
+| Helpless attacks of opportunity | A helpless creature cannot take the reaction (`TRACEABILITY.md:47`, adaptation record) | `_provoke_single_opportunity` (`encounter.gd:3473-3498`) refuses `is_helpless` before an attack, a budget entry or a log of a resolved reaction |
+| Paralyzed-ally firing penalty | "Helpless targets count as not engaged", and an ally who cannot act cannot create the -4 (`TRACEABILITY.md:59`) | `_into_melee_penalty` (`encounter.gd:3403-3433`): target-side helpless exemption, then `not ally.can_act() or Rules.is_helpless(ally)` skipped when finding engagement |
+| Combat information access | Both batches closed; keyboard can review earlier rolls and read target/AC information (`COMBAT_INFO_ACCESS_PLAN.md` status, `SUPPORTED_FEATURES.md:250-256`) | log focus/hint code above; 62-check `--combat-info-probe` in the last accepted run |
+| Living opponent | One living monster in shipped content and it is reachable; the encounter keeps its two combatants and 300 XP (`REACHABLE_OPPOSITION_PLAN.md`, `SUPPORTED_FEATURES.md:40-42`) | `content/shared/monsters.json` has 4 monsters, only `store_looter` without an undead tag; the three campaigns hold 8 encounters and 16 placements; `tests/test_reachable_opposition.gd` |
+| Flanking | +2 melee bonus only for an attacker that itself threatens with an able ally on the opposite border or corner; ranged never; monsters share it; helpless allies do not complete a pair (`SUPPORTED_FEATURES.md:161-164`, `TRACEABILITY.md:57`) | `_threatening_positions`/`_opposite_sides`/`_flank_bonus` (`encounter.gd:3200-3265`), passed by `_resolve_attack`, both monster helpers, the opportunity attack and the trip/grapple touches, added in `Rules.attack` after `bonus_base` (`rules.gd:710-723`), log at `:3069` |
+| Ranged sneak limit | Ranged sneak only within 30 ft., attacker-to-target, flat-footed and helpless included; melee unaffected (`SUPPORTED_FEATURES.md:40-42`, `TRACEABILITY.md:57`) | `sneak_range_ok` (`encounter.gd:3015-3025`) and the withheld-dice log (`:3077`) |
+
+### Maintenance debt found and left unrewritten
+
+- **`OVERRUN_PLAN.md:228-229` line drift.** It cites `content/campaigns/ravenloft_demo/encounters.json` lines 2-56 for `storeroom_dead`; the block now runs lines 2-59. `ROADMAP.md:2104`'s "now lines 2-60" is also one line long. The `monsters.json:3`, `:76` and `:152` references still land inside the intended blocks (zombie, infected zombie, ghoul).
+- **Probe-count drift.** `SUPPORTED_FEATURES.md:357-361` records `--grapple-probe` at 154 checks (147 at pin acceptance); the last accepted run reported 160. The earlier counts inside ROADMAP/TEST_REPORT sections stay as historical records.
+- **Plan-file line references drift with the code** (`COMBAT_INFO_ACCESS_PLAN.md` section 2 cites `combat_screen.gd:110-120`, `:824-829`, `:303-310`, and similar; `PIN_PLAN.md` and `GRAPPLE_PLAN.md` cite encounter lines that moved).
+- **Retired debt: the "stale `Combat Casting` benefit text".** `src/core/feats.gd:49` now reads "+4 on Concentration checks made to cast on the defensive (grappling and pinned are not modeled)", which matches `TRACEABILITY.md:44` and `FEATS_SKILLS_COVERAGE.md:167`. The string is accurate and the debt is retired; older review sections that list it stay as history.
+- Unchanged debt: the singular `modal` field, the probe-heavy `main.gd`, shallow UI suite coverage, source-text guards that cannot see a string-built call, the empty save-migration table and the placeholder renderer.
+
+### Concealment against shipped content
+
+Concealment exists only as a deferred comment (`encounter.gd:15`). Nothing authored can
+create it: the six shipped spells are `magic_missile`, `mage_armor`, `scorching_ray`,
+`cure_light_wounds`, `bless` and `aid`; none of the four monsters has a concealment
+ability; no map carries concealment terrain and no condition in the engine represents it.
+Concealment is therefore unreachable and stays deferred without a plan or a batch.
+
+### Candidate comparison for the next task
+
+| Candidate | Benefit | Ordinary-play reachability | Boundary and unresolved decisions | Verdict |
+| --- | --- | --- | --- | --- |
+| Combat Aid Another (PHB p.154) | A new party tactic: trade a standard action for +2 on an ally's next attack against a chosen foe, or +2 AC for that ally against it | Every fight: a party member who threatens an enemy and an ally fighting it | One action, one attack roll against AC 10, one effect with a duration, one choice in the existing pending-decision UI, one log line, tests and a probe. Decisions: the choice is asked after a successful roll, the effect expires at the start of the helper's next turn, and the AI never uses it | **Recommended** |
+| Save shortcut | One key opens the existing Save modal | Exploration only; the pause menu already exposes Save, which keeps this convenience-only | One input action and one handler; already reviewed and deferred twice | Not the next batch |
+| Defeat screen initial focus | Focus lands on the first usable control instead of needing Tab | Defeat screen only | One focus call and a test; presentation polish with no gameplay effect | Do not schedule alone |
+| Party item handoff | A found potion can reach the character who needs it | Exploration inventory; combat feeding already works from the actor's own pack (`use_potion_active`, `encounter.gd:3980-4010`) | Recipient picker and screen host are unscoped, and whether the printed move action applies in combat is a design decision | Plan first if prioritised |
+| `hold person` plus coup de grace | Would create and use a helpless enemy | Not reachable today: nothing a player can do makes an enemy helpless | Content plus a spell, a save, a duration and a full-round action | Plan, outside a bounded batch |
+| Disarm | Would strip a weapon in a fight | The only living opponent carries an `attacks` entry, not an equipped weapon | Depends on equipment-driven monster attacks, which this review excludes | Blocked by that dependency |
+| Concealment | Rimed miss chance, Blind-Fight prerequisite | No authored source | No model and no target | Defer, no plan |
+| Further grapple, overrun, readied/delayed actions, movement continuation, shared tie helper, equipment-driven monster attacks | — | — | Excluded by this review's instructions; unchanged | Not considered |
+
+### Recommendation
+
+**Implement combat Aid Another in one bounded batch.** It is the strongest remaining
+player-reachable rules option that does not depend on any excluded subsystem: the seam is a
+normal attack roll (`Rules.attack` already has the melee bonus it needs), the choice can
+reuse the pending-decision pattern that trip and Cleave already use, and the effect is one
+timed modifier on an existing attack or AC. Scope: party members only; the helper must
+threaten the chosen opponent; d20 + melee attack bonus against AC 10; on success the choice
+of +2 attack or +2 AC, lasting until the start of the helper's next turn; failure and
+success both spend the standard action; the AI never uses it; no content, schema, save,
+award or XP change; the opposed-check helper stays unchanged.
+
+Acceptance for that batch: failing-first tests through `Encounter.attack_active`'s sibling
+action path and `Game`'s wrapper for success, failure, both choices, the expiry, the refusal
+when no enemy is threatened or no ally is available, and the action spent either way; a
+probe through the ordinary action path with seeded setup labelled; the focused tests, full
+suite, both validators, all probes and combat layout at both scales with 32 controls.
+
+If the project would rather not add a new action, the honest alternative is a **stopping
+point**: no open confirmed defect, no reachable unimplemented rule that is bounded, and the
+remaining items are content design, unscoped UI or excluded subsystems. Do not start a
+batch merely to close an evidence gap.
+
+### Classification, kept separate
+
+- **Confirmed defects.** None open. This audit found no executable defect and one
+  documentation claim the code contradicted (the unqualified ranged sneak sentence),
+  corrected above.
+- **Deferred features.** Concealment, `hold person` and coup de grace, disarm and sunder,
+  further grapple (8b-2/8c/8d/8f), overrun, readied and delayed actions, movement
+  continuation, levels 5 and above, two-weapon fighting and full attacks, encumbrance, AoE
+  templates, terrain hard cover, disease, party item handoff, the save shortcut.
+- **Maintenance debt.** The list above; nothing was rewritten beyond the one corrected claim.
+- **Evidence gaps.** Carried forward unchanged: no rendered review of the focus ring, the
+  log, the hint or the defeat screen; no human keyboard-only run; no playthrough, balance
+  test or human playtest of any rules batch; the probes cover pieces, not play. This review
+  adds no new gap and closes none.

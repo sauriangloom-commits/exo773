@@ -3856,3 +3856,23 @@ executable with its hash identical before and after. Concealment and the vitals 
 remain unmodelled; overrun stays deferred; evidence gaps remain no balance testing, no
 playthrough, no human playtest and no rendered review of the new log line; no content,
 schema, save, award or XP change was made.
+
+Documentation consistency audit and next-task review (2026-11-24; documentation only). No tests,
+probes, validators, builds or exports were run, and no executable, test, probe, content, schema
+or save file changed; the checks were git status/log, the README file and diff hashes, greps and
+JSON reads. Eight features this session touched were read back against the code: pin, keyboard
+targeting, helpless attacks of opportunity, the paralyzed-ally firing penalty, combat
+information access, the living opponent, flanking and the ranged sneak limit. Seven stands;
+one claim was contradicted and corrected - the `SUPPORTED_FEATURES.md` sneak bullet now says
+"inside 30 ft. when the attack is ranged" because `81b00f6` withholds ranged sneak dice beyond
+that distance. Recorded as debt without rewriting: `OVERRUN_PLAN.md`'s `encounters.json` 2-56
+citation (block is 2-59), the 154-versus-160 grapple-probe count, plan-file line references that
+drift with the code, and the singular `modal` field and the other known items. The "stale Combat
+Casting benefit text" debt is retired: `feats.gd:49` matches `TRACEABILITY.md:44` and
+`FEATS_SKILLS_COVERAGE.md:167`. Concealment has no authored source - six spells, four monsters,
+no concealment terrain or condition - so it stays deferred without a plan. Recommended next
+task: combat Aid Another (PHB p.154) as one bounded batch (standard action, attack roll against
+AC 10, +2 to an ally's attack or AC until the helper's next turn, choice through the existing
+pending-decision pattern, no AI use, no content or schema change), with a stopping point as the
+honest alternative if no new action is wanted. Overrun stays deferred, the opposed-check helper
+is unchanged, and the earlier closures carry forward unchanged.

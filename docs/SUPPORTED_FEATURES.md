@@ -163,7 +163,7 @@ supported, it is not implemented, even if D&D 3.5 defines it.
 - Flanking (+2 on a melee attack roll) when the attacker and an able ally
   threaten the enemy from opposite sides (positional, no facing). A rogue's
   sneak attack needs her to be one of those flankers, or the target to be
-  helpless or flat-footed.
+  helpless or flat-footed (inside 30 ft. when the attack is ranged, see above).
 - **Exceptions not implemented:** no supported character or creature has uncanny
   dodge or Combat Reflexes. Uncanny dodge is a barbarian/rogue class feature the
   slice has no system for, and Combat Reflexes is not in `Feats.CATALOG`, so
