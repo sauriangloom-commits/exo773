@@ -7023,6 +7023,24 @@ func _grapple_probe() -> void:
 	_probe_check(not release_text.contains("Escape check:"), "the release rolls nothing")
 	_probe_check(e.grapples.is_empty(), "state: the release clears the pair")
 	_probe_check(bool(e.turn_state["standard_used"]) == false, "state: the free release spends no standard action")
+	# 5a. Turn Undead through the player-facing wrapper. Sera is not a cleric, so
+	# the refusal is a pre-action one; the wrapper must leave the turn, the round,
+	# the action and the daily uses untouched. A legal attempt (still spending the
+	# standard action and one use) is covered by tests/test_turn_undead_wrapper.gd.
+	var wrapper_before_ptr := e.turn_ptr
+	var wrapper_before_round := e.round_number
+	var wrapper_can_turn := Game.combat_can_turn_undead()
+	var wrapper_turn := Game.combat_turn_undead()
+	_probe_check(not bool(wrapper_can_turn.get("ok", true)), "wrapper: the turn-undead control is unavailable to a non-cleric")
+	_probe_check(not bool(wrapper_turn.get("ok", true)), "wrapper: a pre-action turn-undead refusal is reported")
+	_probe_check(
+		String(wrapper_turn.get("message", "")).contains("no turning ability"),
+		"wrapper: the refusal names the missing ability: " + String(wrapper_turn.get("message", "")),
+	)
+	_probe_check(e.turn_ptr == wrapper_before_ptr, "wrapper: a refusal leaves the initiative pointer")
+	_probe_check(e.round_number == wrapper_before_round, "wrapper: a refusal leaves the round")
+	_probe_check(e.active_character() == sera, "wrapper: the player still owns the turn after a refusal")
+	_probe_check(bool(e.turn_state["standard_used"]) == false, "wrapper: a refusal spends no standard action")
 	# 5b. Pin (batch 8b-1). The hold has to reach a turn with the standard action
 	# free, so the defender's seeded grapple check is lowered to make its escape
 	# between turns fail; that is fixture state, not a rule change.

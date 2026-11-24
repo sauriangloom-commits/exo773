@@ -2096,6 +2096,10 @@ func combat_turn_undead() -> Dictionary:
 	last_ui_message = String(result.get("message", ""))
 	if not bool(result.get("ok", false)):
 		_log(last_ui_message)
+	# Turn undead is a standard action, so the acting cleric keeps the turn after
+	# a legal attempt and after every pre-action refusal. auto_advance() returns
+	# immediately for an able party member, so initiative stays where it was;
+	# tests/test_turn_undead_wrapper.gd pins that contract.
 	if encounter != null and not encounter.finished:
 		encounter.auto_advance()
 	emit_signal("state_changed")
