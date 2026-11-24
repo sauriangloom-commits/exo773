@@ -3790,3 +3790,26 @@ rerun; nothing was rebuilt or re-hashed. Documentation-integrity checks only: gi
 and README hashes, a repository-wide identifier audit (`storeroom_dead` 49 occurrences,
 `storeroom_ambush`, `storeroom_cleared`, `store_looter`; no variant spellings), and reads
 of the cited seams for the review that follows.
+Reviewed the next task after batch A. Nothing was implemented, rebuilt or re-checked, and no
+tests, probes, validators, builds or exports were run; only documentation-integrity checks
+(git, hashes, greps, JSON reads) were made.
+
+Content state: 8 encounters and 16 monster placements across the three campaigns, 15 undead
+and one living (`store_looter`), and no monster with an equipped weapon item. Batch B
+(equipment-driven monster attacks) would need no schema change - `equipment.weapon` is
+already validated and `Rules.attack_bonus` already falls back to it - only the monster turn
+path (`encounter.gd:678-692`, `:4488-4528`) and a validator cross-check; batch C (disarm,
+sunder) is a special-attack subsystem that would act on that one looter, and sunder would
+also need an object damage model. Deferred: one opponent does not justify it.
+
+Recommended instead: make flanking attacker-specific in one bounded rules batch. The engine
+applies no +2 flanking bonus at all, and the sneak gate (`encounter.gd:3004-3013`) asks only
+whether any two enemies straddle the target (`_is_flanked`, `:3171-3193`), so a third party's
+flank or a ranged rogue grants sneak damage the printed rule does not. Both defects are code
+readings; no failing test was run in this review. The fix fits the existing `bonus_base`
+seam (`rules.gd:690-716`), and the storeroom's living looter makes the interaction observable
+in ordinary play. Two documentation claims already state flanking is applied
+(`SUPPORTED_FEATURES.md:406`, `TRACEABILITY.md:166`) and must be made true or corrected with
+it. Also recorded: the save shortcut stays a small usability rider, coup de grace needs
+`hold person` content before it has a target, levels 5+ stay out of range, and overrun,
+readied actions and the opposed-check helper are unchanged.

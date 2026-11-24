@@ -1926,3 +1926,184 @@ content, schema, validator or code change was made, and no checks were run.
   defeat screen; no human keyboard-only start-to-victory run; the probes cover pieces.
   The rogue's sneak attack has automated rules coverage but no ordinary-play instance.
   None of these is a defect and none is proposed as work on its own.
+## Next bounded task - roadmap review after the living opponent batch (2026-11-24)
+
+Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this section,
+and **no tests, probes, validators, builds or exports were run**. It reads the current
+`ROADMAP.md`, `PROGRAM_PROGRESS.md`, `SUPPORTED_FEATURES.md`, `TRACEABILITY.md`,
+`TEST_REPORT.md`, `REACHABLE_OPPOSITION_PLAN.md`, `GRAPPLE_PLAN.md`,
+`FEATS_SKILLS_COVERAGE.md`, the shipped content and the source seams it cites. Git status,
+hashes, greps and JSON reads are documentation-integrity checks, not game checks.
+
+### State this review starts from
+
+Batch A is closed (source `7547797`, candidate `2026-11-24_living_opponent_batch_a`,
+records in `4327025`). The content now holds four monsters - `zombie`, `infected_zombie`,
+`ghoul`, `store_looter` - of which exactly one is living, and none has an equipped weapon
+item. Across the three campaigns there are **8 encounters and 16 monster placements**: 15
+undead and the one looter; `storeroom_dead` is the only encounter with a living opponent,
+and it is also the only place a rogue's sneak attack now applies in ordinary play.
+
+### Candidate 1 - batch B and C: equipment-driven monster attacks, then disarm and sunder
+
+- **What a weapon item on a monster would need.** No schema change. `equipment.weapon` is
+  already a valid, validated slot: `ContentDB._validate_actor` checks the slot against
+  `Character.SLOTS` and the value against the shipped items (`src/core/content_db.gd:817-825`),
+  and `Rules.attack_bonus` already falls back to `ch.equipment.get("weapon", {})` when no
+  weapon is passed (`src/core/rules.gd:391`). What is missing is the monster turn path:
+  `_primary_weapon` returns `attacks[0]` or a hardcoded slam and never reads equipment
+  (`src/core/encounter.gd:678-692`), and both monster helpers prefer `ch.attacks`
+  (`:4488-4528`). The validator has no rule tying an authored `attacks` entry to an
+  equipped weapon, so authoring both today would silently diverge; batch B would add that
+  cross-check. The content also has no plain longsword item - only `masterwork_longsword`
+  (`attack_bonus: 1`) - so a weapon item would have to be authored or reused.
+- **How many encounters disarm could act on.** One opponent in one encounter. Every other
+  placement is undead with `equipment: {}`, and caster or natural-attack monsters cannot be
+  disarmed at all. Disarm itself is absent: `src/core/encounter.gd:14` is a deferred
+  comment, and the Improved Disarm and Improved Sunder catalog rows are marked deferred
+  against "disarm special attack" and "sunder special attack"
+  (`docs/FEATS_SKILLS_COVERAGE.md:169`, `:222`). Sunder additionally needs an object
+  hit-point and hardness model that does not exist.
+- **Implementation boundary.** B is one engine batch (weapon selection in the monster path,
+  one validator cross-check, one content item, tests). C is a special-attack subsystem: a
+  provoking melee attack, an opposed attack roll with the two-handed and light modifiers, a
+  dropped-object state, pickup, the AI's response, and a UI path - a planning note plus one
+  or two batches. Sunder is a third batch on top for object damage.
+- **Verdict: defer, unchanged.** With one living armed opponent in the whole game, B changes
+  the provenance of a single enemy's to-hit bonus and C would add a subsystem whose only
+  legal target is that same looter. Neither is worth the batch on this evidence. Revisit if a
+  campaign is authored with living, weapon-carrying opponents.
+
+### Candidate 2 - flanking made attacker-specific: the printed +2 and a corrected sneak gate (recommended)
+
+- **Player benefit.** Two printed effects that the engine only half-models. Flanking is
+  worth +2 on melee attack rolls (PHB p. 153), which the engine never applies; and a rogue's
+  sneak attack needs the rogue to actually flank ("when the rogue flanks her target", PHB
+  pp. 49-50), which the engine does not check. A player who surrounds an enemy gets nothing
+  but the rogue's dice, and a rogue who never flanks - including a ranged rogue across the
+  room - collects those dice anyway.
+- **Repository evidence.** The gate is `ch.sneak_attack_dice != "" and
+  (Rules.is_helpless(target) or _is_flanked(target_index) or target_flat_footed) and not
+  undead/construct` (`src/core/encounter.gd:3004-3013`): `_is_flanked` takes only the target
+  (`:3171-3193`), so it asks whether any two of the target's enemies straddle it, not whether
+  this attacker is one of them, and there is no melee check. `src/core/rules.gd` contains no
+  flank term at all (`grep flank src/core/rules.gd` is empty); the attack-roll pipeline
+  already has the right seam, with target-specific bonuses (`helpless +4`, `cowering +2`)
+  added after `bonus_base` so Cleave does not copy them (`rules.gd:690-716`), and
+  `_resolve_attack` already assembles `attack_opts` including a `"bonus"` field
+  (`encounter.gd:3020`). The threat relation flanking needs is implemented and tested
+  (`_threatens_cell`, `:753-756`; `tests/test_melee_threat.gd:194-206`).
+- **Documentation defect this exposes.** `docs/SUPPORTED_FEATURES.md:406` and
+  `docs/TRACEABILITY.md:166` both already claim flanking is one of the target-specific
+  modifiers "evaluated afresh"; it is not implemented anywhere. The batch should make the
+  code match those lines (or correct them), not leave the claim standing.
+- **Ordinary-play reachability.** Every encounter: the party is 3-4 and every fight fields
+  one or two enemies, so a pair can straddle a target in any room. Batch A makes the
+  interaction visible for the first time, because the storeroom's looter is a legal sneak
+  target; flat-footed still supplies sneak in round 1, so the fix does not remove the
+  feature, it scopes it.
+- **Decisions to settle in the batch.** The attacker must threaten the target and be one of
+  the flanking pair; the bonus is melee-only; whether a melee touch spell counts; whether the
+  AI also gains flanking (the monster helpers call `Rules.attack` directly at
+  `encounter.gd:4488-4528`, so this is a separate line of work and a balance change - my
+  recommendation is to include it only if the same helper can be reused without new AI
+  behaviour, otherwise record it as deferred); whether the combat log names the +2; and
+  whether the ranged sneak limit (30 ft, no concealment) ships now or as its own batch, since
+  concealment has no content.
+- **Implementation boundary.** One helper that answers "does this attacker flank this target"
+  (reusing the existing threat test and side test), one gate change in `_resolve_attack`, one
+  new `flank_bonus` option added after `bonus_base` in `Rules.attack`, one or two log lines,
+  and tests. No content, schema, save, XP or UI-control change; the layout should stay at 32
+  controls.
+- **Acceptance needs.** Failing-first rules tests: a flanker gets +2 and a non-flanking ally
+  does not; a ranged attacker gets none; a second-rank or non-threatening ally does not
+  complete the pair; Cleave's granted attack does not inherit the flank bonus; an opportunity
+  attack by a flanker does. Sneak tests: third-party flanking without participation grants
+  nothing; a ranged rogue gets nothing from teammates' flanking; flat-footed, helpless and
+  undead cases keep their current results. Then the suite (some seeded to-hit totals will
+  move; re-baseline only the assertions the rule now changes, with the reason recorded), both
+  validators, all five probes, both layout scales, and a hash-bound candidate accepted from
+  its executable.
+
+### Candidate 3 - save shortcut (usability)
+
+- **Player benefit.** One key opens the existing Save modal instead of Escape, then Save
+  game.
+- **Reachability.** Exploration only; saving is deliberately disabled in combat and the pause
+  menu already exposes the slots. Convenience, not a new capability.
+- **Boundary and cost.** One input action, one handler, a modal/focus test and a probe key
+  step; no save-policy, schema or content change. Already reviewed and deferred as Candidate
+  4 of the 2026-11-24 input review (`docs/ROADMAP.md:1453`); it is small enough to ride with
+  a larger input batch rather than lead one.
+- **Verdict.** Keep deferred; it is not the strongest use of a bounded batch next to a rule
+  the game gets wrong.
+
+### Candidates that stay deferred without a batch
+
+- **Coup de grace and `hold person`.** Both are legal in the supported 3rd-4th level range -
+  `hold person` is a 2nd-level spell and the content already ships 2nd-level spells
+  (`aid`, `scorching_ray`) - and neither exists. Coup de grace alone has no reachable target:
+  nothing a player can do creates a helpless enemy (the ghoul's paralysis points the other
+  way, and no AI uses it on the party). `hold person` plus coup de grace is therefore a
+  content-plus-rules pair with a save, a duration, a helpless state that already exists and a
+  full-round kill action: planning first, not a bounded batch.
+- **Levels 5 and above.** Outside the supported range (3rd to 4th,
+  `docs/SUPPORTED_FEATURES.md:49`); no content or award supports it.
+- **Two-weapon fighting, full attacks, encumbrance, concealment, terrain hard cover, AoE
+  templates, disease, party item handoff.** Each lacks a selectable ability, content target
+  or model; none becomes reachable because of batch A.
+- **Further grapple, overrun, readied and delayed actions.** Deferred exactly as before; this
+  review adds nothing and changes nothing about them.
+
+### Selectable abilities, raw hooks and seeded fixtures
+
+- **Selectable in ordinary play.** Attack actions in every encounter; sneak attack through
+  flat-footed (round 1) and now through a flanked or helpless living target; nonlethal
+  knockouts; grapple and pin; trip; bull rush; fighting defensively, total defence, Combat
+  Expertise, Power Attack and Cleave for the characters that have them.
+- **Raw hooks without reachable content.** Disarm and sunder (no special attack, and now one
+  armed target), equipment-driven monster attacks (no monster weapon item), coup de grace (no
+  player-made helpless enemy), `hold person` (no spell), AI grapple, two-weapon fighting (no
+  party feat), sunder's object damage (no object model).
+- **Seeded fixtures and probes only.** Grapple and pin scenarios, the Turn Undead QA
+  encounter, `qa_victory`, the combat-information five-enemy fixture and the level-up walk.
+  Their evidence is real but they are not ordinary play.
+
+### Recommendation
+
+**Implement Candidate 2 in one bounded batch: make flanking attacker-specific, applying the
+printed +2 on melee attack rolls and requiring the rogue to be one of the flankers for a
+flank-based sneak attack.** It needs no new content, fixes a rule the game currently gets
+wrong in a way a player can see, pays off the storeroom's living target, and fits the
+existing `bonus_base` seam without touching overrun, readied actions, movement continuation
+or the opposed-check helper. Correct the two documentation claims in the same batch (or hold
+them until it lands). Candidate 1 (batches B and C) stays deferred: one living looter does
+not justify a weapon-item engine change plus two special attacks. Candidate 3 stays a small
+usability rider for a future input batch. Coup de grace and `hold person` get a planning note
+only if that capability is wanted.
+
+### Classification, kept separate
+
+- **Confirmed defects.** (1) Rule defect, found by reading: the sneak gate never checks that
+  the attacker is one of the flankers and never checks melee, so a third party's flank or a
+  ranged rogue grants sneak damage (`encounter.gd:3004-3013`, `:3171-3193`). It was not
+  reproduced by a failing test in this review because no checks were run; Candidate 2's
+  failing-first test is the confirmation. (2) Documentation defect: `SUPPORTED_FEATURES.md:406`
+  and `TRACEABILITY.md:166` claim flanking is re-evaluated as an attack bonus that the code
+  never applies. No other failing case was found. Batch A introduced no defect.
+- **Deferred features.** Batch B (equipment-driven monster attacks) and C (disarm, sunder,
+  object damage); overrun (`docs/OVERRUN_PLAN.md` section 18); readied and delayed actions;
+  further grapple (8b-2/8c/8d/8f); coup de grace with `hold person`; the ranged sneak 30-ft
+  and concealment limits if not taken with Candidate 2; levels 5 and above; two-weapon
+  fighting and full attacks; encumbrance, concealment, terrain hard cover, AoE templates,
+  disease; party item handoff; the save shortcut.
+- **Maintenance debt.** Unchanged: the stale `Combat Casting` benefit text, the singular
+  `modal` field, the probe-heavy `main.gd`, source-text guards that cannot see a string-built
+  call, shallow UI suite coverage, the placeholder renderer. Newly recorded: `OVERRUN_PLAN.md`
+  cites `encounters.json` lines 2-56 for `storeroom_dead`, which is now lines 2-60 after batch
+  A, and the flanking claims above until Candidate 2 lands.
+- **Evidence gaps.** No ordinary-play playthrough, balance test, rendered review or human
+  playtest of batch A; the sneak gate's wrong grants are a code reading, not a reproduction;
+  grapple, pin and Turn Undead behaviour remains probe- or test-only; no rendered check of
+  the new narration, the looter's sidebar row or the stat block. These are disclosures, not a
+  reason to schedule work.
