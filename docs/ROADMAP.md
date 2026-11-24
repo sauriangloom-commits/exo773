@@ -2399,3 +2399,5 @@ the checks were documentation-integrity only. The classification stands: no conf
 the deferred list unchanged, the same maintenance debt, and the action's unmeasured control
 count recorded as an evidence gap rather than assumed. Overrun stays deferred, the
 opposed-check helper is unchanged, and the earlier acceptance limits carry forward unchanged.
+
+Godot 4.7 EPUB audit (2026-11-24): static, documentation-only findings are recorded in [AUDIT_EPUB.md](AUDIT_EPUB.md); no priority above changed.
