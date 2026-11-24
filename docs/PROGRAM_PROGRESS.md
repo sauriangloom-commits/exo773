@@ -3728,3 +3728,23 @@ because the bell milestone was sized to land exactly on 6,000. Overrun stays def
 opposed-check helper is unchanged, and no implementation is recommended. The earlier
 closures (Turn Undead, helpless AoO, paralyzed-ally firing penalty, ranged probe) are
 carried forward unchanged. README remains untouched and no push was made.
+
+Wrote the planning-only note for reachable opposition (`docs/REACHABLE_OPPOSITION_PLAN.md`,
+recommended in `8c8b3b8`). It verifies the printed sneak-attack, undead-immunity and
+critical-hit-link rules against the SRD and cites the seams: the monster schema validates a
+living armored stat block with no schema change (`content_db.gd:800-849`, attacks required
+at `:609-611`), the turn path reads authored `attacks` and ignores monster equipment
+(`encounter.gd:4226-4291`, `:4488-4528`, `:678-692`), the sneak gate is the undead/construct
+tag (`:3004-3013`) and flanking is opposite-side threat only (`:3171-3193`), awards are per
+encounter (`game_state.gd:1689`, `:1734`), and the bell milestone is 500+2,300 sized against
+a 700 floor (`dungeon.json:88-91`).
+
+Resolved: `storeroom_dead` hosts a CR 1/2 living human warrior, swapped for the second
+zombie so combatants, enemy rows, the 300 XP and every ledger figure stay unchanged; armor
+is authored as equipment but the weapon is an `attacks` entry, so disarm and sunder stay
+unreachable and are recorded as consequences only; the AI needs no change, and equipment-
+driven monster attacks plus disarm are split into batches B and C. Content-only batch A is
+defined with failing-first tests, validators, probes, layout, and a hash-bound candidate.
+No content, schema, validator or code change was made; no tests, probes, validators, builds
+or exports were run. Overrun stays deferred and the opposed-check helper is unchanged.
+README remains untouched and no push was made.

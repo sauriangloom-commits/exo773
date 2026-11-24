@@ -1826,6 +1826,18 @@ not propose work only to close them.
   layout unchanged at both scales, and an exported candidate. The XP record must be
   re-derived rather than asserted from the old inventory.
 
+**Plan written: [REACHABLE_OPPOSITION_PLAN.md](REACHABLE_OPPOSITION_PLAN.md) (2026-11-24).**
+It verifies the printed sneak-attack, immunity and critical-hit rules, cites the schema,
+turn-path, flanking, validator, XP-ledger and trigger seams, and resolves the open
+decisions: `storeroom_dead` hosts the opponent, the second zombie is swapped rather than
+a third combatant added, the encounter's 300 XP and the whole ledger stay unchanged, the
+stat block is a CR 1/2 human warrior, only armor is authored as equipment (no weapon item,
+no loot), and the AI needs no change. It records grapple hold damage and critical hits as
+consequences, states that disarm and sunder stay unreachable, and defines a content-only
+batch A with failing-first tests, checks and a hash-bound candidate. Batches B (monster
+equipment attacks) and C (disarm) are recorded as separate work. Nothing was implemented
+and no checks were run.
+
 ### Candidate 2 - further grapple (8c/8d)
 
 Reachable (grapple and pin are ordinary actions) but the payoff is thin: the hold damage
@@ -1871,6 +1883,11 @@ not disarm or sunder, which remain unimplemented), and define the acceptance abo
 `docs/OVERRUN_PLAN.md` §18; readied/delayed actions remain a subsystem needing their own
 plan; the opposed-check helper is unchanged. Do not start levels 5+, disarm, sunder,
 concealment, AoE or encumbrance to fill a schedule: content gives them no target.
+
+**Planning note written 2026-11-24: `docs/REACHABLE_OPPOSITION_PLAN.md`.** It settles the
+encounter, the swap, the unchanged XP ledger, the stat block, the equipment decision and
+the AI dependency, and defines content-only batch A as the next implementation unit. No
+content, schema, validator or code change was made, and no checks were run.
 
 ### Classification, kept separate
 
