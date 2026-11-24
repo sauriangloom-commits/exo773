@@ -11,6 +11,11 @@ var cell_size := 56.0
 var origin := Vector2(20, 20)
 var hover_cell := Vector2i(-1, -1)
 var mode := "move"
+## Keyboard targeting cursor. Inactive (-1,-1) means the grid does not own the
+## keyboard: the ring stays on the sidebar and its arrows keep the ordinary
+## focus navigation. `CombatScreen` decides when the grid may take the ring.
+var keyboard_cursor := Vector2i(-1, -1)
+var keyboard_cursor_active := false
 
 
 func _ready() -> void:
@@ -18,6 +23,9 @@ func _ready() -> void:
 	clip_contents = true
 	Game.state_changed.connect(queue_redraw)
 	resized.connect(_layout_and_redraw)
+	# Tab, a modal, a turn change or a refresh can all take the ring away. A
+	# cursor that kept listening after that would confirm a cell nobody aimed at.
+	focus_exited.connect(_on_focus_exited)
 
 
 func _layout_and_redraw() -> void:
@@ -62,8 +70,95 @@ func _gui_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var cell := _cell_at(event.position)
 			if cell.x >= 0:
+				# Mouse handoff: the click takes the cursor with it, so a later
+				# Enter confirms the cell the player last aimed at, never an older
+				# keyboard position on the other side of the map.
+				if keyboard_cursor_active:
+					keyboard_cursor = cell
+					queue_redraw()
 				cell_clicked.emit(cell)
 				queue_redraw()
+	elif event is InputEventKey and keyboard_cursor_active:
+		_handle_key_event(event)
+
+
+## Keyboard ownership is explicit: this only runs while the grid holds the focus
+## ring. Repeats are accepted for movement on purpose, so a held arrow slides the
+## cursor cell by cell; an echoed confirm is ignored, so a held Enter/Space can
+## never resolve the same cell twice.
+func _handle_key_event(event: InputEventKey) -> void:
+	if not event.pressed:
+		return
+	if event.is_action_pressed("ui_accept"):
+		accept_event()
+		if event.echo:
+			return
+		# The same signal a left click emits: CombatScreen resolves it exactly as
+		# it resolves a pointer target, including every refusal.
+		cell_clicked.emit(keyboard_cursor)
+		return
+	var step := Vector2i.ZERO
+	if event.is_action_pressed("ui_left", true):
+		step = Vector2i.LEFT
+	elif event.is_action_pressed("ui_right", true):
+		step = Vector2i.RIGHT
+	elif event.is_action_pressed("ui_up", true):
+		step = Vector2i.UP
+	elif event.is_action_pressed("ui_down", true):
+		step = Vector2i.DOWN
+	if step == Vector2i.ZERO:
+		return
+	accept_event()
+	move_keyboard_cursor(step)
+
+
+## Takes the keyboard for the grid and seats the cursor on `cell`. The cursor is
+## clamped here, so no caller can place it outside the encounter's map.
+func begin_keyboard_cursor(cell: Vector2i) -> void:
+	if Game.encounter == null:
+		return
+	keyboard_cursor = _clamp_cell(cell)
+	keyboard_cursor_active = true
+	focus_mode = Control.FOCUS_ALL
+	if not has_focus():
+		grab_focus()
+	queue_redraw()
+
+
+func end_keyboard_cursor() -> void:
+	keyboard_cursor_active = false
+	keyboard_cursor = Vector2i(-1, -1)
+	if has_focus():
+		release_focus()
+	focus_mode = Control.FOCUS_NONE
+	queue_redraw()
+
+
+## One cell, stopped at the map edges. Blocked and occupied cells stay reachable:
+## the ordinary click path owns range, line-of-sight and occupancy refusals, and
+## duplicating them here would let the two drift apart.
+func move_keyboard_cursor(step: Vector2i) -> void:
+	if not keyboard_cursor_active or Game.encounter == null:
+		return
+	keyboard_cursor = _clamp_cell(keyboard_cursor + step)
+	queue_redraw()
+
+
+func _clamp_cell(cell: Vector2i) -> Vector2i:
+	var map := Game.encounter.map
+	return Vector2i(
+		clampi(cell.x, 0, maxi(0, map.width - 1)),
+		clampi(cell.y, 0, maxi(0, map.height - 1))
+	)
+
+
+func _on_focus_exited() -> void:
+	keyboard_cursor_active = false
+	keyboard_cursor = Vector2i(-1, -1)
+	# Leaving the Tab ring while inactive keeps a later Tab from landing on a
+	# grid that has no cursor to show or keys to take.
+	focus_mode = Control.FOCUS_NONE
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -171,11 +266,28 @@ func _draw() -> void:
 				10,
 				ThemeBuilder.GOLD
 			)
+	# Keyboard cursor. Same gold as the active-turn ring so it reads as "a
+	# confirm lands here"; the fill is faint enough to keep the token legible.
+	if keyboard_cursor_active and keyboard_cursor.x >= 0:
+		var cursor_rect := Rect2(
+			origin + Vector2(keyboard_cursor.x, keyboard_cursor.y) * cell_size,
+			Vector2(cell_size, cell_size)
+		)
+		draw_rect(cursor_rect, Color(0.85, 0.72, 0.35, 0.14))
+		draw_rect(cursor_rect, Color(0.85, 0.72, 0.35, 0.95), false, 2.0)
 	# Hover details and legend. Two short lines stay inside the view at the
 	# largest text setting instead of running under the sidebar.
 	var font2 := ThemeDB.fallback_font
 	draw_string(font2, Vector2(14, size.y - 56), "Blue = party • Red = enemy • gold ring = active turn", HORIZONTAL_ALIGNMENT_LEFT, -1, ThemeBuilder.fs(12), ThemeBuilder.MUTED)
-	draw_string(font2, Vector2(14, size.y - 38), "Click an enemy to attack; click an empty square to move.", HORIZONTAL_ALIGNMENT_LEFT, -1, ThemeBuilder.fs(12), ThemeBuilder.MUTED)
+	# The instruction line describes whichever input owns the grid right now, so
+	# a keyboard player is not told to click and a mouse player is not told to
+	# use arrows that only work once a mode has taken the ring.
+	var controls_hint := (
+		"Arrows move the cursor • Enter/Space confirms • Esc cancels targeting."
+		if keyboard_cursor_active
+		else "Click an enemy to attack; click an empty square to move."
+	)
+	draw_string(font2, Vector2(14, size.y - 38), controls_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, ThemeBuilder.fs(12), ThemeBuilder.MUTED)
 	var hover := "Hover a square for distance."
 	if hover_cell.x >= 0:
 		var distance := 0

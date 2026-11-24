@@ -52,6 +52,13 @@ var grapple_exit_button: Button
 var pin_button: Button
 var decision_box: VBoxContainer
 var sidebar_panel: ScrollContainer
+## Keyboard grid session: the mode, actor and cell the cursor was last seated on.
+## A refresh compares them, so a turn, mode or actor move reseats the cursor on
+## purpose instead of leaving it on a cell that no longer means anything.
+var _grid_focus_button: Control = null
+var _cursor_mode := ""
+var _cursor_actor_index := -1
+var _cursor_actor_cell := Vector2i(-1, -1)
 
 
 func _ready() -> void:
@@ -319,6 +326,115 @@ func _add_action_button(text: String, callback: Callable) -> Button:
 	return button
 
 
+## True only while the grid may answer keys at all: a live player turn, no paused
+## decision, no modal, and an encounter that has not finished. Whether the grid
+## actually holds the focus ring is the view's own state and is checked there.
+func _grid_keyboard_allowed() -> bool:
+	var e := Game.encounter
+	if e == null or Game.mode != "combat":
+		return false
+	if e.finished or not e.is_player_turn() or e.has_pending_decision():
+		return false
+	if main != null and main.get("modal") != null:
+		return false
+	return not e.active_entry().is_empty()
+
+
+## Keyboard entry into the grid. A mode is entered by a button or a chosen
+## spell/item, so the cursor starts on the active creature and the grid takes the
+## ring. The key release that activated the button is already inside that
+## button's own GUI handling, which is why it cannot also confirm this cell.
+func _begin_grid_keyboard() -> void:
+	if not _grid_keyboard_allowed():
+		return
+	var active := Game.encounter.active_entry()
+	if active.is_empty():
+		return
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner != null and owner != view and is_ancestor_of(owner):
+		_grid_focus_button = owner
+	_cursor_mode = mode
+	_cursor_actor_index = int(active["index"])
+	_cursor_actor_cell = Vector2i(active["cell"])
+	view.begin_keyboard_cursor(_cursor_actor_cell)
+
+
+## Re-seats the cursor after a state refresh: it follows the active creature when
+## the turn or that creature's cell changes, and restarts on the actor when the
+## mode changes. Losing the turn, the encounter or the modal guard releases it.
+func _sync_grid_keyboard() -> void:
+	if not view.keyboard_cursor_active:
+		return
+	if not _grid_keyboard_allowed():
+		_leave_grid_keyboard()
+		_focus_action_controls()
+		return
+	var active := Game.encounter.active_entry()
+	var index := int(active["index"])
+	var cell := Vector2i(active["cell"])
+	if mode == _cursor_mode and index == _cursor_actor_index and cell == _cursor_actor_cell:
+		return
+	_cursor_mode = mode
+	_cursor_actor_index = index
+	_cursor_actor_cell = cell
+	view.begin_keyboard_cursor(cell)
+
+
+func _leave_grid_keyboard() -> void:
+	_cursor_mode = ""
+	_cursor_actor_index = -1
+	_cursor_actor_cell = Vector2i(-1, -1)
+	view.end_keyboard_cursor()
+
+
+## Escape is the pause key everywhere else; while the grid owns the keyboard it
+## cancels targeting instead. Children receive _input before Main, so consuming
+## the press here stops the global pause handler from acting on it too. A release
+## and a repeat are ignored, matching the pause path's one-per-press rule.
+func _input(event: InputEvent) -> void:
+	if view == null or not view.keyboard_cursor_active:
+		return
+	if not _grid_keyboard_allowed():
+		return
+	if not (event is InputEventKey):
+		return
+	var key := event as InputEventKey
+	if not key.pressed or key.echo:
+		return
+	if not key.is_action_pressed("ui_cancel"):
+		return
+	get_viewport().set_input_as_handled()
+	_cancel_grid_targeting()
+
+
+## Cancelling is free: nothing reaches the encounter, so no action, movement or
+## item is spent. The ring goes back to the control that opened the mode.
+func _cancel_grid_targeting() -> void:
+	pending_action = {}
+	mode = "move"
+	_leave_grid_keyboard()
+	Game.last_ui_message = "Targeting cancelled."
+	refresh_screen()
+	_focus_action_controls()
+
+
+## Returns the ring to the sidebar. The control that opened the mode wins;
+## otherwise the first enabled action, so a keyboard player is never stranded on
+## a grid that has stopped listening.
+func _focus_action_controls() -> void:
+	var remembered := _grid_focus_button
+	if remembered != null and is_instance_valid(remembered) and remembered.is_visible_in_tree():
+		var button := remembered as BaseButton
+		if button == null or not button.disabled:
+			remembered.grab_focus()
+			return
+	for child in button_box.get_children():
+		var candidate := child as BaseButton
+		if candidate != null and candidate.is_visible_in_tree() and not candidate.disabled:
+			candidate.grab_focus()
+			return
+
+
 func _on_state_changed() -> void:
 	refresh_screen()
 
@@ -493,6 +609,7 @@ func refresh_screen() -> void:
 	view.mode = mode
 	view.queue_redraw()
 	_update_button_states()
+	_sync_grid_keyboard()
 
 
 func _initiative_text() -> String:
@@ -835,6 +952,7 @@ func _trip() -> void:
 		"Click an enemy within reach to Trip. Check 'Use equipped trip weapon' for a weapon trip."
 	)
 	refresh_screen()
+	_begin_grid_keyboard()
 
 
 func _bull_rush() -> void:
@@ -843,6 +961,7 @@ func _bull_rush() -> void:
 	mode = "bull_rush"
 	Game.last_ui_message = "Click an enemy within reach to Bull rush (PHB p.154)."
 	refresh_screen()
+	_begin_grid_keyboard()
 
 
 func _grapple() -> void:
@@ -851,6 +970,7 @@ func _grapple() -> void:
 	mode = "grapple"
 	Game.last_ui_message = "Click an enemy within reach to Grapple (PHB p.155)."
 	refresh_screen()
+	_begin_grid_keyboard()
 
 
 ## No target mode: the pinned creature is always the grapple partner.
@@ -1250,6 +1370,7 @@ func _set_mode(new_mode: String, message: String) -> void:
 	pending_action = {}
 	Game.last_ui_message = message
 	refresh_screen()
+	_begin_grid_keyboard()
 
 
 func _turn_undead() -> void:
@@ -1344,6 +1465,7 @@ func _select_spell(spell_id: String, resolve: String, defensive := false) -> voi
 		"enemy" if ["magic_missile", "scorching_ray"].has(resolve) else "ally",
 	]
 	refresh_screen()
+	_begin_grid_keyboard()
 
 
 func _open_potions() -> void:
@@ -1376,6 +1498,7 @@ func _open_potions() -> void:
 				pending_action = {"type": "item", "id": captured_item_id}
 				Game.last_ui_message = "Potion selected: choose who drinks it."
 				refresh_screen()
+				_begin_grid_keyboard()
 			)
 			box.add_child(button)
 		return box

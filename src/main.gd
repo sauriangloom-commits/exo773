@@ -113,6 +113,7 @@ const APP_FLAGS: Array[String] = [
 	"--integration-probe",
 	"--intro-click",
 	"--intro-layout-probe",
+	"--keyboard-probe",
 	"--layout-probe",
 	"--level-up-probe",
 	"--list-campaigns",
@@ -364,6 +365,8 @@ func _ready() -> void:
 		_unarmed_probe()
 	if "--grapple-probe" in args:
 		_grapple_probe()
+	if "--keyboard-probe" in args:
+		_keyboard_probe()
 	if "--nonlethal-probe" in args:
 		_nonlethal_probe()
 	if "--encounter-end-probe" in args:
@@ -7295,6 +7298,133 @@ func _grapple_probe() -> void:
 	_probe_check(finish_text.contains("any grapple is released"), "the encounter end releases the hold with its reason")
 	_probe_check(e.grapples.is_empty(), "state: no pair survives the encounter end")
 	_probe_finish("grapple")
+
+
+## QA-only (--keyboard-probe, fixture --demo-unarmed): the battle grid's keyboard
+## contract through real InputEvents. Arrows, Enter and Escape are pushed through
+## the viewport; no cursor helper and no direct _on_cell_clicked call drives the
+## behaviour under test.
+##
+## Seeded fixture state is labelled apart from the key checks: the rogue's attack
+## bonus is raised so one unarmed strike lands, and her AC is raised so the armed
+## target's opportunity attack misses. Neither changes a combat rule, and neither
+## is part of the input contract.
+func _keyboard_probe() -> void:
+	probe_scenario = "keyboard"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog(90.0)
+	get_window().size = probe_size
+	for i in 8:
+		await get_tree().process_frame
+	var combat := current_screen as CombatScreen
+	var e := Game.encounter
+	if combat == null or e == null:
+		_probe_check(false, "the keyboard fixture is running")
+		_probe_finish("keyboard")
+		return
+	var sera: Character = null
+	var brawler: Character = null
+	for entry in e.combatants:
+		if String(entry["char"].id) == "sera":
+			sera = entry["char"]
+		elif String(entry["char"].id) == "qa_unarmed_brawler":
+			brawler = entry["char"]
+	if sera == null or brawler == null or not e.is_player_turn():
+		_probe_check(false, "the fixture has the rogue on her turn and the armed target")
+		_probe_finish("keyboard")
+		return
+	sera.base_attack = 20
+	sera.ac_misc = 30
+	e.rng.seed = 20261124
+	combat.refresh_screen()
+	_probe_check(e.cell_of(sera) == Vector2i(2, 3), "fixture: the rogue starts at 2,3")
+	_probe_check(e.cell_of(brawler) == Vector2i(3, 3), "fixture: the armed target starts at 3,3")
+	_probe_check(not bool(e.turn_state["standard_used"]), "fixture: the standard action is free")
+	_probe_check(not combat.view.keyboard_cursor_active, "start: the grid owns no keyboard before a mode")
+	# 1. A mode button takes the ring; the cursor starts on the active creature.
+	var attack_button := _probe_button(combat.button_box, "Attack")
+	_probe_reveal(attack_button)
+	await get_tree().process_frame
+	await _probe_click(attack_button, "Attack (keyboard entry)")
+	for f in 6:
+		await get_tree().process_frame
+	_probe_check(combat.mode == "attack", "button: Attack entered its targeting mode")
+	_probe_check(combat.view.keyboard_cursor_active, "the battle grid took the keyboard for the mode")
+	_probe_check(get_viewport().gui_get_focus_owner() == combat.view, "focus is on the battle grid, not the button")
+	_probe_check(combat.view.keyboard_cursor == Vector2i(2, 3), "the cursor starts on the active creature")
+	_probe_check(not bool(e.turn_state["standard_used"]), "state: entering a mode spends no action")
+	# 2. A real arrow key moves the cursor; a real Enter confirms that cell.
+	await _probe_key(KEY_RIGHT)
+	_probe_check(combat.view.keyboard_cursor == Vector2i(3, 3), "key: ArrowRight moved the cursor onto the enemy")
+	var attack_lines := e.log_lines.size()
+	await _probe_key(KEY_ENTER)
+	for f in 12:
+		await get_tree().process_frame
+	var attack_text := _probe_ranged_new_lines(e, attack_lines)
+	_probe_check(bool(e.turn_state["standard_used"]), "key: Enter spent the standard action through the click path")
+	_probe_check(
+		attack_text.contains("%s attacks %s" % [sera.display_name, brawler.display_name]),
+		"key: Enter resolved the attack on the cursor's cell",
+	)
+	# 3. Real repeats stop at the map edge.
+	for i in 20:
+		await _probe_key(KEY_LEFT)
+	_probe_check(combat.view.keyboard_cursor.x == 0, "key: twenty ArrowLeft presses stop at the west edge")
+	_probe_check(combat.view.keyboard_cursor.y == 3, "key: horizontal movement leaves the row unchanged")
+	# 4. A second confirm cannot start a second attack.
+	var repeat_lines := e.log_lines.size()
+	await _probe_key(KEY_ENTER)
+	for f in 6:
+		await get_tree().process_frame
+	_probe_check(
+		not _probe_ranged_new_lines(e, repeat_lines).contains(
+			"%s attacks %s" % [sera.display_name, brawler.display_name]
+		),
+		"key: a second Enter starts no second attack",
+	)
+	# 5. Escape cancels targeting instead of opening the pause menu.
+	await _probe_key(KEY_ESCAPE)
+	for f in 6:
+		await get_tree().process_frame
+	_probe_check(combat.mode == "move", "key: Escape returned to the resting move mode")
+	_probe_check(not combat.view.keyboard_cursor_active, "key: Escape hid the cursor")
+	_probe_check(modal == null, "key: Escape cancelled targeting instead of opening the pause menu")
+	_probe_check(String(Game.last_ui_message) == "Targeting cancelled.", "key: the cancellation is reported")
+	_probe_check(get_viewport().gui_get_focus_owner() is Button, "key: focus returned to the sidebar controls")
+	_probe_check(not bool(e.turn_state["move_used"]), "state: cancelling spent no move action")
+	# 6. Escape still belongs to the pause menu once the grid has released it.
+	await _probe_key(KEY_ESCAPE)
+	for f in 6:
+		await get_tree().process_frame
+	_probe_check(modal != null, "key: Escape still opens the pause menu with no grid cursor")
+	if modal != null:
+		await _probe_key(KEY_ESCAPE)
+		for f in 6:
+			await get_tree().process_frame
+	_probe_check(modal == null, "key: the pause menu closes on Escape")
+	# 7. Keyboard movement through the same move path.
+	var move_button := _probe_button(combat.button_box, "Move")
+	_probe_reveal(move_button)
+	await get_tree().process_frame
+	await _probe_click(move_button, "Move (keyboard entry)")
+	for f in 6:
+		await get_tree().process_frame
+	var start_cell := e.cell_of(sera)
+	await _probe_key(KEY_LEFT)
+	_probe_check(
+		combat.view.keyboard_cursor == start_cell + Vector2i(-1, 0),
+		"key: the cursor moved one cell west",
+	)
+	await _probe_key(KEY_ENTER)
+	for f in 12:
+		await get_tree().process_frame
+	_probe_check(
+		e.cell_of(sera) == start_cell + Vector2i(-1, 0),
+		"key: Enter moved the rogue through the ordinary move path",
+	)
+	_probe_check(combat.view.keyboard_cursor == e.cell_of(sera), "key: the cursor follows the moved creature")
+	_probe_check(bool(e.turn_state["move_used"]), "state: the ordinary move cost is paid")
+	_probe_finish("keyboard")
 
 
 ## Scrolls a combat action button into view before a real click, the same way the
