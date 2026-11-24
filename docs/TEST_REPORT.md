@@ -6803,3 +6803,53 @@ occurrences), `storeroom_ambush`, `storeroom_cleared`, `store_looter` - with no
 needed. A stale line range in `OVERRUN_PLAN.md` (it cites encounters.json lines 2-56, now
 2-60) is line-number drift, not an identifier; it is recorded as maintenance debt in the
 review that follows rather than silently edited.
+
+## Flanking made attacker-specific (2026-11-24) - closed
+
+Candidate 2 of the roadmap review, implemented as commit `1e7dc4b`. Failing-first tests ran
+before any engine change; the suspected sneak-gate defect was reproduced through the ordinary
+attack path before it was corrected.
+
+**Red run** (`builds/qa/flanking_red/focused_red.log`, pre-implementation):
+`tests/test_flanking.gd` 9 tests, 5 pass, 4 fail, 42/47 asserts, exit 1. Two failures were the
+missing printed bonus (the attacker's roll carried +5 where +7 was due, including the
+ordinary-attack-path case); two were the sneak gate granting `sneak attack applies: +2d6` to a
+crossbow rogue shooting into a melee and to a rogue who was not one of the flankers. No parse,
+import or fixture error appeared in that run.
+
+**Green runs** (post-implementation, `1e7dc4b`):
+
+| Check | Result | Log |
+| --- | --- | --- |
+| `tests/test_flanking.gd` | 10 tests, 10 pass, 49 asserts | `builds/qa/flanking_green/focused_green.log` |
+| Full suite (`-gdir=res://tests -gexit`) | 1027 tests, 1027 pass, 10,193 asserts, 79 scripts, no script errors | `builds/qa/flanking_green/suite_final.log` |
+| `--validate-campaigns` | PASS | `builds/qa/flanking_green/validate_campaigns.log` |
+| `--validate-diagnostics` | PASS, line unchanged (`authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000 threshold=6000`) | `builds/qa/flanking_green/validate_diagnostics.log` |
+| `--keyboard-probe --demo-unarmed` | PASS, 31 checks | `builds/qa/flanking_green/keyboard_probe.log` |
+| `--grapple-probe --demo-unarmed` | PASS, 160 checks | `builds/qa/flanking_green/grapple_probe.log` |
+| `--level-up-probe` | PASS, 349 checks | `builds/qa/flanking_green/level_up_probe.log` |
+| `--advancement-probe` | PASS, 228 checks | `builds/qa/flanking_green/advancement_probe.log` |
+| `--combat-info-probe` | PASS, 62 checks | `builds/qa/flanking_green/combat_info_probe.log` |
+| `--flanking-probe` (new) | PASS, 8 checks | `builds/qa/flanking_green/flanking_probe.log` |
+| Combat layout, text 1.00 and 1.60 | 32 controls, 0 failures at both scales | `builds/qa/flanking_green/layout_1.0.log`, `layout_1.6.log` |
+
+**What the new tests cover.** Each case asserts the applied modifier through the result's own
+`bonus` and the log line, never through hit or miss: a genuine flank whose attacker is one of
+the pair (+2 and `sneak attack applies`), a third party's flank with the attacker outside the
+pair (no bonus, no sneak), a ranged attacker whose allies flank (no bonus, no sneak), an ally
+who cannot threaten (empty hands or a crossbow) leaving no pair, a paralyzed ally not
+completing a pair, a helpless target keeping its independent sneak route, a flat-footed target
+keeping its independent route, and monster parity through `_monster_single_attack`.
+
+**Acceptance from the executable**
+(`builds/qa/candidates/2026-11-24_flanking_attacker_specific/RavenloftFoundationEdit.exe`,
+`exe_sha256=58ce0ce260b9130529a6b753babb80ff2e55a6bd7e50a83e5350807b97d01455`,
+110,911,512 bytes): both validators, all six probes (the flanking probe's 8 checks included)
+and combat layout at both scales passed from the executable, and the executable's hash was
+identical before and after those runs. Logs are in
+`builds/qa/flanking_attacker_specific_acceptance/`.
+
+**Evidence gaps.** Automated rules behaviour only - no balance testing, no playthrough and no
+human playtest, and the new `flanking +2` log line was not reviewed in a rendered window. The
+30-ft ranged sneak limit and concealment remain unimplemented; overrun stays deferred; no
+content, schema, save, award or XP change was made.

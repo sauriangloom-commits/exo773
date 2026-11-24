@@ -1926,7 +1926,7 @@ content, schema, validator or code change was made, and no checks were run.
   defeat screen; no human keyboard-only start-to-victory run; the probes cover pieces.
   The rogue's sneak attack has automated rules coverage but no ordinary-play instance.
   None of these is a defect and none is proposed as work on its own.
-## Next bounded task - roadmap review after the living opponent batch (2026-11-24)
+## Roadmap review after the living opponent batch (2026-11-24) - Candidate 2 implemented and closed
 
 Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this section,
 and **no tests, probes, validators, builds or exports were run**. It reads the current
@@ -2087,8 +2087,9 @@ only if that capability is wanted.
 - **Confirmed defects.** (1) Rule defect, found by reading: the sneak gate never checks that
   the attacker is one of the flankers and never checks melee, so a third party's flank or a
   ranged rogue grants sneak damage (`encounter.gd:3004-3013`, `:3171-3193`). It was not
-  reproduced by a failing test in this review because no checks were run; Candidate 2's
-  failing-first test is the confirmation. (2) Documentation defect: `SUPPORTED_FEATURES.md:406`
+  reproduced by a failing test in this review because no checks were run; the
+  implementation batch's failing-first test then reproduced it (see the closure
+  below). (2) Documentation defect: `SUPPORTED_FEATURES.md:406`
   and `TRACEABILITY.md:166` claim flanking is re-evaluated as an attack bonus that the code
   never applies. No other failing case was found. Batch A introduced no defect.
 - **Deferred features.** Batch B (equipment-driven monster attacks) and C (disarm, sunder,
@@ -2107,3 +2108,85 @@ only if that capability is wanted.
   grapple, pin and Turn Undead behaviour remains probe- or test-only; no rendered check of
   the new narration, the looter's sidebar row or the stat block. These are disclosures, not a
   reason to schedule work.
+
+### Closure - Candidate 2 implemented (2026-11-24)
+
+**Printed rules, recorded separately from the adaptation.** Verified against the
+d20srd "Combat Modifiers" page (<https://www.d20srd.org/srd/combat/combatModifiers.htm>),
+with PHB pp. 137 and 153 (PDF 138 and 154) and the Rogue class features (PHB pp.
+49-50) as the printed references. Quoted text:
+
+- "+2 flanking bonus if your opponent is threatened by a character or creature
+  friendly to you on the opponent's opposite border or opposite corner".
+- "Only a creature or character that threatens the defender can help an attacker
+  get a flanking bonus".
+- The melee attack-roll modifiers table lists "Flanking defender | +2".
+- A rogue deals extra damage "when the rogue flanks her target"; the printed
+  ranged-sneak limit is 30 feet.
+
+**Project adaptation, decided explicitly.** The +2 is computed per attacker: the
+attacker must itself threaten the target, and an able ally must threaten it from an
+opposite border or corner. Ranged attacks never carry it; melee touch attacks (trip,
+grapple) do, because a melee touch attack is a melee attack. A helpless creature -
+paralyzed, held, unconscious or dying - neither flanks nor completes a pair: it
+cannot make the melee attack that threat is. Monsters use the same helper, so parity
+is structural (`_monster_single_attack`, `_monster_full_attack` and the opportunity
+attack pass `flank_bonus`), not a party-only concession. A rogue's flank-based sneak
+attack requires her own flank and is melee only; helpless and flat-footed targets
+remain independent routes, and undead and constructs stay immune. Cleave's granted
+attack runs through `_resolve_attack`, so it re-evaluates the new target instead of
+inheriting a stale bonus. Adapted and still deferred: the 30-ft ranged sneak limit and
+concealment are unmodelled, so a ranged rogue can sneak at any distance when the
+target is flat-footed or helpless. Overrun, the opposed-check helper, occupancy,
+opportunity-attack eligibility and the engagement model are untouched.
+
+**Defect status.** The review recorded the sneak gate as a suspected defect read from
+code. It is now reproduced: `tests/test_flanking.gd` failed before any implementation
+(9 tests, 5 pass, 4 fail, 42/47 asserts, exit 1,
+`builds/qa/flanking_red/focused_red.log`), showing the flanking attacker's printed
+roll carrying +5 where +7 was due, and a crossbow rogue and a third-party flank both
+receiving `sneak attack applies: +2d6`.
+
+**Implementation** (commit `1e7dc4b`, one bounded batch):
+
+- `Encounter._threatening_positions` (able, non-helpless, actually-threatening
+  enemies), `Encounter._opposite_sides` and `Encounter._flank_bonus` (this attacker's
+  own flank). `_is_flanked` stays as the target-side question the older tests use.
+- `Rules.attack` adds `opts.flank_bonus` after `bonus_base`, melee only; the
+  encounter logs `flanking +2 (PHB p.153)`.
+- Passed at `_resolve_attack` (ordinary attack, reaction and Cleave), both monster
+  helpers, the opportunity attack, and trip and grapple touch attacks.
+- `tests/test_flanking.gd` (10 tests, 49 asserts) and `--flanking-probe` (8 checks),
+  which seeds cells and turn ownership and drives `Game.combat_attack`.
+- Claims corrected: `SUPPORTED_FEATURES.md` (feature bullet and the Cleave modifier
+  list) and `TRACEABILITY.md` row 24 and its Cleave paragraph.
+
+**Verification on `1e7dc4b`** (the README quick-start removal was left uncommitted and
+untouched; its file hash and diff hash were re-verified before and after):
+
+- Focused: 10 tests, 10 pass, 49 asserts, exit 0
+  (`builds/qa/flanking_green/focused_green.log`).
+- Full suite: 1027 tests, 1027 pass, 10,193 asserts, 79 scripts, exit 0, no script
+  errors (`builds/qa/flanking_green/suite_final.log`).
+- Validators: `--validate-campaigns` and `--validate-diagnostics` both PASS; the
+  diagnostics line is unchanged (`authored=4500 ordinary=4350 qa=150 encounters=1500
+  effects=3000 start=3000 threshold=6000`).
+- Probes: keyboard 31, grapple 160, level-up 349, advancement 228 and combat-info 62
+  checks, plus the new flanking probe's 8, all PASS.
+- Combat layout at text 1.00 and 1.60: 32 controls and 0 failures at both scales.
+
+**Acceptance from the executable**
+(`builds/qa/candidates/2026-11-24_flanking_attacker_specific/RavenloftFoundationEdit.exe`):
+BUILD.txt records `source_head=1e7dc4b65efd5376fb57c57ab9a255684efb4981`,
+`worktree_entries=1` (the README removal only),
+`worktree_diff_sha256=0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`,
+`untracked_files=0`,
+`exe_sha256=58ce0ce260b9130529a6b753babb80ff2e55a6bd7e50a83e5350807b97d01455`
+and `exe_bytes=110911512`; that hash was identical before and after the acceptance
+runs (both validators, all six probes, layout at both scales). Logs are in
+`builds/qa/flanking_attacker_specific_acceptance/`.
+
+**Evidence gaps and boundaries.** Only automated rules behaviour was checked: no
+balance testing, no playthrough and no human playtest, and the new log line was not
+reviewed in a rendered window (the probe is headless). No content, schema, save, award
+or XP change was made, nothing was pushed, and no backup was taken.

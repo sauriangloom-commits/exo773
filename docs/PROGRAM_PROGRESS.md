@@ -3813,3 +3813,22 @@ in ordinary play. Two documentation claims already state flanking is applied
 it. Also recorded: the save shortcut stays a small usability rider, coup de grace needs
 `hold person` content before it has a target, levels 5+ stay out of range, and overrun,
 readied actions and the opposed-check helper are unchanged.
+
+Flanking made attacker-specific and closed (2026-11-24). Candidate 2 of the roadmap review
+landed as commit `1e7dc4b` in one bounded batch. `Encounter._threatening_positions`,
+`_opposite_sides` and `_flank_bonus` now answer the question per attacker; `Rules.attack`
+adds the melee-only +2 after `bonus_base`; the player attack, reaction and Cleave, monster
+single and full attacks, opportunity attacks and trip/grapple touch attacks all pass it, so
+monsters flank on the same terms. A helpless ally (paralysis included) no longer completes a
+pair, decided explicitly. The sneak gate now requires the rogue's own flank, which closes the
+suspected defect the last review could only read from code: `tests/test_flanking.gd`
+reproduced it first with a real red run (5 of 9 tests, 42/47 asserts) and now passes 10/10
+with 49 asserts. Suite 1027/1027 (10,193 asserts, 79 scripts), both validators, keyboard 31,
+grapple 160, level-up 349, advancement 228, combat-info 62 and the new flanking probe's 8
+checks, and combat layout at 1.00/1.60 with 32 controls all pass; candidate
+`2026-11-24_flanking_attacker_specific` (source `1e7dc4b`, exe sha256 `58ce0ce2...`,
+110,911,512 bytes) repeated the validators, six probes and both layouts from the executable
+with its hash identical before and after. Adapted and still unmodelled: the 30-ft ranged sneak
+limit and concealment. Evidence gaps: no balance testing, no playthrough, no human playtest,
+and no rendered review of the new log line. Overrun stays deferred; no content, schema, save,
+award or XP changes.
