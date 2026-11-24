@@ -238,6 +238,13 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 
 - Responsive Control-based UI at a 1280×720 reference size.
 - Keyboard, mouse and on-screen buttons; focusable controls with visible states.
+- Combat-grid targeting from the keyboard: a target mode seats a visible cursor on
+  the active creature, the arrows move it inside the map, Enter/Space resolves the
+  cell through the same path as a click, and Escape cancels the mode without
+  spending an action and returns focus to the sidebar. Mouse targeting is unchanged.
+  The cursor may rest on a blocked or occupied cell; the ordinary validation refuses
+  it. Grid keys are Godot's built-in `ui_*` actions, so rebinding those also moves
+  the cursor.
 - Combat log with rolls, modifiers, DCs, damage, conditions and resource changes.
 - Modals keep keyboard focus: Tab and Shift+Tab cycle only the modal's own controls and wrap, background actions stay blocked while one is open, and closing returns focus to the control that opened it (or the first usable control on the screen).
 - Refused exploration actions (a wall, a closed door, an NPC in the way, nothing

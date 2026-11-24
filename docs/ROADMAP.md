@@ -1381,6 +1381,17 @@ disclosed non-player bypass. This is resolved, not open maintenance debt.
 
 ### Candidate 1 - keyboard targeting on the battle grid (recommended)
 
+**Implemented 2026-11-24 in `072c15b`.** The batch delivered the cursor and activation
+path described here: a visible, map-bounded cursor, Enter/Space through
+`_on_cell_clicked`, Escape cancelling without an action cost and returning focus,
+the grid ignored off-turn, with a modal, with a pending decision and after the fight,
+and mouse targeting unchanged. It added no hotkey, save shortcut, new binding or
+focus framework. Evidence and the exact keyboard boundary are in `TEST_REPORT.md`.
+Remaining keyboard gaps are recorded there and below: choosing a mode still needs its
+button, the combat log has no keyboard scroll path, and no human or rendered-cursor
+review exists. Further grapple (8c, 8b-2/8f), overrun, the save shortcut and
+readied/delayed actions stay deferred.
+
 - **Player benefit.** A keyboard-only player cannot finish a fight today. The
   action buttons are ordinary focusable buttons, but every mode they open ends in
   a click on a grid cell: `CombatView._gui_input` handles only mouse motion and

@@ -3455,3 +3455,29 @@ behavior changed. The wrapper's `auto_advance()` is a no-op for the acting able 
 member, so the player keeps the turn after both pre-action refusals and legal
 attempts; the seeded pinned-monster direct-call bypass stays disclosed and is not a
 player path. This item is resolved by investigation, not carried as open debt.
+
+### Keyboard battle-grid targeting implemented (2026-11-24)
+
+The reviewed candidate was implemented in `072c15b` as one input batch: a visible,
+map-bounded cursor in `CombatView`, mode-entry focus in `CombatScreen`, Enter/Space
+through the same `_on_cell_clicked` path as a click, Escape cancelling without an action
+cost and returning focus, guards for modals, pending decisions, enemy turns and finished
+encounters, and mouse clicks repositioning the cursor so Enter cannot confirm a stale
+cell. The 32 action controls, combat rules, content, saves, awards and XP are unchanged.
+`tests/test_combat_keyboard_targeting.gd` 12/12 (52 asserts; the preserved red run
+`builds/qa/runs/2026-11-24_combat_keyboard/red.log` collected 12 and failed 11 on the
+missing cursor/guard members), and the new `--keyboard-probe` (fixture `--demo-unarmed`,
+31 checks) drives real key events through the viewport rather than a cursor helper.
+
+Source: suite 985/985 (9,864 asserts, 74 scripts), both validators, `--grapple-probe`
+154 checks, `--keyboard-probe` 31 checks, layout 32/0 at both scales, `--level-up-probe`
+(349 checks) and `--advancement-probe` PASS. Candidate `2026-11-24_combat_keyboard_a`
+from `072c15b`, 110,887,928 bytes, SHA-256
+`a4f485b6416a8985e043757f7746167e93e6a04eb6ccdbdcf117438630d5f1ad`,
+`worktree_entries=1` (README only), no untracked files, hash equal to `BUILD.txt` and
+unchanged before and after; the keyboard probe, both validators, the three pre-existing
+probes and both layout scales PASS from the exe. Automated input behaviour and geometry
+only: no rendered-cursor or human keyboard-only review. The surrounding gaps (mode
+choice still needs its button, no toolbar or save hotkey, built-in `ui_*` bindings, no
+keyboard path to the combat log, other screens not re-tested) are recorded in
+`TEST_REPORT.md` and `ROADMAP.md`, not folded into this batch.

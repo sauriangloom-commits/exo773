@@ -6112,3 +6112,82 @@ executable behavior changed. The wrapper tests show the acting able party member
 the turn after grappled/pinned/range/spent-action/holy-symbol refusals and after both a
 legal attempt that affects nothing and a successful turn; the seeded pinned-monster
 direct-call bypass remains a disclosed non-player path. No open issue is carried.
+
+## Keyboard battle-grid targeting (2026-11-24, implementation `072c15b`)
+
+**Scope.** `CombatView` gained a bounded `keyboard_cursor`, a gold outline drawn in the
+same gold as the active-turn ring, and key handling that only runs while it holds the
+focus ring. `CombatScreen` gained mode-entry focus, refresh re-seating, Escape
+cancellation, and an `_input` that consumes that press before `Main`'s global pause
+handler. The 32 action controls, `_on_cell_clicked`, `Encounter`, `Rules`, content,
+saves, awards and XP are unchanged.
+
+**Input contract.**
+- Entry: a target mode opened from an action button, the spell list or the potion list
+  seats the cursor on the active creature and gives the grid the focus ring. Any focus
+  loss hides the cursor, so Tab returns to the sidebar through the same `focus_exited`
+  path the tested actor/modal releases use; Tab itself is not separately exercised.
+- Movement: arrows move one cell and are clamped to the map. Blocked and occupied cells
+  are allowed, because range, line-of-sight and occupancy stay in the click path rather
+  than being duplicated. Held arrows repeat (deliberate); an echoed confirm is ignored.
+- Activation: Enter/Space emits the same `cell_clicked` signal a left click emits, so
+  `_on_cell_clicked` applies the same pending-decision, mode, target and action-cost
+  checks. A focused button's activating keypress cannot also confirm a cell: that
+  release stays inside the button's own GUI handling, and only the next press reaches
+  the grid.
+- Cancellation: Escape while the grid holds the ring clears a selected spell or item,
+  returns the mode to `move`, spends nothing and returns the ring to the button that
+  opened the mode. With no grid cursor, Escape still opens the pause menu.
+- Guards: grid keys are answered only on a live party turn with no pending decision,
+  no modal and a running encounter. A refresh on turn end, encounter end or the modal
+  guard releases the cursor and moves the ring back to the controls.
+- Handoff: a mouse click resolves as before and also moves the cursor to that cell, so
+  a later Enter cannot confirm an older keyboard position. Hovering does not move it.
+
+**Tests.** `tests/test_combat_keyboard_targeting.gd` 12/12 (52 asserts): activating
+`Attack` by key without a second confirmation; bounded arrows; mode-change and
+actor-change re-seating; Escape cancellation with focus return and no action or move
+cost; an invalid target refused through `_on_cell_clicked`; one attack per Enter and
+none for a second confirm or an echoed confirm; keyboard movement; modal, enemy-turn and
+finished-encounter guards; mouse click handoff. The first collection attempt failed on
+an untyped `load()` in the fixture and was fixed before the behavioural run; the
+preserved red log (`builds/qa/runs/2026-11-24_combat_keyboard/red.log`) is that run: 12
+collected, 11 failing, 10/26 asserts, all on the missing cursor/guard members.
+
+**Probe.** `--keyboard-probe` (fixture `--demo-unarmed`, 31 checks) pushes real
+`InputEventKey` presses through the viewport, never a cursor helper and never
+`_on_cell_clicked`. It checks the mode-entry ring and cursor, ArrowRight, Enter resolving
+the attack through the click path, twenty ArrowLeft presses stopping at the west edge, a
+second Enter starting no second attack, Escape cancelling without opening pause and
+returning focus, Escape still pausing with no cursor, and Enter moving the rogue. Seeded
+fixture state is labelled apart from the key checks: the rogue's attack bonus is raised
+so one unarmed strike lands and her AC so the armed target's opportunity attack misses;
+no rule is changed by that seeding.
+
+**Checks.** Suite 985/985 (9,864 asserts, 74 scripts), both validators,
+`--grapple-probe` 154 checks, `--keyboard-probe` 31 checks, layout 32 controls/0
+failures at 100 % and 160 %, `--level-up-probe` 349 checks and `--advancement-probe`
+PASS. Candidate `2026-11-24_combat_keyboard_a`, source
+`072c15b0ae2e2b28e331300e1da54a79aa8377a4`, 110,887,928 bytes, SHA-256
+`a4f485b6416a8985e043757f7746167e93e6a04eb6ccdbdcf117438630d5f1ad`, equal to
+`BUILD.txt`, `worktree_entries=1` (README only), no untracked files, hash identical
+before and after. From the exe: keyboard probe PASS (31 checks), grapple probe PASS (154
+checks), both validators PASS, level-up PASS (349 checks), advancement PASS and both
+layout scales PASS. The README file and diff hashes were verified unchanged.
+
+**Keyboard boundary and gaps.** The evidence is automated input behaviour and geometry,
+not a human keyboard-only fight. The cursor and its instruction line were not viewed, no
+screenshot was taken, and no screen-reader, contrast or other accessibility check was
+made. Choosing a mode still means tabbing to its button or the target list; the batch
+adds no toolbar hotkey, no save shortcut, no new binding and no general focus framework.
+Grid keys are Godot's built-in `ui_left/right/up/down/accept/cancel`, so rebinding those
+actions also moves the cursor. The cursor may rest on a blocked or occupied cell by
+design and is refused by the existing path, not skipped. The combat log has no keyboard
+scroll path, and keyboard access to the other screens (modals, dialogue, creator) was
+not re-tested here. These are recorded as surrounding gaps, not folded into this batch.
+
+**Classification.** Confirmed defects: none found in the new contract. Deferred
+features: further grapple (8c, 8b-2/8f), overrun, readied/delayed actions and the save
+shortcut remain as recorded in the roadmap review. Maintenance debt: unchanged.
+Evidence gaps: no human or rendered review of the cursor, no exported visual capture,
+and mouse/keyboard handoff is exercised at the click, not at hover or focus traversal.
