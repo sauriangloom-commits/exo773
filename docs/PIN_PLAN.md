@@ -1,7 +1,8 @@
 # Pin — planning note for batch 8b (planning only)
 
-**Status: planning only, 2026-11-24. No engine, content, schema, save or UI change is
-made by this note, and no checks were run for it.** It builds on
+**Status: planning only, 2026-11-24; accepted as the baseline for batch 8b-1 on
+2026-11-24 with the timing language clarified below. No engine, content, schema, save or
+UI change is made by this note, and no checks were run for it.** It builds on
 `docs/GRAPPLE_PLAN.md` (batch 8a, closed as accepted) and the review recorded in
 `dfadbe3` (`docs/ROADMAP.md`). Batch 8a's scope is not widened retrospectively: this
 note plans a separate batch that depends on the shipped two-participant grapple.
@@ -102,13 +103,19 @@ holder, logging that the pin ends. This is the same convention the engine alread
 for total defense and Combat Expertise ("until the start of the character's next turn",
 `encounter.gd:225-262`), and it needs no stored round counter.
 
-Turn-order consequences, stated because they decide the tests: the pin is applied on the
-pinner's turn; the pinned creature's next turn always falls before the pinner's next
-turn in the cycle, so a pin always covers exactly one of the pinned creature's turns.
-If the pinned creature is skipped (dying, paralyzed, dead), the pin still expires at the
-pinner's next turn start. If the pinner dies, is turned, or the encounter ends, the pair
-is cleared and the pin with it. If the pinner is paralyzed or dying but alive, its turn
-still begins and the expiry still runs; it simply cannot pin again.
+Turn-order consequences, stated without promising a fixed number of pinned turns. The
+pin expires at the start of the pinner's next turn, whatever the initiative order. In
+the supported orderings the pinned creature's next turn falls before that expiry, so it
+takes that turn pinned; but the amount of control the pin buys still depends on whether
+it escapes the pin and on how many of its turns remain in the encounter, so this plan
+does not claim "exactly one pinned turn" or a guaranteed extra round.
+
+If the pinner cannot act - paralyzed, dying, stable, unconscious - its turn still
+begins and `_begin_turn` still runs, so the expiry fires and the pin ends on schedule;
+the pinner simply cannot attack, pin again, or escape anything that turn. If the pinner
+dies, is turned, or the encounter ends, the pair is cleared and the pin with it. If the
+pinned creature is skipped (dying, paralyzed, dead), the pin still expires at the
+pinner's next turn start, and a pinned creature that cannot act cannot escape.
 
 A pinned creature that cannot act (dying, stable, unconscious, paralyzed) stays pinned,
 cannot escape, and is released only by expiry, the holder's release, or cleanup. That
@@ -201,11 +208,13 @@ All three shipped monsters are undead, so the hold deals no damage and the pin a
 damage either; no new damage benefit is claimed. The current value of 8a's hold is that a
 grappled monster's whole turn is one escape attempt: on a success it is free that same
 turn. With pin, that turn becomes a pin escape; a success leaves it **still grappled**, so
-the monster needs a second turn to get free, and a failure leaves it pinned and unable to
-act. In shipped fights (2 HD zombies, the ghoul, the 6 HD infected zombie; escape checks
-+2 to +6) the pin buys at least one more round of control at the cost of the player's
-standard action and all of the player's attacks while pinning. That is the incremental
-effect, and it is small because the fights are short and no monster initiates a grapple.
+it has not escaped the hold, and a failure leaves it pinned and unable to act. In shipped
+fights (2 HD zombies, the ghoul, the 6 HD infected zombie; escape checks +2 to +6) the
+pin costs the player's standard action and all of the player's attacks while pinning,
+and in return it can deny the monster a normal turn and make a successful pin escape
+leave it still held. How much that is worth depends on turn order and on the escape
+rolls; no fixed extra round is promised. That is the incremental effect, and it is
+small because the fights are short and no monster initiates a grapple.
 
 No selectable-feat reachability is claimed. Improved Grapple remains raw-feat text only;
 `FEATS_SKILLS_COVERAGE.md:191` records that neither it nor Improved Unarmed Strike is in
@@ -272,8 +281,9 @@ Planned cases, roughly 24:
 21. holder release ends the pair for free, pinned or not;
 22. pinned AI attempts the pin escape and does not attack; success leaves it grappled
     and ends its turn;
-23. expiry at the pinner's next turn start, tested with the pinner before and after the
-    pinned creature in the order;
+23. expiry at the pinner's next turn start, tested for both supported initiative
+    orderings (pinner before and after the pinned creature) and for a pinner that cannot
+    act, without asserting a fixed number of pinned turns;
 24. death, turning and encounter finish clear a pinned pair; pinned dying cannot escape
     and the pin survives until expiry.
 
