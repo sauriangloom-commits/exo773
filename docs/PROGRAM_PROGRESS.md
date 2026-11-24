@@ -3646,3 +3646,34 @@ after. The prior paralyzed-ally candidate and its product fix remain unchanged.
 Keep separate: no human rendered/sidebar-scroll test; enemy-row focus does not
 auto-reveal; the keyboard grid path was not exercised. README is untouched; no
 content, schema, save, progression, award or XP change and no push.
+
+### Overrun scope decision: deferred (2026-11-24)
+
+Closed the 720px ranged-probe correction within the evidence recorded in `247fad3`
+for implementation `1a2a2393e461328f0bf747d8414a2c83b5246f2a` and candidate
+`2026-11-24_ranged_720_probe_a`. The old control clicked an offscreen enemy-row
+button; the visible grid path worked. This is a probe navigation defect, not a
+product targeting defect. No rebuild, re-export or check was run for this closure.
+
+Reviewed `docs/OVERRUN_PLAN.md` and the completed helpless-AoO, engagement and
+ranged-probe records. **Decision: defer overrun (Option C).** No implementation,
+test, probe, validator, build or export is authorized. The fixed-exit stop is not
+accepted as satisfying the printed success/avoid continuation. `move_active_to` is
+atomic: `moved_ft` is a total, `move_used` gates ordinary movement, and there is no
+residual player-move state; `off_turn_resume`/`resume_interrupted` is monster-move
+only. A bounded overrun continuation would need new state and a movement transition;
+a general continuation prerequisite is larger still.
+
+The opposed-check tie is raw ability modifier under PHB p.64, not size or stability.
+The current helper compares ability modifier plus bonuses, so trip, bull rush and
+grapple share a helper-contract question; no other maneuver was changed silently.
+Opportunity-attack eligibility is corrected, but participant geometry is separate
+and remains open; a single origin pass is not accepted evidence. Shipped content
+adds little payoff: no back line, the prone blocker still occupies the lane, the
+shared undead are immune to sneak attack, and the top-row blockers have walls
+directly behind them.
+
+Kept separate: the shared AoO and into-melee defects are corrected, the 720px probe
+defect is closed, overrun is deferred, and continuation/tie/geometry remain open
+design questions. No overrun acceptance unit is authorized. README remains
+untouched and no push was made.

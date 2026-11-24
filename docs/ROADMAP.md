@@ -1568,7 +1568,7 @@ defect found**; the earlier grapple and pin acceptances are unchanged.
 - **Verdict.** Bounded and honest, but it closes information/visibility, not a blocked
   path. It stays a deferred usability item rather than leading a batch.
 
-### Candidate B - overrun (recommended for a planning-only batch)
+### Candidate B - overrun (deferred after scope review)
 
 - **Player benefit.** A standard-action way to move through an occupied square and knock
   the blocker prone, using a capability no current action has: trip makes prone at reach
@@ -1582,21 +1582,24 @@ defect found**; the earlier grapple and pin acceptances are unchanged.
 - **What is already in place.** `Character.size_category`, occupancy-aware movement, the
   AoO machinery, the contested-check and pending-decision patterns from trip and bull
   rush, and the action-grid control shape.
-- **Unresolved decisions.** Whether the mover spends a standard action, a move, or both;
-  how much movement is available and how it interacts with `moved_ft`; the defender's
-  avoid/block choice and the AI policy for it; size and stability; the attack of
-  opportunity (from the target, from others, or none); where a failed attempt stops; when
-  prone applies; one target per round; and whether the mover can continue after a
-  success. Improved Overrun stays deferred behind the action
+- **Decisions.** The plan settles declaration, the standard-on-block timing, one attempt
+  per round and defender states, but the printed continuation, raw tie rule and
+  participant geometry remain open. Improved Overrun stays deferred behind the action
   (`FEATS_SKILLS_COVERAGE.md`).
-- **Dependencies and cost.** A short design note, then an `Encounter` batch with one
-  control or one pending choice, focused tests and probe checks, and a candidate. Bull
-  rush needed its own 268-line plan; this is comparable, not smaller.
-- **Verdict.** The strongest rules step that can be scoped as one special attack, but it
-  is not safe to implement without settling the decisions above. Recommend planning only.
+- **Dependencies and cost.** The planning note is complete. A future implementation would
+  first need a movement-continuation decision, a shared tie decision and a participant-
+  geometry decision, then an `Encounter` batch with its own tests, probe and candidate.
+  Bull rush needed its own 268-line plan; this is comparable, not smaller.
+- **Verdict.** The 2026-11-24 scope review does not support a bounded player-facing
+  implementation. The printed success/avoid continuation is not implemented, the
+  fixed exit is not accepted as equivalent, the tie rule needs a shared-helper
+  decision, and the origin-only opportunity geometry is unproven. The shipped
+  content also has no back line, the prone blocker still occupies the lane, and the
+  undead are immune to sneak attack. **Defer overrun; no implementation batch.**
 - **Plan status.** `docs/OVERRUN_PLAN.md` records the printed rules, the project
-  adaptations, the exact engine/UI seams, the failing-first tests and the two
-  implementation batches (2026-11-24; documentation only, no checks run).
+  adaptations, the exact engine/UI seams, the historical test matrix and §18's
+  explicit Option A/B/C scope decision. §18 supersedes the earlier two-batch
+  recommendation; no overrun code, tests, probe or candidate exists or is authorized.
 
 ### Candidate C - readied and delayed actions
 
@@ -1624,21 +1627,22 @@ defect found**; the earlier grapple and pin acceptances are unchanged.
 
 ### Recommendation
 
-**Write a planning-only note for overrun; implement nothing in that pass.** No blocked
-keyboard path was found, and the keyboard log/focus item is information access rather
-than a missing action. Overrun is the strongest independently useful rules action
-ordinary play can reach that is still close to one bounded batch, but its defender
-choice, movement model, AoO and failure placement decide its tests and UI, so the plan
-must settle them before code. Readied/delayed actions carry more tactical value but are a
-larger subsystem with their own planning need; further grapple is not prioritised without
+**Keep overrun deferred; implement nothing and select the next roadmap item outside
+overrun.** The planning note is complete, but it did not produce a bounded
+player-facing acceptance unit: the printed continuation needs movement work, the tie
+contract is shared with trip/bull rush/grapple, and the opportunity geometry is not
+settled. The shipped fights also lack the back-line/repositioning payoff that would
+justify that cost. Readied/delayed actions carry more tactical value but are a larger
+subsystem with their own planning need; further grapple is not prioritised without
 content that rewards it, and the save shortcut stays a ride-along.
 
 ### Classification, kept separate
 
 - **Confirmed defects.** None open. The Turn Undead wrapper claim stays closed as no
   product defect found; this review found no failing case.
-- **Deferred features.** Overrun (planned in `docs/OVERRUN_PLAN.md`; implementation
-  not started); readied/delayed actions; further grapple
+- **Deferred features.** Overrun (deferred after the 2026-11-24 scope review;
+  `docs/OVERRUN_PLAN.md` §18; no implementation authorized); readied/delayed actions;
+  further grapple
   (8b-2/8c/8f); disarm, sunder, concealment, terrain hard cover, AoE, encumbrance,
   disease; levels 5+; a save shortcut; keyboard combat-log scrolling and sidebar focus
   reveal.
@@ -1648,4 +1652,5 @@ content that rewards it, and the save shortcut stays a ride-along.
 - **Evidence gaps.** No human keyboard-only playthrough, rendered cursor or accessibility
   check; Tab traversal and decision focus recovery were read from the engine and code,
   not key-tested; exported acceptance covers probes, not the suite; overrun has no
-  implementation, tests or content pressure yet.
+  implementation, tests or content pressure yet, and its continuation, tie and
+  opportunity-geometry questions remain open by the §18 deferral.

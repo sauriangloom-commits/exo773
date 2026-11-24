@@ -1,22 +1,39 @@
 # Overrun plan
 
-Status: **planning only**. This note specifies the 3.5 overrun special attack for
-`Ravenloft`, but does not implement it. **No overrun checks were run** for this
-amendment; no overrun code, content, schema or save data changed, and no overrun
-candidate was exported. It supersedes the first planning pass at `75be1a6`.
+Status: **deferred after scope review; planning only**. This note specifies the
+3.5 overrun special attack for `Ravenloft`, but does not implement it. **No
+overrun tests, probes, validators, builds or exports were run or produced for
+this review**; no overrun code, content, schema or save data changed, and no
+overrun candidate was exported. It supersedes the first planning pass at
+`75be1a6`; §18 records the 2026-11-24 scope decision that supersedes the earlier
+implementation-batch recommendation.
 
 **Prerequisite status (2026-11-24).** The shared opportunity-attack defect
 described in §7 was investigated and corrected separately in commit
 `d14b7fcb1c08fdafce9f42f6ad0611a1d56635ea`; candidate
-`2026-11-24_aoo_helpless_b` is hash-bound to that correction. Overrun itself
-remains unimplemented, and this correction does not decide the movement-
-continuation or tie-break questions below.
+`2026-11-24_aoo_helpless_b` is hash-bound to that correction. The separate
+into-melee engagement defect was corrected in `4c42965`; its record is
+`8571232`. Neither correction is an overrun defect or an authorization to
+implement overrun.
 
-**Threat/engagement review (2026-11-24).** `_threatening_enemies` is only a
+**Ranged-probe closure (2026-11-24).** The 720px failures recorded in `247fad3`
+for implementation `1a2a2393e461328f0bf747d8414a2c83b5246f2a` and candidate
+`2026-11-24_ranged_720_probe_a` are closed within that evidence as a **probe
+navigation defect**, not a product targeting defect. The old control clicked an
+offscreen enemy-row button; the visible grid path worked. This closure did not
+rebuild, re-export or repeat any check, and it does not authorize overrun.
+
+**Threat/engagement review (2026-11-24).** `_threatening_enemies` remains only a
 provocation-candidate list; its paralyzed entry is message-only and does not feed
-flanking or engagement. A separate into-melee engagement hypothesis is recorded
-in `docs/TEST_REPORT.md` and needs a focused test before overrun resumes. This
-review does not authorize overrun and does not resolve §3.5 or §3 ties.
+flanking or engagement. The separate into-melee engagement defect is corrected
+in `4c42965`, so it is no longer a pending prerequisite. No overrun work follows
+from that correction.
+
+**Scope decision (2026-11-24).** Overrun is **deferred**. The fixed-exit stop is
+not accepted as satisfying the printed success/avoid continuation merely because
+this plan called it an adaptation. See §18 for the explicit comparison of a
+bounded continuation, a general movement-continuation prerequisite, and
+deferral.
 
 Related documents: `docs/ROADMAP.md` candidate B, `docs/PROGRAM_PROGRESS.md`,
 `docs/ADAPTATION_LOG.md`, `docs/FEATS_SKILLS_COVERAGE.md`,
@@ -24,7 +41,8 @@ Related documents: `docs/ROADMAP.md` candidate B, `docs/PROGRAM_PROGRESS.md`,
 
 ## 1. Scope
 
-In scope, as one player-facing action:
+The following was the proposed bounded scope. It is not an authorized
+implementation after the 2026-11-24 scope review; see §18.
 
 - an adjacent enemy is the target; the exit square is fixed directly beyond it;
 - the attacker pays 10 ft of movement for the passage and knocks the defender
@@ -40,8 +58,8 @@ In scope, as one player-facing action:
 Out of scope and not to be added while resolving this note: approach movement as
 part of the overrun, player-selected destination squares, Improved Overrun,
 charge/mounted/Trample interactions, AI initiation of overrun, player-defender
-avoid/block decisions, a general movement-budget refactor, or a new pending
-decision type.
+avoid/block decisions, a general movement-budget refactor, a new pending
+decision type, or the printed success/avoid continuation.
 
 ## 2. Printed rules and sources
 
@@ -92,16 +110,16 @@ what happens to unused actions after avoidance. Those are project decisions belo
 | Standard action | Must be **available at declaration**. It is spent only when the defender blocks. An actor whose standard is already spent is refused before the reaction. | Printed action + project timing |
 | 10-ft price | A **precondition**: at least 10 ft of the current movement budget must remain. The **charge is outcome-dependent and atomic**: 0 if an opportunity attack stops the attempt before the passage; 10 when the attempt reaches avoid, no resistance, a win or a loss. It is **not** deducted at declaration and no 5-ft entry is charged separately. | Project |
 | Entry | The grid never contains the attacker in the defender's square. On a resolved passage the attacker is written to the exit (avoid/win/no resistance) or back to the origin (loss/retreat), and the 10 ft is charged at that commit. | Project |
-| Avoidance | No prone, no standard spent, 10 ft charged, attempt consumed. The project stops at the exit: no residual overrun movement; the untouched standard may be used to attack or as the existing double-move second move. The printed "keep moving" continuation is deferred (§3.5). | Printed result + project accounting |
-| Win | Defender prone, 10 ft charged, standard spent, attempt consumed, attacker at the exit. The project stops at the exit; the printed "continue your movement as normal" continuation is deferred (§3.5). | Printed result + project accounting |
+| Avoidance | Printed result: the defender avoids and the mover keeps moving. Not implemented; the fixed-exit stop is **not accepted** as satisfying this row. The untouched standard may be used later, but that is not the printed continuation. Feature deferred (§3.5, §18). | Printed result; project accounting withdrawn |
+| Win | Printed result: defender prone and the mover continues movement as normal. Not implemented; the fixed-exit stop is **not accepted** as satisfying this row. Feature deferred (§3.5, §18). | Printed result; project accounting withdrawn |
 | Loss | Attacker at the origin, 10 ft charged, standard spent, attempt consumed; attacker prone only if the counter wins. Movement **ends**, whether the attacker is standing or prone. No unused move action remains to convert. | Printed "ending your movement there" + project reading |
 | Interruption | If an opportunity attack kills, drops, paralyzes or otherwise prevents the attacker from proceeding, the attacker stays at the origin, **0 ft** is charged, the standard is **unspent**, the attempt is **consumed**, and `move_used` is unchanged. Nothing is charged for an entry or exit that did not occur. | Project |
 | Attempt limit | One declared attempt per combatant per round. Avoidance, no resistance and interruption all consume it. The SRD's "doesn't count against your actions" concerns the standard action, not this limit. | Printed limit + project interpretation |
-| Ties | Use `Rules.opposed_ability_check`: higher total wins; if totals tie, the higher modifier value passed to the helper wins (size-inclusive in this plan); if both tie, reroll, up to 20; `ok=false` after that is a programming guard, not a table result. | Printed tie rule + project reading |
+| Ties | Printed rule: on tied totals the higher **raw ability modifier** wins (attacker Strength vs. the defender's better Strength/Dexterity); size and stability are added to the totals but do not decide the tie; equal modifiers reroll. The current helper compares ability modifier plus `opts` bonuses, so this plan's old size-inclusive tie reading is not accepted. A future implementation needs separate raw tie modifiers or an overrun-local check; changing the shared helper would affect trip, bull rush and grapple and is not authorized. | Printed rule; helper contract unresolved |
 | Counter modifiers | Defender's Strength + 4 per size step vs. attacker's better of Strength/Dexterity + 4 per size step. **Size only**; no stability, no Improved Overrun +4, no other modifier. | Printed |
 | Diagonal | Entry and exit each cost 5 ft under this project's grid, so the passage is 10 ft whether diagonal or orthogonal. The entry and exit each get the existing `_blocked_diagonal` terrain corner check; occupancy corners are not part of that helper. The tabletop 1-2-1 diagonal rule is not used. | Project grid rule |
-| Opportunity attacks | One pass from the origin, using the existing helper. The defender is included by the ordinary rule; other enemies that threaten the origin are ordinary movement reactions. There is no second pass from the exit. | Printed defender + project reading |
-| Acceptance | Engine and UI may be two commits, but they are **one player-facing acceptance unit**. Batch 1 is not a shipped overrun feature. Final acceptance requires UI, keyboard/mouse, probe, measured 33-control layout and a hash-bound candidate. | Project |
+| Opportunity attacks | The helper's **eligibility** filters are settled: can act, not helpless, not in total defense, melee threat, in reach of the supplied cell, `aoo_used` unused and not flat-footed. **Participant selection is not settled.** A single pass from the origin is a project choice, not a printed or tested contract; the defender's entry reaction and exit/intermediate threats need a separate geometry decision. Helper eligibility does not validate that geometry. | Printed defender + open project question |
+| Acceptance | **No implementation batch is authorized.** The earlier two-commit acceptance unit is withdrawn. Any future unit must first settle continuation, tie semantics and participant geometry, then define its own tests, UI, probe and candidate boundary. | Deferred |
 
 ### 3.1 The 10-ft reservation, precisely
 
@@ -123,7 +141,9 @@ the entry, but the movement account records only the committed passage.
 
 The check is feature-local. `Encounter.move_active_to` does not enforce a
 cumulative `speed - moved_ft` budget; it charges a path against one move action.
-Overrun adds its own 10-ft guard and does not refactor normal movement.
+The 10-ft guard itself can stay local, but the printed success/avoid continuation
+cannot: it needs a separate movement transition or a general prerequisite (§3.5,
+§18). The old claim that overrun does not depend on movement work is withdrawn.
 
 ### 3.2 Movement and action state after each outcome
 
@@ -131,21 +151,18 @@ Overrun adds its own 10-ft guard and does not refactor normal movement.
 |---|---|---|---|---|---|
 | Refused before declaration | unchanged | unchanged | unchanged | unchanged | Yes, normal actions. |
 | Interrupted by AoO/incapacity | unchanged | +0 | false (unspent) | true | Only if the actor can still act; the untouched move action remains, as in the Cleave-pending case. |
-| Avoid | true | +10 | false | true | No residual overrun movement (project stop; printed continuation deferred, §3.5). The existing double-move option may spend the standard as a second move; that is a new action, not leftover movement. |
+| Avoid | true | +10 | false | true | Printed continuation is not implemented; the fixed-exit stop is not accepted. Feature deferred (§3.5, §18). |
 | No resistance (helpless defender) | true | +10 | false | true | Same as avoid. |
-| Win | true | +10 | true | true | No. The move action and standard are spent; the project stops at the exit (printed continuation deferred, §3.5). |
+| Win | true | +10 | true | true | Printed continuation is not implemented; the fixed-exit stop is not accepted. Feature deferred (§3.5, §18). |
 | Loss, standing | true | +10 | true | true | No. Movement ends; no unused move action; no double move. |
 | Loss, counter knocks prone | true | +10 | true | true | No. Movement ends; standing up needs a move action and cannot happen this turn. |
 
-The printed result allows success and avoidance to continue moving; this project
-stops at the fixed exit for the reason in §3.5. The table's "no further movement"
-on success/avoid is the project reading, not the printed continuation. The printed
-"ending your movement there" on a loss is read as ending the overrun's movement
-**and consuming the move action used for it**. The project does not grant a second
-move from the same action. A character who had not used their move action
-before the overrun therefore has no unused move action afterwards; a character who
-had already used it has no new one. The turn is not automatically ended, but after
-a win or loss only free actions remain.
+The success and avoidance rows are historical proposals, not an accepted answer.
+The printed result allows success and avoidance to continue moving; the project
+does not implement that continuation and does not treat the fixed exit as
+equivalent. The printed "ending your movement there" on a loss is read as ending
+the overrun's movement **and consuming the move action used for it**; that reading
+is not a substitute for the missing success/avoid continuation. See §3.5 and §18.
 
 After an **interruption**, no movement is charged and `move_used` is unchanged.
 The supported case where the actor can still act is the Cleave-pending stop: after
@@ -183,34 +200,35 @@ avoidance.
 
 The printed result is explicit: on a win you "continue your movement as normal,"
 and on an avoidance you "may keep moving." In the tabletop rules the rest of the
-current move (its budget minus the 10 ft) would therefore remain after the fixed
-exit. Failure is different: the printed text ends movement there, which the project
-matches.
+current move (its budget minus the 10 ft) remains after the fixed exit. Failure is
+different: the printed text ends movement there.
 
-This project does not implement that continuation. `Encounter.move_active_to` is
-atomic: one call spends a move action and charges a path; it has no per-action
-"remaining feet" state to resume after a special action. The bounded design
-therefore stops the overrun at the fixed exit:
+The project does not implement that continuation, and the fixed-exit stop is **not
+accepted** as equivalent. `Encounter.move_active_to` is atomic: it computes a full
+path against `speed_ft`, sets `move_used` or `standard_used` before the opportunity
+pass, and charges the full cost at the end. `moved_ft` is accounting only; it is not
+a remaining-movement budget. `move_used` gates ordinary movement, and there is no
+resumable player-move state. `off_turn_resume` is a monster-move interruption
+record; `resume_interrupted` ends the turn and is not a player continuation path.
 
-- win: move action and standard spent; no further movement;
-- avoid/no resistance: move action spent; no residual movement; the untouched
-  standard may be used for an attack or for the existing double-move, but that is
-  a new second move, not the printed continuation of the first;
+If overrun were resumed, the consequences would be:
+
+- win: the standard is spent, but the printed residual movement remains; stopping
+  at the fixed exit is insufficient;
+- avoid/no resistance: the standard is unspent and the printed movement remains;
+  a double move is a new action, not residual movement from the overrun;
 - failure: movement ends, as printed.
 
-This is a deliberate adaptation, not a claim that the printed continuation is
-implemented. Supporting it would require a movement-continuation state or a
-general movement refactor, which is out of scope. If true post-exit continuation
-is required, the bounded design is blocked on that dependency and must be reported
-before Batch 1 rather than silently expanding scope.
+Supporting continuation needs either **A**, a bounded overrun-specific state and
+transition, or **B**, a general movement-continuation prerequisite. Neither is
+authorized. Overrun is deferred under **C**; §18 compares the options.
 
 ## 4. Shipped-content benefit and limits
 
 The demo encounter `storeroom_dead` (`content/campaigns/ravenloft_demo/encounters.json`
 lines 2–56) has three one-square lanes left by the rows `#.##.##.#`. A zombie in a
-lane body-blocks it. With the exit beyond, a front-liner can pass one blocker,
-knock it prone (−4 melee AC, PHB p. 151) and set up a flank (`_is_flanked` at
-`src/core/encounter.gd:3171`) for Sera's sneak attack.
+lane body-blocks it. A fixed exit can pass one blocker and knock it prone (−4
+melee AC, PHB p. 151), but the shipped content sharply limits the payoff.
 
 Kaelen has Strength 16 (+3) and no Improved Overrun
 (`content/shared/characters.json`, feats at line 33); Sera has Strength 12 (+1).
@@ -224,13 +242,19 @@ Limits, not hidden:
 
 - The prone defender still occupies its square; the lane is **not** opened and the
   rest of the party still cannot walk through it.
-- The benefit is passing one blocker and creating a flank, not reaching a back-line
-  objective or bypassing the encounter.
-- The demo's `crypt_warden` rooms are three squares wide (rows `#...#...#` at y=1
-  and y=4), so the fixed exit exists there; the open town square is not an overrun
-  showcase.
+- The benefit is passing one blocker, not reaching a back-line objective or
+  bypassing the encounter. Every shared monster is a melee undead with natural
+  weapons, encounters are kill-all, and the AI never initiates special attacks, so
+  there is no back line to reach.
+- Every shared monster is undead and immune to sneak attack. The old claim that the
+  flank sets up Sera's sneak attack is therefore not a damage payoff in shipped
+  content; the flank is a positional effect only.
+- The top-row blocker positions in both shipped fights (storeroom `(6,1)`/`(7,1)`,
+  crypt `(3,1)`/`(6,1)`) have a wall directly beyond them. The fixed exit is not
+  available from those positions. The crypt's three-square-wide rooms provide an
+  exit only in other geometry; the open town square is not an overrun showcase.
 - Shipped monsters always block; avoidance is fixture-only. The benefit is grounded
-  in a real lane and a real flank, not in an assumed avoid policy.
+  in a real lane, but not in an assumed avoid policy.
 - Harder defenders and counter-prone outcomes are real risks; the plan does not
   promise a guaranteed pass.
 
@@ -243,12 +267,14 @@ Limits, not hidden:
 | Movement commit | `_advance_cell` at `:1935`; `move_active_to` at `:529`; `speed_ft` at `:615` |
 | Action gates | `standard_used` / `move_used`; `_staggered_blocks_standard` at `:1312`; `_staggered_blocks_move` at `:1318` |
 | Pending gate | `has_pending_decision` at `:2708`; `_pending_guard` at `:667` |
-| Opportunity attacks | `_provoke_attacks_of_opportunity` at `:3472` and `_provoke_single_opportunity` at `:3396`; `Rules.is_helpless` at `rules.gd:219`; `threat_capability` at `:728`; `aoo_used`; `is_flat_footed` at `:369`; total defense at `:3272` |
+| Interrupted move/resume | `off_turn_resume` at `:69`; `resume_interrupted` at `:4299`; monster-move only, ends the turn; not a player overrun-continuation path |
+| Opportunity attacks | `_provoke_attacks_of_opportunity` at `:3472` and `_provoke_single_opportunity` at `:3400`; `Rules.is_helpless` at `rules.gd:219`; `threat_capability` at `:728`; `aoo_used`; `is_flat_footed` at `:369`; total defense at `:3272`. Eligibility is settled; participant selection is separate and still open |
 | Grapple/pin | `is_grappled` at `:387`; `is_pinned` at `:412`; `threat_capability` returns empty while grappling |
 | Size/stability | `Character.size_category` at `:26`; `stability_bonus` at `:31`; `trip_immune` at `:32`; `Rules.size_category_steps` at `:56` |
-| Opposed checks | `Rules.opposed_ability_check` at `:584`; tie handling at `:629-648`; `best_ability_modifier` at `:651` |
+| Opposed checks | `Rules.opposed_ability_check` at `:584`; tie handling at `:629-648`; `best_ability_modifier` at `:651`. The helper compares ability modifier plus `opts` bonuses; it has no separate raw tie modifier |
+| Save boundary | `GameState.save_game` refuses non-explore at `game_state.gd:495`; combat/encounter state is not serialized; any new state must be cleared in `begin()`/`finish()` and needs no save migration |
 | Prone | `Character.is_prone`/`set_prone` at `:109-117`; `Rules.prone_ac_modifier` at `:240`; stand up at `:1260`; trip at `:1328` |
-| AI | `_run_monster_turn` at `:4210`; only `_after_action` ends a monster turn; no AI special attacks |
+| AI | `_run_monster_turn` at `:4226`; only `_after_action` ends a monster turn; no AI overrun initiation |
 | Action grid | `src/ui/combat_screen.gd:283-284` Trip/Bull rush; `_update_button_states` at `:720`; `_on_cell_clicked` at `:832`; `_trip` at `:947`; `_bull_rush` at `:958` |
 | Cursor/budget | `src/ui/combat_view.gd:193` budget highlight; `:250` cursor draw |
 | Wrappers | `src/game_state.gd:1773` `combat_move`; `:1855` `combat_trip`; `:1877` `combat_bull_rush` |
@@ -374,20 +400,23 @@ if Rules.is_helpless(attacker):
 
 Regression tests (`tests/test_opportunity_attack_eligibility.gd`) and the
 extended `--grapple-probe` cover movement, loading and a real stand-up
-provocation, with conscious positive controls. This satisfies the prerequisite;
-it is a shared AoO correction, not an overrun feature, and it does not decide
-§3.5 continuation or §3 ties. The bounded overrun design does not otherwise
-depend on a movement refactor.
+provocation, with conscious positive controls. This satisfies the eligibility
+prerequisite; it is a shared AoO correction, not an overrun feature, and it does
+not decide §3.5 continuation or §3 ties. The printed continuation does require
+additional movement work; the earlier claim that the design did not depend on a
+movement refactor is withdrawn (§3.5, §18).
 
 ## 8. Resolution sequence
 
 1. **Declare.** Validate; set `overrun_used[actor] = true`; log. No movement,
    cell, `move_used` or `moved_ft` change.
 2. **Entry reaction.** Call
-   `_provoke_attacks_of_opportunity(actor_index, start_cell, except_index)`.
-   `except_index` is the target index **only when the target is helpless** (so an
-   incapable defender is not treated as a threat by the shared helper); otherwise
-   it is `-1`. This is one pass from the origin.
+   `_provoke_attacks_of_opportunity(actor_index, start_cell, -1)`.
+   The helper now excludes a helpless participant itself, so `except_index` must
+   not be used to express helplessness; it is only for a specific mutual
+   non-provocation rule. Participant selection is separate from eligibility and
+   remains under review (§9). The historical one-pass-from-origin is not an
+   accepted trigger geometry.
 3. **Interruption check.** After the pass:
    - `finished` → stop; no charge; attempt consumed; no exit.
    - `has_pending_decision()` (a Cleave opened by an AoO) → stop; no charge;
@@ -413,16 +442,18 @@ depend on a movement refactor.
      standard false; no prone; log "<target> gives way."
    - Otherwise **block**: set `standard_used = true`; log
      "<target> braces."
-5. **Overrun check.** With `atk_steps`/`def_steps` from `Rules.size_category_steps`:
-   - attacker total = `Rules.ability_modifier(actor, "str")` + `4 * atk_steps`;
-   - defender total = `Rules.best_ability_modifier(target, ["str", "dex"]).modifier`
-     + `4 * def_steps` + `stability_bonus`;
-   - `Rules.opposed_ability_check(rng, attacker_total, defender_total, "Overrun",
-     "Strength", "Dexterity/Strength")`.
-   The helper breaks a tied total by comparing the two modifier values it was
-   given, so size (and the initial defender's stability) participate in the
-   tie-break; that is the project's reading. Raw-ability-only tie-breaking would
-   need a helper change and is reported rather than assumed.
+5. **Overrun check (future; not authorized).** With `atk_steps`/`def_steps`
+   from `Rules.size_category_steps`, the call shape must match the real helper:
+   `Rules.opposed_ability_check(rng, actor, ["str"], target, ["str", "dex"],
+   {"attacker_bonus": 4 * atk_steps,
+    "defender_bonus": 4 * def_steps + target.stability_bonus,
+    "label": "overrun"})`.
+   The old total-only call in this plan was invalid. More importantly, the helper's
+   tie branch compares the final `attacker_modifier`/`defender_modifier`, so size
+   and stability would decide a tied total. The printed rule compares the higher
+   raw ability modifier. A future implementation needs separate raw tie modifiers
+   or an overrun-local check; changing the shared helper would affect trip, bull
+   rush and grapple and is not authorized. Do not implement this call as-is.
    If `ok` is false, log a programming error, do not commit a passage, and consume
    the attempt. The standard remains spent because block was chosen; do not refund
    it. This is a guard for invalid data, not a table outcome.
@@ -435,7 +466,9 @@ depend on a movement refactor.
    - counter attacker total = its Strength + `4 * def_steps`;
    - counter defender total = its best modifier + `4 * atk_steps`;
    - `Rules.opposed_ability_check(...)`; **no stability, no feat, no other
-     modifier**.
+     modifier**. The helper's tie branch still folds the supplied bonuses into
+     the tie comparison, so the same raw-modifier correction is required before
+     this counter can be accepted.
    The counter is a reaction: it spends no standard, no move and no additional
    overrun attempt, and it does not set `aoo_used`. If the counter attacker wins,
    `actor.set_prone(true)`; if the counter helper returns `ok=false` after its
@@ -463,36 +496,43 @@ Ordering notes:
 - A helpless defender is excluded from its own AoO via `except_index`; it still
   occupies its square and is the target of the passage.
 
-## 9. Opportunity attacks
+## 9. Opportunity attacks: eligibility vs. participant geometry
 
-The printed text explicitly names the **defender** in Step 1. The project also
-lets ordinary movement reactions happen: if another enemy threatens the origin,
-leaving it provokes that enemy under the general rule. The participant set is
-therefore:
+The shared **eligibility** fix is settled. `_provoke_attacks_of_opportunity` skips
+a participant that cannot act, is helpless, is in total defense, has no melee
+threat, is out of reach of the supplied cell, has used `aoo_used`, or is
+flat-footed. That fix does not establish the overrun **participant set**.
 
-- every enemy of the actor that can act, is not helpless (after the prerequisite
-  fix above), is not flat-footed, is not in total defense, has a melee threat, is
-  within reach of `start_cell`, and has not used its AoO this round; the defender
-  is included by this rule, not by a second call.
+Participant selection is still open. The helper takes one `from_cell` and one
+`except_index`; it does not take a set of trigger cells or a traversed path. The
+plan's single pass from the origin is a project choice, not a printed or tested
+contract. The printed text names the defender's **entry** reaction; testing
+eligibility against the origin is not the same trigger. Ordinary reactions from
+other enemies are a project extension. A threat that covers only the entry,
+intermediate or exit square is omitted by the origin pass. Whether that is correct
+has not been decided.
 
-The pass is made **once from the origin**. There is no second pass from the
-defender's square or the exit. Therefore:
+For any future implementation, keep the two steps separate:
 
-- the defender is not duplicated (one helper call; no separate defender call);
-- other enemies that threaten the origin are not suppressed (the helper includes
-  them);
-- an enemy that threatens only the exit does **not** react. This is a deliberate
-  atomic-passage reading: the overrun is one movement from the origin through the
-  defender to the fixed exit, and the printed text names only the entry. It is not
-  an accidental omission; exit-only reactions are deferred.
-- when the defender is helpless it is passed as `except_index`, so it is excluded
-  from the helper rather than being treated as a threat; other enemies still
-  react.
+1. **Participant selection by geometry.** The defender's entry reaction; plus any
+   other trigger cells the project explicitly decides should provoke (origin,
+   entry, intermediate, exit, or per-step movement). This is a design decision,
+   not a helper-eligibility detail.
+2. **Eligibility for each selected participant.** Apply the shared filters above
+   against the relevant trigger cell. Do not let the helper's single `from_cell`
+   silently define the participant set. If a future design selects participants
+   explicitly, the existing `_provoke_single_opportunity` is the per-participant
+   seam; it still applies the shared eligibility rules.
 
-The helper sets `aoo_used` before resolving each attack, skips flat-footed and
-total-defense enemies, and stops on a dead/dying mover. A Cleave decision opened
-during the pass stops the overrun before any movement, as described in §8; no
-overrun resume state is added.
+`except_index` is for a specific mutual non-provocation rule, not for
+helplessness; the helper already filters helpless. A helpless defender needs no
+`except_index`. The `AOO1` row in §13 is therefore **not accepted evidence**; no
+overrun trigger geometry has been validated. The completed helplessness fix does
+not establish that the proposed origin/entry/exit treatment is correct.
+
+A Cleave decision opened during any pass stops the overrun before movement; no
+overrun resume state is added in the deferred design. The helper still sets
+`aoo_used` before resolving each attack and stops on a dead/dying mover.
 
 ## 10. Outcome and accounting table
 
@@ -515,7 +555,11 @@ overrun resume state is added.
 The "no resistance" row is not a voluntary avoid: there is no choice, no check
 and no new prone. It is the project's handling of a defender that cannot block.
 
-## 11. UI, keyboard and mouse
+## 11. UI, keyboard and mouse (historical proposal)
+
+This UI proposal is not authorized; the fixed-exit target mode and the 33-control
+acceptance are historical. A future continuation design would need its own
+UI acceptance.
 
 One new action button, "Overrun", beside Trip and Bull rush
 (`src/ui/combat_screen.gd:283-284`). It enters the existing target mode; the
@@ -551,10 +595,10 @@ Keyboard and mouse:
 - Tab recovery remains the existing code path; it is **code-inspected, not newly
   key-tested** here. Keyboard acceptance is not reopened.
 
-The layout expectation becomes **33 controls** (32 + Overrun), to be measured at
-100 % and 160 % in Batch 2. This note does not claim the measurement; it is a
-final-acceptance requirement. The new button must fit the existing action grid
-without clipping at either scale.
+The historical layout expectation was **33 controls** (32 + Overrun), to be
+measured at 100 % and 160 %. It is not an active acceptance requirement, and this
+note does not claim the measurement. A revived design must measure its own
+control grid without clipping at both scales.
 
 ## 12. Cancellation, commitment and messages
 
@@ -572,10 +616,10 @@ without clipping at either scale.
 
 ## 13. Failing-first tests
 
-The matrix is the acceptance contract for the engine. Each row asserts the final
-cell, `moved_ft`, `move_used`, `standard_used`, `overrun_used`, both prone flags
-and the relevant `aoo_used` entries. "Remaining movement" is asserted through
-`move_used` and the existing action gates, not through a new budget field.
+This is the historical matrix, not an acceptance contract. No implementation is
+authorized. Rows that assume the fixed-exit stop (`M1`/`M2`) are withdrawn; `T1`,
+`T2` and `AOO1` are revised below. If overrun is revived, rebuild the matrix around
+the chosen continuation and tie/geometry decisions.
 
 | # | Scenario | Expected |
 |---|---|---|
@@ -611,16 +655,16 @@ and the relevant `aoo_used` entries. "Remaining movement" is asserted through
 | Z1 | Medium vs. Large | allowed; size +4 to the larger side's check |
 | Z2 | Huge vs. Medium | refused (`def_steps > atk_steps + 1`) |
 | Z3 | stability +4 | applies to the initial defender only; never to the counter |
-| T1 | tied totals, different modifiers | higher modifier wins; assert `tie_broken_by == "modifier"` |
-| T2 | tied totals and modifiers | reroll; assert `tie_broken_by == "reroll"` and the eventual winner |
+| T1 | tied totals, different raw ability modifiers | higher raw ability modifier wins; size and stability bonuses must not decide the tie; assert `tie_broken_by == "modifier"` after the helper supports raw tie modifiers |
+| T2 | tied totals and equal raw ability modifiers | reroll; assert `tie_broken_by == "reroll"` and the eventual winner |
 | C1 | counter modifiers | defender Strength + size vs. attacker best + size; no stability, no feat, no other modifier |
 | C2 | counter is free | no standard, no move, no additional attempt, no `aoo_used` change |
-| M1 | after a win | no further movement; `move_active_to` refused because both move and standard are spent |
-| M2 | after an avoid | Move button's existing double-move path may spend the standard; that is a new second move, not residual movement; `moved_ft` adds the new path |
+| M1 | after a win | **withdrawn**: no acceptance row until the printed continuation is designed; the old fixed-exit expectation is not accepted |
+| M2 | after an avoid | **withdrawn**: a double move is not residual continuation; no acceptance row until the printed continuation is designed |
 | M3 | after a loss, standing or prone | no further movement; standing up is refused because `move_used` is true |
 | M4 | after an interrupted attempt that leaves the actor able (Cleave-pending) | `move_used` unchanged; after resolving the decision the untouched move action remains; the overrun cannot be re-declared |
-| AOO1 | participant accounting | defender + another origin threat each react once; an exit-only threat does not; no duplicate defender |
-| AOO2 | helpless third enemy | prerequisite fix: it must not react; without the fix, the test fails and the design is blocked |
+| AOO1 | participant geometry | **open**: the old origin-only expectation is not accepted; participant selection must be decided separately from eligibility before this row can exist |
+| AOO2 | helpless third enemy | eligibility is corrected: it must not react; this still does not validate participant geometry |
 
 Test classes:
 
@@ -634,7 +678,10 @@ Test classes:
   keyboard and mouse paths are separate checks. The probe is not the only
   evidence for the check or the counter.
 
-## 14. Probe plan
+## 14. Probe plan (historical; not authorized)
+
+No probe is authorized. The following was the proposed probe if the feature were
+revived; it would need revision for continuation and participant geometry.
 
 Add `--overrun-probe` to `src/main.gd` and a QA fixture beside the existing trip
 fixture (`:8878`). The probe should:
@@ -656,64 +703,204 @@ fixture (`:8878`). The probe should:
 The probe is not a substitute for the deterministic tests and does not prove the
 shipped encounter's balance.
 
-## 15. Implementation batches and acceptance
+## 15. Implementation batches (withdrawn)
 
-Two implementation commits are acceptable; they are **one acceptance unit**.
+No implementation batch is authorized. The earlier two-batch proposal is
+withdrawn. The shared opportunity-attack fix (`d14b7fc`) and the separate
+into-melee fix (`4c42965`) are completed corrections, not an overrun feature.
 
-**Batch 1 — engine (prerequisite already landed).** The shared AoO helpless
-filter was corrected separately in `d14b7fc`; Batch 1 begins with
-`overrun_active`, the `overrun_used` state, the declaration/validation/commit
-path, the defender-state table, the counter and the deterministic tests. Do
-**not** add the UI, probe, layout claim or candidate. Batch 1 is not a shipped
-overrun feature: do not mark it complete in `docs/SUPPORTED_FEATURES.md`,
-`docs/TRACEABILITY.md` or the roadmap as player-facing.
-
-**Batch 2 — UI + probes + acceptance.** Add the Overrun button and target mode,
-the keyboard/mouse path, the probe, the measured 33-control layout at 100 % and
-160 %, and the hash-bound candidate. Final acceptance requires all of Batch 2
-plus the Batch 1 tests. The engine-only milestone must never be recorded as a
-shipped overrun feature.
-
-If an implementation batch exposes a true blocker, stop and report it; do not
-expand into a general movement or action refactor.
+Any future proposal must first settle continuation, tie semantics and participant
+geometry, then define a new acceptance unit with its own engine, UI, probe and
+candidate boundary. Do not start engine work under the old Batch 1/Batch 2
+labels, and do not mark any engine-only milestone as a shipped overrun feature.
 
 ## 16. Classification
 
-**Confirmed defects:** one shared opportunity-attack eligibility defect, outside
-overrun but a prerequisite: both helpers allowed a helpless/paralyzed creature
-to react. It was reproduced with failing tests and the extended grapple probe
-and corrected in `d14b7fc`; it is not an overrun defect. No overrun defect was
-found because the feature is absent by scope.
+**Confirmed product defects:** none in overrun; the feature is absent by scope.
+Two separate shared corrections are complete: helpless opportunity-attack
+eligibility (`d14b7fc`) and the paralyzed-ally into-melee penalty (`4c42965`).
+Neither is an overrun defect.
 
-**Deferred features:** approach movement, destination selection, Improved
-Overrun, charge/mounted/Trample, multi-square or multi-target overrun, AI
-initiation, player-defender avoid/block decisions, a shipped avoid policy,
-difficult terrain, grapple-target overrun, exit-only reactions, resuming an
-overrun after a Cleave decision, rooted/immobilized effects, and
+**Confirmed probe defects:** the 720px ranged-probe control navigated an
+offscreen enemy-row button instead of the visible grid. Corrected in `1a2a239`;
+the evidence record is `247fad3`. This was not a product target-selection defect.
+
+**Deferred features:** overrun itself, including printed success/avoid
+continuation; approach movement; destination selection; Improved Overrun;
+charge/mounted/Trample; multi-square or multi-target overrun; AI initiation;
+player-defender avoid/block decisions; a shipped avoid policy; difficult terrain;
+grapple-target overrun; exit/intermediate opportunity geometry; resuming an
+overrun after a Cleave decision; rooted/immobilized effects; and
 mounted/flying/swimming/incorporeal cases.
 
-**Maintenance debt the batches must not add:** more probe-only branches in
+**Open design decisions / evidence gaps:** whether Option A or a general movement
+continuation (Option B) is ever worth accepting; the shared tie-helper contract;
+the participant trigger geometry; pending-Cleave resume; encounter reset for any
+new state; no overrun tests, probe, validator, build or candidate; no human
+playtest; avoidance remains fixture-only. The 985-test count belongs to the
+earlier keyboard candidate and is not evidence for overrun.
+
+**Maintenance debt the project must not add:** more probe-only branches in
 `main.gd` without a fixture, duplicate move-accounting paths, a second
-prone/trip path, or a new pending-decision type.
+prone/trip path, a new pending-decision type, or a silent change to the shared
+tie behavior used by trip, bull rush or grapple.
 
-**Evidence gaps:** no human playtest; the layout is not measured yet; the probe
-and candidate do not exist yet; avoidance is fixture-only; no checks were run for
-this note. The 985-test count belongs to the earlier keyboard candidate and must
-not be reused as evidence for the overrun build.
+## 17. Historical done criteria (not active)
 
-## 17. Done criteria
+These were the proposed criteria before the scope review; they are not an
+authorization and none is active. Any revival must replace them with a new
+acceptance unit.
 
-The feature is done only when:
+The feature would have been done only when:
 
-- the prerequisite AoO filter is tested (met by `d14b7fc`; no defender-only
-  fallback);
+- the prerequisite AoO filter is tested (shared AoO met by `d14b7fc`; separate
+  into-melee met by `4c42965`; no defender-only fallback);
 - the engine tests cover every row in §13 and the suite is green;
 - the Overrun button, target mode, keyboard and mouse paths work;
 - the layout probe measures **33** controls at 100 % and 160 % without clipping;
 - the probe exercises avoid, win, loss, interruption and the one-per-round limit;
 - a fresh hash-bound candidate is exported and its hashes are recorded;
-- the roadmap/coverage documents mark overrun complete only after Batch 2;
+- no roadmap/coverage document marks overrun complete while it remains deferred;
 - the existing keyboard acceptance and the uncommitted README quick-start removal
   are untouched.
 
-No checks were run for this planning amendment.
+No tests, probes, validators, builds or exports were run for this planning
+review.
+
+## 18. Scope decision: defer overrun (2026-11-24)
+
+**Decision: C — defer overrun.** The fixed-exit stop is withdrawn as an
+unapproved adaptation. No bounded player-facing implementation is supported, and
+no implementation batch is authorized. This decision does not preserve the prior
+planning effort for its own sake: the plan's benefit claim, movement dependency,
+tie contract and opportunity geometry do not justify the required work now.
+
+### Movement contract finding
+
+Residual movement after an atomic overrun **cannot reuse the existing accounting
+without changing ordinary movement semantics**.
+
+- `Encounter.move_active_to` (`encounter.gd:529`) computes a full path against
+  `speed_ft`, sets `move_used` or `standard_used` before the opportunity pass, and
+  charges the whole path at the end. It has no residual budget.
+- `turn_state["moved_ft"]` is a total for the turn, not a remaining-movement
+  budget. `move_used` is the gate that refuses an ordinary second move.
+- `_advance_cell` (`:1935`) writes a cell and adds to `moved_ft`; it is useful
+  accounting, but it is not a movement transition.
+- `off_turn_resume` (`:69`) stores an interrupted monster route. `resume_interrupted`
+  (`:4299`) is monster-move-specific and ends the turn after resuming; it is not a
+  player continuation path.
+- Combat is not serialized: `GameState.save_game` refuses any mode other than
+  `explore` (`game_state.gd:495`). New encounter state needs no save migration,
+  but it must be cleared by `begin()`/`finish()`.
+
+A bounded continuation would therefore need at least an `overrun_resume` record
+(actor, remaining feet, exit/route, action state) plus a transition that permits a
+destination path while bypassing `move_used` only for that state, and UI for
+continuing. That is a movement/action change, not a local overrun commit.
+
+### Option A — bounded overrun-specific continuation
+
+- **Player benefit.** Preserves the printed ability to keep moving after a win or
+  avoidance, potentially reaching another enemy or leaving the lane. In shipped
+  content the gain is small: there is no back line, the prone blocker still occupies
+  the lane, and the shared undead are immune to sneak attack.
+- **Rules fidelity.** Closer than the fixed-exit stop. It still keeps project
+  adaptations (10-ft charge, no transient overlap, fixed entry direction), but it
+  would model the printed success/avoid continuation instead of denying it.
+- **Exact seams.** `move_active_to` (`:529`), `_fresh_turn_state` (`:90`),
+  `_begin_turn` (`:225`), `_advance_cell` (`:1935`),
+  `_provoke_attacks_of_opportunity` (`:3472`), `off_turn_resume` (`:69`),
+  `resume_interrupted` (`:4299`), `GameState.combat_move` (`game_state.gd:1773`),
+  `CombatScreen` target/action controls, `CombatView` movement cursor/budget, and
+  `begin()`/`finish()` cleanup.
+- **Minimal additional state/transition.** An overrun-specific resumable movement
+  state with remaining feet and an explicit transition that does not turn ordinary
+  movement into a general budget system. It would either duplicate path/AoO logic
+  or extract a shared primitive; either choice touches ordinary movement or adds a
+  second accounting path.
+- **Risks.** Bypassing `move_used`, confusing residual movement with a double move,
+  5-foot-step and action-order interactions, a second movement-accounting path,
+  Cleave/AoO interruption during the residual move, and cleanup on death/finish.
+  The AI does not initiate overrun, so it is affected only if a shared movement
+  primitive changes.
+- **Test surface.** Engine tests for residual feet, path legality, AoOs, action
+  order, Cleave pending/resume, five-foot step and cleanup; UI/keyboard tests; a
+  probe; layout; a candidate. Much larger than the old fixed-exit matrix.
+- **Independent batch boundary.** **No.** It changes movement/action semantics and
+  cannot be accepted as a small overrun-only batch. It needs its own accepted
+  design first.
+
+### Option B — general movement-continuation prerequisite
+
+- **Player benefit.** None by itself; it enables overrun continuation and possibly
+  later movement features. It is infrastructure, not a player-facing action.
+- **Rules fidelity.** The closest general model: one movement budget can survive an
+  intervening special action. It does not by itself settle overrun's 10-ft charge,
+  fixed direction or defender outcome.
+- **Exact seams.** Every `move_active_to` caller, including `GameState.combat_move`,
+  `_run_monster_turn` (`:4226`), `resume_interrupted` (`:4299`), turn/flee movement,
+  `_fresh_turn_state` (`:90`), `_begin_turn` (`:225`), `_advance_cell` (`:1935`),
+  the opportunity helper, and the movement UI.
+- **Minimal additional state/transition.** A general remaining-budget field and a
+  movement primitive that can be entered after a special action, with explicit
+  action-economy rules and interruption/resume behavior. This is the actual
+  prerequisite, not a small flag.
+- **Risks.** Broad regressions in ordinary movement, double moves, five-foot steps,
+  AI routes, opportunity attacks, pending Cleave resume, and action ordering.
+- **Test surface.** Movement suite, AI, AoO, pending decisions, save/cleanup
+  boundaries, UI, probes and layout. It is independently testable but is a larger
+  subsystem than overrun.
+- **Independent batch boundary.** **Yes, but only as a separately planned and
+  accepted movement prerequisite.** It is not authorized by the overrun plan and
+  should not be started merely to unblock overrun.
+
+### Option C — defer overrun
+
+- **Player benefit.** None now; overrun remains unavailable. The project avoids a
+  misleading fixed-exit feature and avoids committing to a movement refactor for a
+  low-payoff action.
+- **Rules fidelity.** No new fidelity claim. The plan states plainly that printed
+  success/avoid continuation is not implemented and that the fixed exit is not
+  equivalent. That is more honest than shipping the adaptation as if complete.
+- **Exact seams.** Documentation only. No executable seam changes.
+- **Risks.** Opportunity cost and an unimplemented special attack. These are
+  preferable to a second movement path or a knowingly incorrect acceptance.
+- **Test surface.** No game tests, probes, validators, builds or exports. Only
+  documentation-integrity checks are relevant.
+- **Independent batch boundary.** **Yes.** Deferral is complete without touching
+  code, content, schema, saves or candidates.
+
+### Cross-cutting findings
+
+- **Opposed-check tie.** PHB p. 64 compares the higher skill modifier; for overrun's
+  raw ability check the ability modifier takes that role. Size and stability are
+  bonuses to the check, not ability modifiers, so they must not decide a tied total.
+  The current helper compares ability modifier plus `opts` bonuses. This is a shared
+  helper-contract question: trip, bull rush and grapple also pass bonuses. A future
+  overrun implementation should request separate raw tie modifiers (or an
+  overrun-local check); changing shared behavior for the other maneuvers is not
+  authorized here.
+- **Opportunity geometry.** Eligibility is corrected and tested, but participant
+  selection is not. A single pass from the origin is a project choice; it does not
+  model every threatened square traversed by the passage and is not established by
+  the printed text or the helper. Keep participant selection separate from
+  eligibility. `AOO1` is not accepted evidence.
+- **Pending decisions and cleanup.** A Cleave opened by an entry AoO already stops
+  the attempt before movement. A continuation would need a new resume rule for an
+  AoO during residual movement; `off_turn_resume`/`resume_interrupted` cannot be
+  reused unchanged. Any new state must be cleared by `finish()` and `begin()`.
+- **Saves.** Combat is transient and not saved; no save migration is needed. That
+  does not make the movement transition simple, and it does not authorize one.
+
+### Recommendation and next task
+
+**Recommended next task: keep overrun deferred and select a different roadmap
+candidate; do not implement Option A or B as part of overrun.** Reopen overrun only
+if content creates a real back-line/repositioning payoff *and* the project first
+accepts either a bounded continuation design or a general movement-continuation
+prerequisite. There is no complete overrun acceptance unit to authorize now.
+
+Confirmed defects, probe defects, deferred features, maintenance debt and evidence
+gaps are kept separate in §16. No tests, probes, validators, builds or exports were
+run for this review.
