@@ -3876,3 +3876,17 @@ AC 10, +2 to an ally's attack or AC until the helper's next turn, choice through
 pending-decision pattern, no AI use, no content or schema change), with a stopping point as the
 honest alternative if no new action is wanted. Overrun stays deferred, the opposed-check helper
 is unchanged, and the earlier closures carry forward unchanged.
+
+The documentation audit recorded in `17abb5b` is closed (documentation only). Its one corrected
+claim stands, the debt list is untouched and the Combat Casting text debt stays retired. The
+recommended next task now has a planning-only note, `docs/AID_ANOTHER_PLAN.md`: PHB p. 154 and
+the SRD verified and separated from seven project adaptations, the exact seams for the action
+grid, target modes, pending decisions, attack and AC modifiers, turn expiry, death/turning/
+finish cleanup, the AI and the probe/layout path, plus resolved decisions on participants,
+bonus choice, state ownership and expiry, stacking and the grapple/pin/helpless/flanking
+interactions, failure cost, keyboard and mouse, and the honest finding that the action is
+rarely the best move in the shipped encounters. It defines failing-first tests, a probe,
+hash-bound acceptance and two batches with the attack half recommended first. Nothing was
+implemented and no game checks were run; only documentation-integrity checks were made. The
+action's control count is an expectation, not a measurement. Overrun stays deferred and the
+opposed-check helper is unchanged.

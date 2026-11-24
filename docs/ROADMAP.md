@@ -2379,3 +2379,23 @@ batch merely to close an evidence gap.
   log, the hint or the defeat screen; no human keyboard-only run; no playthrough, balance
   test or human playtest of any rules batch; the probes cover pieces, not play. This review
   adds no new gap and closes none.
+
+
+### Audit closed (2026-11-24)
+
+**Closed.** The audit above is complete and needs no further action. Its one corrected claim
+(the unqualified ranged sneak sentence) stands, its debt list is not rewritten, and the
+Combat Casting text debt stays retired. The recommended Aid Another batch now has a
+planning-only note, `docs/AID_ANOTHER_PLAN.md`: printed rules from PHB p. 154 verified against
+the SRD and separated from seven project adaptations, exact repository seams, resolved
+decisions on who may aid whom, when the bonus kind is chosen, state ownership and expiry,
+stacking and the grapple/pin/helpless/flanking interactions, failure cost, control and layout
+expectations, keyboard and mouse paths, monster AI, an honest reading of when the action is
+worth taking in the shipped encounters, failing-first tests, probe scenarios, hash-bound
+acceptance and a two-batch split with the attack half recommended first.
+
+Nothing was implemented, and no test, probe, validator, build or export was run to write it;
+the checks were documentation-integrity only. The classification stands: no confirmed defect,
+the deferred list unchanged, the same maintenance debt, and the action's unmeasured control
+count recorded as an evidence gap rather than assumed. Overrun stays deferred, the
+opposed-check helper is unchanged, and the earlier acceptance limits carry forward unchanged.
