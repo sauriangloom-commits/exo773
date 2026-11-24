@@ -3398,6 +3398,14 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> Dict
 	var target_entry := entry_for(target)
 	if attacker_entry.is_empty() or target_entry.is_empty():
 		return {}
+	# PHB p.137 defines the reaction as an attack; a helpless creature cannot act
+	# (paralyzed is explicitly unable to move or act and is helpless). `can_act()`
+	# alone does not include paralysis, so this shared seam must check helplessness.
+	if not attacker.can_act():
+		return {}
+	if Rules.is_helpless(attacker):
+		_log("  %s is helpless and cannot make an opportunity attack." % attacker.display_name)
+		return {}
 	if bool(aoo_used.get(int(attacker_entry["index"]), false)):
 		return {}
 	# PHB p.143: "You can't make attacks of opportunity while using total defense."
@@ -3472,6 +3480,10 @@ func _provoke_attacks_of_opportunity(
 			continue
 		var ch: Character = entry["char"]
 		if not ch.can_act():
+			continue
+		# Paralyzed is `can_act()` true but helpless; it cannot take this reaction.
+		if Rules.is_helpless(ch):
+			_log("  %s is helpless and cannot make an opportunity attack." % ch.display_name)
 			continue
 		# PHB p.143: total defense forbids opportunity attacks. The movement path
 		# resolves reactions directly, so the gate lives here as well.

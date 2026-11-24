@@ -6933,6 +6933,48 @@ func _grapple_probe() -> void:
 		+ Rules.grapple_size_modifier(sera.size_category),
 		"state: the grapple check is base attack + Strength + size, without a feat",
 	)
+	# 0. Shared opportunity-attack eligibility regression. Seeded fixture state:
+	# Sera is prone and the zombie is paralyzed with no reaction spent. Stand up
+	# is a real provoking action through the button; the paralyzed target must
+	# not roll or consume the reaction. The move reset after the check is fixture
+	# seeding, not a second action, so the main grapple scenario starts fresh.
+	sera.set_prone(true)
+	zombie.add_effect("paralyzed", "Paralyzed", 2)
+	e.aoo_used[zombie_index] = false
+	# Seeded: the target has already acted, so its initial flat-footed flag cannot
+	# confound either the paralyzed refusal or the conscious positive control.
+	e.flat_footed[zombie_index] = false
+	combat.refresh_screen()
+	var stand_button := _probe_button(current_screen.button_box, "Stand up")
+	_probe_check(stand_button != null, "the Stand up control is available for the seeded check")
+	_probe_reveal(stand_button)
+	await get_tree().process_frame
+	var eligibility_lines := e.log_lines.size()
+	await _probe_click(stand_button, "Stand up (paralyzed threat)")
+	for f in 20:
+		await get_tree().process_frame
+	var eligibility_text := _probe_ranged_new_lines(e, eligibility_lines)
+	_probe_check(not sera.is_prone(), "seeded prone + real button: the actor stands up")
+	_probe_check(bool(e.turn_state["move_used"]), "state: standing up spent the move action")
+	_probe_check(
+		not bool(e.turn_state["standard_used"]),
+		"state: the eligibility check leaves the standard action free",
+	)
+	_probe_check(
+		eligibility_text.contains("helpless and cannot make an opportunity attack"),
+		"the seeded paralyzed threat is refused with its reason",
+	)
+	_probe_check(
+		not eligibility_text.contains("Attack of opportunity by"),
+		"seeded paralyzed target: no opportunity attack is rolled",
+	)
+	_probe_check(
+		not bool(e.aoo_used.get(zombie_index, false)),
+		"state: the paralyzed target consumes no reaction",
+	)
+	zombie.remove_effect("paralyzed")
+	e.turn_state["move_used"] = false
+	combat.refresh_screen()
 	# 1. Initiation: button activation, then a pointer click on the target's cell.
 	var attempt := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie")
 	var text := String(attempt.get("text", ""))
@@ -6941,6 +6983,10 @@ func _grapple_probe() -> void:
 	_probe_check(
 		text.contains("Grappling provokes an attack of opportunity from QA Unarmed Zombie"),
 		"the target gets its printed reaction (PHB p.155)",
+	)
+	_probe_check(
+		text.contains("Attack of opportunity by QA Unarmed Zombie"),
+		"positive control: the conscious target rolls its reaction",
 	)
 	_probe_check(text.contains("grapple touch attack"), "the unarmed melee touch attack is resolved")
 	_probe_check(text.contains("Grapple check:"), "the opposed grapple check is rolled and logged")
