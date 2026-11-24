@@ -109,6 +109,7 @@ const APP_FLAGS: Array[String] = [
 	"--demo-weapons",
 	"--diagnostic-navigation-probe",
 	"--encounter-end-probe",
+	"--flanking-probe",
 	"--grapple-probe",
 	"--inspect-probe",
 	"--integration-probe",
@@ -364,6 +365,8 @@ func _ready() -> void:
 		_shield_probe()
 	if "--unarmed-probe" in args:
 		_unarmed_probe()
+	if "--flanking-probe" in args:
+		_flanking_probe()
 	if "--grapple-probe" in args:
 		_grapple_probe()
 	if "--keyboard-probe" in args:
@@ -10910,3 +10913,107 @@ func _input(event: InputEvent) -> void:
 			else:
 				_open_pause()
 			get_viewport().set_input_as_handled()
+
+
+## QA-only (`--flanking-probe`): the printed +2 flanking bonus (PHB p.153) and the
+## rogue's flank-only sneak attack (PHB pp. 49-50), driven through
+## `Game.combat_attack` - the call the Attack button makes - on the shipped
+## storeroom encounter. Seeded: combatant cells and whose turn it is. Every check
+## reads the engine's own roll and log; no fixture grants a feat, item or bonus.
+func _flanking_probe() -> void:
+	probe_scenario = "flanking"
+	probe_started_ms = Time.get_ticks_msec()
+	var first := _flanking_probe_scenario(true)
+	_probe_check(bool(first.get("ok", false)), "state: the genuine-flank attack resolves")
+	var second := _flanking_probe_scenario(false)
+	_probe_check(bool(second.get("ok", false)), "state: the third-party attack resolves")
+	print(
+		"PROBE RESULT %s scenario=flanking elapsed_ms=%d checks=%d failures=%d"
+		% [
+			"PASS" if probe_failures.is_empty() else "FAIL",
+			Time.get_ticks_msec() - probe_started_ms,
+			probe_checks,
+			probe_failures.size(),
+		]
+	)
+	get_tree().quit(0 if probe_failures.is_empty() else 1)
+
+
+## One seeded storeroom fight. With `genuine_flank` the party straddles the looter
+## and Sera is one of the pair; without it Kaelen and Aldric straddle the looter
+## and Sera attacks from the north, so nothing applies. Returns what the ordinary
+## attack path reported.
+func _flanking_probe_scenario(genuine_flank: bool) -> Dictionary:
+	var started := Game.new_game(["kaelen", "sera", "aldric"], 7717)
+	if not bool(started.get("ok", false)):
+		return {"ok": false, "message": String(started.get("message", "new game failed"))}
+	# QA evidence, not campaign play: no autosave and no campaign XP.
+	Game.training_mode = true
+	Game.start_encounter("storeroom_dead")
+	var e := Game.encounter
+	if e == null:
+		return {"ok": false, "message": "the storeroom encounter did not start"}
+	var kaelen: Character = Game.party[0]
+	var sera: Character = Game.party[1]
+	var aldric: Character = Game.party[2]
+	var looter: Character = null
+	for entry in e.combatants:
+		var ch: Character = entry["char"]
+		if ch != null and ch.is_monster and not ch.tags.has("undead"):
+			looter = ch
+	if looter == null:
+		return {"ok": false, "message": "the storeroom has no living opponent"}
+	var looter_index := int(e.entry_for(looter)["index"])
+	var pair_left := kaelen
+	var pair_right := sera if genuine_flank else aldric
+	var attacker := sera
+	var attacker_cell := Vector2i(4, 2) if not genuine_flank else Vector2i(5, 1)
+	print(
+		"PROBE SEEDED living_opponent=%s attacker=%s cells=looter(4,1) %s(3,1) %s(5,1) attacker%s turn=%s"
+		% [
+			String(looter.id),
+			String(attacker.id),
+			String(pair_left.id),
+			String(pair_right.id),
+			str(attacker_cell),
+			String(attacker.id),
+		]
+	)
+	e.combatants[looter_index]["cell"] = Vector2i(4, 1)
+	e.combatants[int(e.entry_for(kaelen)["index"])]["cell"] = Vector2i(3, 1)
+	e.combatants[int(e.entry_for(aldric)["index"])]["cell"] = (
+		Vector2i(5, 1) if not genuine_flank else Vector2i(1, 1)
+	)
+	e.combatants[int(e.entry_for(sera)["index"])]["cell"] = attacker_cell
+	# The looter acts first, so it is not flat-footed and only a real flank can
+	# supply the rogue's extra dice. Both calls are seeding, not player input.
+	_flanking_probe_force_turn(e, looter)
+	_flanking_probe_force_turn(e, sera)
+	var before := e.log_lines.size()
+	var result := Game.combat_attack(looter_index)
+	var fresh := " ".join(Array(e.log_lines.slice(before)))
+	var attack: Dictionary = result.get("result", {})
+	var base := Rules.attack_bonus(sera, sera.equipment.get("weapon", {}), 5, "melee")
+	if genuine_flank:
+		_probe_check(
+			int(attack.get("bonus", 0)) == base + 2,
+			"state: a genuine flank adds +2 to the roll (%d vs %d)" % [int(attack.get("bonus", 0)), base + 2]
+		)
+		_probe_check(fresh.contains("flanking +2"), "log: the flanking bonus is named")
+		_probe_check(fresh.contains("sneak attack applies: +2d6"), "log: the flanking rogue sneaks")
+	else:
+		_probe_check(
+			int(attack.get("bonus", 0)) == base,
+			"state: a third party's flank adds nothing (%d vs %d)" % [int(attack.get("bonus", 0)), base]
+		)
+		_probe_check(not fresh.contains("flanking +2"), "log: no flanking bonus is claimed")
+		_probe_check(not fresh.contains("sneak attack applies"), "log: the non-flanking rogue gets no sneak dice")
+	return {"ok": bool(result.get("ok", false)), "message": String(result.get("message", ""))}
+
+
+func _flanking_probe_force_turn(e: Encounter, ch: Character) -> void:
+	var entry := e.entry_for(ch)
+	if entry.is_empty():
+		return
+	e.turn_ptr = e.order.find(int(entry["index"]))
+	e._begin_turn(entry)

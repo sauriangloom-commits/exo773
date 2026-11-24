@@ -158,8 +158,10 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   shooting into a melee: either can occur without the other, and the log names
   which one applied. A ray provokes once, for the casting; firing it adds no
   second reaction.
-- Flanking and sneak attack when two allies threaten an enemy (positional, no
-  facing), or when the target is helpless or flat-footed.
+- Flanking (+2 on a melee attack roll) when the attacker and an able ally
+  threaten the enemy from opposite sides (positional, no facing). A rogue's
+  sneak attack needs her to be one of those flankers, or the target to be
+  helpless or flat-footed.
 - **Exceptions not implemented:** no supported character or creature has uncanny
   dodge or Combat Reflexes. Uncanny dodge is a barbarian/rogue class feature the
   slice has no system for, and Combat Reflexes is not in `Feats.CATALOG`, so
@@ -403,8 +405,9 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
 - Only legal targets — living enemies in reach, excluding the dropped creature
   and the attacker — are offered. The granted attack uses the same weapon and
   the triggering attack's own base bonus; target-specific modifiers for the new
-  target are evaluated afresh (helpless +4, cowering +2, flanking, prone,
-  reach), so a bonus that no longer applies is never copied. The committed Power
+  target are evaluated afresh (helpless +4, cowering +2, flanking +2 when the
+  granting attacker herself flanks, prone, reach), so a bonus that no longer
+  applies is never copied. The committed Power
   Attack and Combat Expertise context carries over. It spends no standard action
   (and no action at all when it arrives off turn) and allows no movement or
   5-foot step.

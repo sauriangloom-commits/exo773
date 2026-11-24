@@ -1413,6 +1413,7 @@ func trip_active(target_index: int, opts: Dictionary = {}) -> Dictionary:
 			"power_attack": power_attack,
 			"combat_expertise": combat_expertise,
 			"flat_footed": is_flat_footed(int(target_entry["index"])),
+			"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
 		}
 	)
 	_log("  " + Rules.format_attack(touch))
@@ -2028,6 +2029,7 @@ func grapple_active(target_index: int) -> Dictionary:
 			"attack_mode": "melee",
 			"label": "grapple touch attack",
 			"flat_footed": is_flat_footed(target_index),
+			"flank_bonus": _flank_bonus(int(entry["index"]), target_index),
 		}
 	)
 	_log("  " + Rules.format_attack(touch))
@@ -2993,6 +2995,11 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 	var combat_expertise := _committed_combat_expertise(attacker_index, weapon, attack_mode)
 	var label := _attack_label(weapon, power_attack, attack_mode, combat_expertise)
 	var target_flat_footed := is_flat_footed(target_index)
+	# PHB p.153: melee only (the table gives ranged attacks no flanking bonus), and
+	# only for an attacker that is itself one of the pair threatening the target.
+	var flank_bonus := 0
+	if not Rules.is_ranged_attack(weapon, attack_mode):
+		flank_bonus = _flank_bonus(attacker_index, target_index)
 	# A reaction is never a fresh ranged attack (it is a melee opportunity
 	# attack), and only a ranged attack can be shot into a melee.
 	var into_melee := {"penalty": 0, "reason": ""}
@@ -3001,11 +3008,13 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		into_melee = _into_melee_penalty(ch, target, entry, target_entry)
 		cover = creature_cover(attacker_index, target_index)
 	var extra := ""
-	# A rogue can sneak attack a flat-footed opponent as well as a flanked or
-	# helpless one (PHB p.133). Undead and constructs remain immune.
+	# A rogue can sneak attack a flat-footed opponent as well as one she flanks
+	# (PHB pp. 49-50, 133). "When the rogue flanks her target" means she is one of
+	# the flankers: a third party's flank does not supply it, and a ranged attack
+	# never flanks. Undead and constructs remain immune.
 	if (
 		ch.sneak_attack_dice != ""
-		and (Rules.is_helpless(target) or _is_flanked(target_index) or target_flat_footed)
+		and (Rules.is_helpless(target) or flank_bonus > 0 or target_flat_footed)
 		and not target.tags.has("undead")
 		and not target.tags.has("construct")
 	):
@@ -3018,6 +3027,7 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		"flat_footed": target_flat_footed,
 		"extra_damage": extra,
 		"bonus": int(opts.get("bonus", 0)),
+		"flank_bonus": flank_bonus,
 		"power_attack": power_attack,
 		"combat_expertise": combat_expertise,
 		"attack_mode": attack_mode,
@@ -3047,6 +3057,8 @@ func _resolve_attack(attacker_index: int, target_index: int, weapon: Dictionary,
 		)
 	if target_flat_footed:
 		_log("  %s is flat-footed: no Dexterity bonus to AC (PHB pp.133, 136)." % target.display_name)
+	if flank_bonus > 0:
+		_log("  flanking +%d (PHB p.153)." % flank_bonus)
 	if extra != "":
 		_log("  sneak attack applies: +%s" % extra)
 	var hp_before := target.hp
@@ -3168,29 +3180,76 @@ func _try_paralysis(attacker: Character, target: Character, weapon: Dictionary) 
 		_log("  %s is paralyzed for %d rounds." % [target.display_name, rounds])
 
 
-func _is_flanked(target_index: int) -> bool:
+## Cells from which a creature hostile to `target_index` threatens it (PHB p.137).
+## A creature that cannot act does not threaten, and neither does one with no melee
+## attack ready (empty hands without Improved Unarmed Strike, a ranged-only weapon).
+func _threatening_positions(target_index: int) -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
 	var target_entry: Dictionary = combatants[target_index]
 	var target_cell: Vector2i = target_entry["cell"]
 	var team := int(target_entry["team"])
-	var positions: Array[Vector2i] = []
 	for entry in combatants:
 		if int(entry["team"]) == team:
 			continue
 		var ch: Character = entry["char"]
-		if not ch.can_act():
+		# "Only a creature or character that threatens the defender can help an
+		# attacker get a flanking bonus" (PHB p.153). A helpless creature - paralyzed,
+		# held, unconscious or dying - cannot make the melee attack that threat is,
+		# so it neither flank nor helps an ally flank.
+		if ch == null or not ch.can_act() or Rules.is_helpless(ch):
 			continue
 		var c: Vector2i = entry["cell"]
 		if _threatens_cell(ch, c, target_cell):
 			positions.append(c)
+	return positions
+
+
+## PHB p.153: "trace an imaginary line between the two friendly characters'
+## centers. If the line passes through opposite borders of the opponent's space
+## (including corners of those borders), then the opponent is flanked." On a square
+## grid that is a sign change on either axis.
+static func _opposite_sides(a: Vector2i, b: Vector2i, target_cell: Vector2i) -> bool:
+	return (
+		(a.x - target_cell.x) * (b.x - target_cell.x) < 0
+		or (a.y - target_cell.y) * (b.y - target_cell.y) < 0
+	)
+
+
+## Whether two hostile creatures straddle the target at all. This describes the
+## target's situation, not any one attacker's: a rogue still has to be one of the
+## pair to flank it (`_flank_bonus`), and a third party's flank gives no bonus.
+func _is_flanked(target_index: int) -> bool:
+	var target_cell: Vector2i = combatants[target_index]["cell"]
+	var positions := _threatening_positions(target_index)
 	for i in positions.size():
 		for j in range(i + 1, positions.size()):
-			var a := positions[i]
-			var b := positions[j]
-			if (a.x - target_cell.x) * (b.x - target_cell.x) < 0:
-				return true
-			if (a.y - target_cell.y) * (b.y - target_cell.y) < 0:
+			if _opposite_sides(positions[i], positions[j], target_cell):
 				return true
 	return false
+
+
+## PHB p.153: "you get a +2 flanking bonus if your opponent is threatened by a
+## character or creature friendly to you on the opponent's opposite border or
+## opposite corner" and "only a creature or character that threatens the defender
+## can help an attacker get a flanking bonus". So this attacker must threaten the
+## target itself, and one of its allies must threaten it from the opposite side.
+func _flank_bonus(attacker_index: int, target_index: int) -> int:
+	if attacker_index == target_index:
+		return 0
+	var attacker_entry: Dictionary = combatants[attacker_index]
+	var attacker: Character = attacker_entry["char"]
+	if attacker == null or not attacker.can_act() or Rules.is_helpless(attacker):
+		return 0
+	var target_cell: Vector2i = combatants[target_index]["cell"]
+	var a: Vector2i = attacker_entry["cell"]
+	if not _threatens_cell(attacker, a, target_cell):
+		return 0
+	for c in _threatening_positions(target_index):
+		if c == a:
+			continue
+		if _opposite_sides(a, c, target_cell):
+			return 2
+	return 0
 
 
 ## PHB p. 140: "If you shoot or throw a ranged weapon at a target engaged in
@@ -3456,6 +3515,7 @@ func _provoke_single_opportunity(attacker: Character, target: Character) -> Dict
 			"combat_expertise": combat_expertise,
 			"attack_mode": mode,
 			"flat_footed": is_flat_footed(int(target_entry["index"])),
+			"flank_bonus": _flank_bonus(int(attacker_entry["index"]), int(target_entry["index"])),
 		}
 	)
 	# PHB p.139: an unarmed strike's damage is nonlethal; carry that into the result so
@@ -4495,7 +4555,10 @@ func _monster_single_attack(entry: Dictionary, target_entry: Dictionary) -> void
 		target_entry["char"],
 		attack_data,
 		map.distance_ft(entry["cell"], target_entry["cell"]),
-		{"flat_footed": is_flat_footed(int(target_entry["index"]))}
+		{
+			"flat_footed": is_flat_footed(int(target_entry["index"])),
+			"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
+		}
 	)
 	_log("%s attacks %s." % [ch.display_name, target_entry["char"].display_name])
 	_log("  " + Rules.format_attack(result))
@@ -4518,7 +4581,10 @@ func _monster_full_attack(entry: Dictionary, target_entry: Dictionary) -> void:
 			target_entry["char"],
 			attack_data,
 			map.distance_ft(entry["cell"], target_entry["cell"]),
-			{"flat_footed": is_flat_footed(int(target_entry["index"]))}
+			{
+				"flat_footed": is_flat_footed(int(target_entry["index"])),
+				"flank_bonus": _flank_bonus(int(entry["index"]), int(target_entry["index"])),
+			}
 		)
 		result["nonlethal"] = bool(attack_data.get("nonlethal", false))
 		_log("  " + Rules.format_attack(result))

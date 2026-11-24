@@ -715,6 +715,12 @@ static func attack(
 	# a +2 bonus (PHB p.159, "Effect and Duration of Turning").
 	if target.has_condition("cowering"):
 		attack_bonus_value += 2
+	# PHB p.153: an attacker whose opponent is threatened by a friendly creature
+	# on its opposite border or corner has a +2 flanking bonus. The encounter
+	# decides whether *this* attacker flanks and passes it here, after
+	# `bonus_base`, so a Cleave follow-up evaluates its own new target.
+	if melee:
+		attack_bonus_value += int(opts.get("flank_bonus", 0))
 	var flat_footed := bool(opts.get("flat_footed", false))
 	var deny_dex := bool(opts.get("deny_dex", false))
 	var pinned_penalty := maxi(0, int(opts.get("pinned_penalty", 0)))
