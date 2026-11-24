@@ -1,9 +1,16 @@
 # Overrun plan
 
 Status: **planning only**. This note specifies the 3.5 overrun special attack for
-`Ravenloft`, but does not implement it. **No checks were run** for this amendment,
-no executable code, content, schema or save data changed, and no candidate was
-exported. It supersedes the first planning pass at `75be1a6`.
+`Ravenloft`, but does not implement it. **No overrun checks were run** for this
+amendment; no overrun code, content, schema or save data changed, and no overrun
+candidate was exported. It supersedes the first planning pass at `75be1a6`.
+
+**Prerequisite status (2026-11-24).** The shared opportunity-attack defect
+described in §7 was investigated and corrected separately in commit
+`d14b7fcb1c08fdafce9f42f6ad0611a1d56635ea`; candidate
+`2026-11-24_aoo_helpless_b` is hash-bound to that correction. Overrun itself
+remains unimplemented, and this correction does not decide the movement-
+continuation or tie-break questions below.
 
 Related documents: `docs/ROADMAP.md` candidate B, `docs/PROGRAM_PROGRESS.md`,
 `docs/ADAPTATION_LOG.md`, `docs/FEATS_SKILLS_COVERAGE.md`,
@@ -230,7 +237,7 @@ Limits, not hidden:
 | Movement commit | `_advance_cell` at `:1935`; `move_active_to` at `:529`; `speed_ft` at `:615` |
 | Action gates | `standard_used` / `move_used`; `_staggered_blocks_standard` at `:1312`; `_staggered_blocks_move` at `:1318` |
 | Pending gate | `has_pending_decision` at `:2708`; `_pending_guard` at `:667` |
-| Opportunity attacks | `_provoke_attacks_of_opportunity` at `:3460`; `threat_capability` at `:728`; `aoo_used`; `is_flat_footed` at `:369`; total defense at `:3272` |
+| Opportunity attacks | `_provoke_attacks_of_opportunity` at `:3472` and `_provoke_single_opportunity` at `:3396`; `Rules.is_helpless` at `rules.gd:219`; `threat_capability` at `:728`; `aoo_used`; `is_flat_footed` at `:369`; total defense at `:3272` |
 | Grapple/pin | `is_grappled` at `:387`; `is_pinned` at `:412`; `threat_capability` returns empty while grappling |
 | Size/stability | `Character.size_category` at `:26`; `stability_bonus` at `:31`; `trip_immune` at `:32`; `Rules.size_category_steps` at `:56` |
 | Opposed checks | `Rules.opposed_ability_check` at `:584`; tie handling at `:629-648`; `best_ability_modifier` at `:651` |
@@ -343,24 +350,28 @@ unconscious defender is eligible for no resistance, not for a block; if it is
 already prone, it stays prone. Grappled/pinned defenders and allies are named
 refusals, not incidental helper outcomes.
 
-**Prerequisite finding (reported, not silently expanded).** The shared
-`_provoke_attacks_of_opportunity` checks `can_act()`, but `Character.can_act()` is
-true for a paralyzed character, and the helper has no `Rules.is_helpless` filter.
-A paralyzed **third** enemy with a melee weapon would therefore be treated as a
-participant. The overrun defender can be excluded with `except_index` when
-helpless, but other helpless enemies cannot. Correct participant accounting
-requires a prerequisite fix in the shared helper:
+**Prerequisite finding — confirmed and corrected (2026-11-24).** The reported
+shared defect was reproduced. `_provoke_attacks_of_opportunity` checked
+`can_act()`, but `Character.can_act()` is true for a paralyzed character and has
+no helplessness filter; `_provoke_single_opportunity` checked neither. Both shared
+helpers therefore allowed a helpless/paralyzed creature to roll the reaction and
+consume `aoo_used`. `Character.can_act()` was **not** changed globally. Both
+helpers now refuse `Rules.is_helpless(attacker)` before `aoo_used` or attack
+resolution and log the refusal; the single-opportunity helper also refuses a
+creature that cannot act. The defender-only fallback is no longer needed.
 
 ```gdscript
-if Rules.is_helpless(ch):
-    continue
+if Rules.is_helpless(attacker):
+    _log("  %s is helpless and cannot make an opportunity attack." % attacker.display_name)
+    return {}
 ```
 
-plus a regression test. This is an existing AoO defect, not an overrun feature.
-Batch 1 must land it first, or the fallback is to resolve only the defender's
-reaction and defer other enemies' ordinary-movement reactions; that suppresses
-them deliberately and must be recorded. The bounded overrun design does not
-otherwise depend on a movement refactor.
+Regression tests (`tests/test_opportunity_attack_eligibility.gd`) and the
+extended `--grapple-probe` cover movement, loading and a real stand-up
+provocation, with conscious positive controls. This satisfies the prerequisite;
+it is a shared AoO correction, not an overrun feature, and it does not decide
+§3.5 continuation or §3 ties. The bounded overrun design does not otherwise
+depend on a movement refactor.
 
 ## 8. Resolution sequence
 
@@ -643,13 +654,13 @@ shipped encounter's balance.
 
 Two implementation commits are acceptable; they are **one acceptance unit**.
 
-**Batch 1 — prerequisite + engine.** Land the shared AoO helpless filter (or the
-documented defender-only fallback), then implement `overrun_active`, the
-`overrun_used` state, the declaration/validation/commit path, the defender-state
-table, the counter and the deterministic tests. Do **not** add the UI, probe,
-layout claim or candidate. Batch 1 is not a shipped overrun feature: do not mark
-it complete in `docs/SUPPORTED_FEATURES.md`, `docs/TRACEABILITY.md` or the roadmap
-as player-facing.
+**Batch 1 — engine (prerequisite already landed).** The shared AoO helpless
+filter was corrected separately in `d14b7fc`; Batch 1 begins with
+`overrun_active`, the `overrun_used` state, the declaration/validation/commit
+path, the defender-state table, the counter and the deterministic tests. Do
+**not** add the UI, probe, layout claim or candidate. Batch 1 is not a shipped
+overrun feature: do not mark it complete in `docs/SUPPORTED_FEATURES.md`,
+`docs/TRACEABILITY.md` or the roadmap as player-facing.
 
 **Batch 2 — UI + probes + acceptance.** Add the Overrun button and target mode,
 the keyboard/mouse path, the probe, the measured 33-control layout at 100 % and
@@ -657,16 +668,16 @@ the keyboard/mouse path, the probe, the measured 33-control layout at 100 % and
 plus the Batch 1 tests. The engine-only milestone must never be recorded as a
 shipped overrun feature.
 
-If Batch 1 exposes a true blocker (for example, the shared AoO fix is refused and
-the defender-only fallback is unacceptable), stop and report it; do not expand
-into a general movement or action refactor.
+If an implementation batch exposes a true blocker, stop and report it; do not
+expand into a general movement or action refactor.
 
 ## 16. Classification
 
-**Confirmed defects:** none in overrun, because the feature is absent by scope.
-The shared opportunity-attack helper's failure to skip helpless enemies is an
-existing defect and a prerequisite; it is reported here, not counted as an
-overrun defect and not silently fixed in this documentation change.
+**Confirmed defects:** one shared opportunity-attack eligibility defect, outside
+overrun but a prerequisite: both helpers allowed a helpless/paralyzed creature
+to react. It was reproduced with failing tests and the extended grapple probe
+and corrected in `d14b7fc`; it is not an overrun defect. No overrun defect was
+found because the feature is absent by scope.
 
 **Deferred features:** approach movement, destination selection, Improved
 Overrun, charge/mounted/Trample, multi-square or multi-target overrun, AI
@@ -688,7 +699,8 @@ not be reused as evidence for the overrun build.
 
 The feature is done only when:
 
-- the prerequisite AoO filter (or the documented fallback) is tested;
+- the prerequisite AoO filter is tested (met by `d14b7fc`; no defender-only
+  fallback);
 - the engine tests cover every row in §13 and the suite is green;
 - the Overrun button, target mode, keyboard and mouse paths work;
 - the layout probe measures **33** controls at 100 % and 160 % without clipping;

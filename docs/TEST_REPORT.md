@@ -6203,3 +6203,84 @@ complete keyboard-only play, the rendered cursor, human accessibility, or keyboa
 access to the other screens. The combat log's keyboard gap and the sidebar
 focus-visibility gap are recorded in the roadmap review and stay deferred; Turn Undead
 remains closed as no product defect found.
+## Shared opportunity-attack eligibility corrected (2026-11-24)
+
+**Finding.** Confirmed product defect. `_provoke_attacks_of_opportunity` checked
+`can_act()`, but `Character.can_act()` returns true for a paralyzed character;
+`_provoke_single_opportunity` checked neither `can_act()` nor helplessness. The
+downstream `_resolve_attack` and `Rules.attack` add no attacker-helplessness
+guard, so a paralyzed threatening creature could roll the reaction, spend
+`aoo_used`, and deal damage. `Rules.is_helpless()` already includes paralyzed.
+
+**Rules reading.** d20srd.org/srd/conditionSummary.htm says a paralyzed character
+is "frozen in place and unable to move or act" and is helpless; its helpless entry
+includes paralyzed. The SRD attack-of-opportunity page defines the reaction as a
+single melee attack, one per round, but does not itself repeat an "able to act"
+clause. Treating the paralyzed condition's action prohibition as an
+opportunity-attack eligibility gate is the project's reading, consistent with the
+existing flat-footed and total-defense gates; observed behavior and the rules
+reading are kept separate here.
+
+**Red evidence.** Before implementation, `tests/test_opportunity_attack_eligibility.gd`
+collected 6 tests and failed 2 (4/6 passed, 30/35 asserts). The movement case
+logged an opportunity attack, set the paralyzed zombie's `aoo_used`, and dealt 4
+damage (Kaelen 96/100); the loading case logged the single-opportunity attack and
+set `aoo_used`. The conscious movement and loading controls, total defense and
+unconscious cases passed. The preserved red log is
+`builds/qa/tmp/aoo_paralyzed_red.log`; fixture/collection failures were not used
+as evidence.
+
+**Fix.** Both shared seams now refuse `Rules.is_helpless(attacker)` before
+`aoo_used` or attack resolution and log the refusal; `_provoke_single_opportunity`
+also refuses `not attacker.can_act()`. `Character.can_act()` was not changed
+globally. No defender-only fallback and no other reaction-system rewrite was
+made. The caller audit covered movement/crawl and bull-rush entry through
+`_provoke_attacks_of_opportunity`, and load, stand up, ranged/unarmed, trip, bull
+rush, grapple, pickup and spell casting through `_provoke_single_opportunity`;
+each passes a real threatening defender and otherwise eligible enemies are
+unchanged. Separate finding: `_threatening_enemies` still lists a paralyzed
+creature (it is `can_act()` true) for threat/engagement, so a caller may log a
+generic "provokes" line before the new guard refuses the reaction; threat and
+engagement semantics were not changed in this batch.
+
+**Tests.** `tests/test_opportunity_attack_eligibility.gd` 6/6, 35 asserts:
+paralyzed movement and loading refusals, conscious positive controls for the same
+paths, total defense, and unconscious. The fixtures seed `paralyzed`,
+`unconscious` or `total_defense` directly; the ordinary-play paralysis path is
+the ghoul's slam -> `_try_paralysis` -> failed Fortitude save already covered by
+`test_combat.gd`, and this file does not claim a natural encounter produced the
+seeded condition. The move action and standard action state are asserted on the
+refusals.
+
+**Probe.** `--grapple-probe` now seeds Sera prone and the zombie paralyzed with
+its flat-footed flag cleared, then uses the real Stand up button; it asserts the
+helpless refusal, no `Attack of opportunity by` line, no `aoo_used`, and the real
+move cost. The existing conscious grapple remains the positive control and now
+asserts the actual reaction line. The probe's move reset is labelled as fixture
+seeding; the condition and flat-footed state are seeded, while the provoking
+action is real. Grapple probe: 160 checks, PASS.
+
+**Checks.** Suite 991/991 (9,899 asserts, 75 scripts), exit 0. Both validators
+PASS. Source probes: grapple 160 checks, keyboard 31, level-up 349, advancement
+228, all PASS. Combat layout: 32 controls / 0 failures at 100 % and 160 %
+(`--text-scale=1.0/1.6`). The suite reports one orphan in the existing
+`test_combat_keyboard_targeting.gd` and engine leak warnings; they are recorded,
+not treated as passes.
+
+**Candidate.** `2026-11-24_aoo_helpless_b`, source
+`d14b7fcb1c08fdafce9f42f6ad0611a1d56635ea`, 110,889,416 bytes, SHA-256
+`6385b2f5473c75b5b18f3e03945786bed7e983d8953cab79c239de274da7739a`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), no untracked files. From that
+executable: both validators PASS; grapple 160, keyboard 31, level-up 349,
+advancement 228, all PASS; layout 32/0 at both scales. The executable hash was
+identical before and after acceptance. The earlier `_a` directory was a
+pre-acceptance draft from interim commit `9265130` with the generated test UID
+untracked; it has the same executable hash but is not the acceptance candidate.
+
+**Limitations and classification.** The condition setup is seeded and the
+stand-up probe uses fixture seeding; no natural ghoul save produced the state in
+the probe. No human playtest or rendered review was made. The README quick-start
+removal remains uncommitted and its file/diff fingerprints are unchanged. No
+content, schema, save, progression, award or XP change was made; no backup or
+GitHub push was touched. Classification: confirmed shared opportunity-attack
+defect, corrected; overrun remains planning-only.

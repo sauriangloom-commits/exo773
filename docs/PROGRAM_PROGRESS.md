@@ -3538,3 +3538,27 @@ Improved Overrun, charge/mount/Trample, multi-square, AI overrun, a player-defen
 decision, an avoid policy in shipped content, difficult terrain and grapple-target
 overrun; maintenance debt the batch must not add; evidence gaps no human playtest and
 fixture-only avoid coverage.
+### Shared opportunity-attack eligibility corrected (2026-11-24)
+
+The reported shared AoO defect was confirmed and corrected outside overrun.
+`Character.can_act()` is true for a paralyzed character; the single-opportunity
+helper also had no action guard, and no downstream attack guard existed. Both
+shared helpers now refuse a helpless attacker before spending `aoo_used` or
+rolling an attack, with an observable refusal line; `can_act()` itself is
+unchanged, no defender-only fallback was used, and otherwise eligible reactions
+are unchanged. `tests/test_opportunity_attack_eligibility.gd` (6 tests, 35
+asserts) and an extended real-action `--grapple-probe` check cover movement,
+loading and stand-up with conscious positive controls. The condition is seeded;
+the ordinary ghoul paralysis route is cited, not claimed as the probe's origin.
+
+Source record: suite 991/991 (9,899 asserts, 75 scripts), both validators,
+`--grapple-probe` 160 checks, `--keyboard-probe` 31, `--level-up-probe` 349,
+`--advancement-probe` 228, and combat layout 32/0 at 100 % and 160 %. Candidate
+`2026-11-24_aoo_helpless_b` from `d14b7fc`, 110,889,416 bytes, SHA-256
+`6385b2f5473c75b5b18f3e03945786bed7e983d8953cab79c239de274da7739a`,
+`worktree_entries=1` (README only), no untracked files, hash unchanged before and
+after; the same checks passed from the executable. The unused `_a` draft has the
+same executable hash but is not the acceptance candidate. No overrun button,
+mode, stub or feature was added; movement-continuation and tie-break decisions
+remain unresolved. The README removal is untouched; no content, schema, save,
+progression, award or XP change and no push.
