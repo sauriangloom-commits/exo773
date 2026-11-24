@@ -7,6 +7,21 @@ extends Control
 var main: Control
 var view: CombatView
 var log_label: RichTextLabel
+## One fixed line under the log: the resting instruction, or the counted frozen
+## state. It is present in both states so the panel and the grid above do not move.
+var log_hint: Label
+## The log's own follow state. `RichTextLabel.scroll_following` is only the enable
+## flag and its current state is internal, so the screen tracks whether the reader
+## is at the newest line or reading history.
+var _log_following := true
+var _log_frozen_total := 0
+## The scrollbar value that represents "at the newest line". `RichTextLabel` parks
+## that position at the start of the last line rather than at `max_value`, and its
+## scrollbar page size is not a stable basis for the comparison, so the value is
+## recorded after every write instead of inferred.
+var _log_bottom := 0.0
+## Guards the scrollbar signal while the screen itself writes the text or scrolls.
+var _log_updating := false
 var initiative_label: RichTextLabel
 var active_label: Label
 var message_label: Label
@@ -78,6 +93,9 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build()
 	Game.state_changed.connect(_on_state_changed)
+	# Tabbing out of the grid clears its cursor in the view; the log must become a
+	# Tab stop again even though `_leave_grid_keyboard()` was not the one that ran.
+	view.focus_exited.connect(func() -> void: _set_log_focus_enabled(true))
 	refresh_screen()
 
 
@@ -129,8 +147,19 @@ func _build() -> void:
 	log_panel.add_child(log_margin)
 	log_label = RichTextLabel.new()
 	log_label.scroll_following = true
+	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_label.add_theme_font_size_override("normal_font_size", ThemeBuilder.fs(12))
-	log_margin.add_child(log_label)
+	var log_box := VBoxContainer.new()
+	log_box.add_theme_constant_override("separation", 2)
+	log_margin.add_child(log_box)
+	# Resting combat: the log is one Tab stop. `_begin_grid_keyboard()` disables it
+	# while the grid cursor owns the keyboard, so the accepted grid Tab path keeps
+	# the target it has today.
+	log_label.focus_mode = Control.FOCUS_ALL
+	log_box.add_child(log_label)
+	log_hint = ThemeBuilder.short("", true, 10)
+	log_box.add_child(log_hint)
+	log_label.get_v_scroll_bar().value_changed.connect(_on_log_scrolled)
 	# The sidebar scrolls vertically so a tall decision panel stays reachable at
 	# 1024x600 and at the largest text scale. Horizontal scrolling is disabled so
 	# no child can grow a minimum width that pushes controls outside the window.
@@ -374,6 +403,7 @@ func _begin_grid_keyboard() -> void:
 	_cursor_actor_index = int(active["index"])
 	_cursor_actor_cell = Vector2i(active["cell"])
 	view.begin_keyboard_cursor(_cursor_actor_cell)
+	_set_log_focus_enabled(false)
 
 
 ## Re-seats the cursor after a state refresh: it follows the active creature when
@@ -402,6 +432,7 @@ func _leave_grid_keyboard() -> void:
 	_cursor_actor_index = -1
 	_cursor_actor_cell = Vector2i(-1, -1)
 	view.end_keyboard_cursor()
+	_set_log_focus_enabled(true)
 
 
 ## Escape is the pause key everywhere else; while the grid owns the keyboard it
@@ -409,6 +440,8 @@ func _leave_grid_keyboard() -> void:
 ## the press here stops the global pause handler from acting on it too. A release
 ## and a repeat are ignored, matching the pause path's one-per-press rule.
 func _input(event: InputEvent) -> void:
+	if _handle_log_end(event):
+		return
 	if view == null or not view.keyboard_cursor_active:
 		return
 	if not _grid_keyboard_allowed():
@@ -422,6 +455,26 @@ func _input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	_cancel_grid_targeting()
+
+
+## End is the one log key the widget must not handle itself: the rendered text is a
+## frozen snapshot while the reader is in history, so End has to refresh it before
+## jumping to the bottom. It is consumed only while the log owns the ring. With a
+## modal open the key is swallowed rather than allowed to move or unfreeze the log
+## behind the panel.
+func _handle_log_end(event: InputEvent) -> bool:
+	if log_label == null or not log_label.has_focus():
+		return false
+	if not (event is InputEventKey):
+		return false
+	var key := event as InputEventKey
+	if not key.pressed or key.echo or not key.is_action_pressed("ui_end"):
+		return false
+	get_viewport().set_input_as_handled()
+	if main != null and main.get("modal") != null:
+		return true
+	_resume_log_following()
+	return true
 
 
 ## Cancelling is free: nothing reaches the encounter, so no action, movement or
@@ -981,12 +1034,75 @@ func _update_button_states() -> void:
 			button.disabled = not bool(enabled.get(String(button.text), false))
 
 
+## While the reader is in history the log is a snapshot: a refresh only updates the
+## counted indicator, so neither the rendered text nor the reader's offset moves.
 func _refresh_log() -> void:
 	var e := Game.encounter
+	if e == null or log_label == null:
+		return
 	var lines := e.log_lines
+	_update_log_hint(lines.size())
+	if not _log_following:
+		return
+	_log_updating = true
 	var start := maxi(0, lines.size() - 160)
 	log_label.text = "\n".join(lines.slice(start))
 	log_label.scroll_to_line(maxi(0, log_label.get_line_count() - 1))
+	_remember_log_bottom.call_deferred()
+
+
+func _update_log_hint(total: int) -> void:
+	if log_hint == null:
+		return
+	if _log_following:
+		log_hint.text = "Combat log — Tab to focus · PgUp/PgDn · End newest"
+		return
+	log_hint.text = "Combat log — %d new · End to resume" % maxi(0, total - _log_frozen_total)
+
+
+## Records the position the widget parked at after this screen wrote the text, and
+## releases the guard once that deferred change has been delivered.
+func _remember_log_bottom() -> void:
+	if log_label == null:
+		return
+	_log_bottom = log_label.get_v_scroll_bar().value
+	_log_updating = false
+
+
+## Wheel and built-in key scrolling both land here. Leaving the newest position
+## freezes the rendered text; coming back to it resumes following with the current
+## log. The comparison uses the recorded position, not the bar's page size.
+func _on_log_scrolled(value: float) -> void:
+	if _log_updating or log_label == null or Game.encounter == null:
+		return
+	var tolerance := float(ThemeBuilder.fs(12))
+	if value < _log_bottom - tolerance:
+		if _log_following:
+			_log_following = false
+			_log_frozen_total = Game.encounter.log_lines.size()
+			_update_log_hint(_log_frozen_total)
+		return
+	if not _log_following:
+		_log_following = true
+		_update_log_hint(Game.encounter.log_lines.size())
+		_refresh_log()
+
+
+## End must refresh the frozen snapshot before moving, so it cannot be left to the
+## widget's own handling. Escape, Tab, Enter and Space stay outside the log.
+func _resume_log_following() -> void:
+	if log_label == null:
+		return
+	_log_following = true
+	_log_frozen_total = 0
+	_refresh_log()
+	_update_log_hint(Game.encounter.log_lines.size() if Game.encounter != null else 0)
+
+
+## The log is a focus stop only while the grid is not using the keyboard.
+func _set_log_focus_enabled(enabled: bool) -> void:
+	if log_label != null:
+		log_label.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
 
 
 func _on_cell_clicked(cell: Vector2i) -> void:

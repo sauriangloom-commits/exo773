@@ -7424,6 +7424,10 @@ func _combat_info_case(scale: float) -> void:
 		"Combat info probe"
 	)
 	e.begin()
+	# Seeded fixture state, disclosed: filler lines so the log overflows its panel.
+	# They are not combat output and no rule reads them.
+	for i in 40:
+		e.log_lines.append("probe log line %d" % i)
 	Game.party = [actor]
 	Game.encounter = e
 	Game.mode = "combat"
@@ -7528,7 +7532,90 @@ func _combat_info_case(scale: float) -> void:
 		for f in 6:
 			await get_tree().process_frame
 
-	# 3. Layout after the reveal work: nothing interactive became unreachable.
+	# 3. The combat log: one focus stop, built-in scrolling, frozen history and End.
+	#    Every key below is a real press; the two appended lines are seeded state.
+	var log_reached := await _combat_info_tab_until(combat.log_label, 80)
+	_probe_check(log_reached, "%s key: Tab reached the combat log" % label)
+	if log_reached:
+		var bar := combat.log_label.get_v_scroll_bar()
+		var following := float(combat.get("_log_bottom"))
+		await _probe_key(KEY_PAGEUP)
+		_probe_check(
+			bar.value < following - 1.0,
+			"%s key: PageUp left the newest line" % label,
+		)
+		var frozen_text := combat.log_label.text
+		var frozen_offset := bar.value
+		var before_count := e.log_lines.size()
+		for i in 2:
+			e.log_lines.append("probe log line %d" % (before_count + i))
+		combat.refresh_screen()
+		for f in 4:
+			await get_tree().process_frame
+		_probe_check(
+			combat.log_label.text == frozen_text,
+			"%s key: a refresh did not rewrite the frozen log" % label,
+		)
+		_probe_check(
+			absf(bar.value - frozen_offset) < 1.0,
+			"%s key: the frozen offset did not move" % label,
+		)
+		var hint := combat.get("log_hint") as Label
+		_probe_check(
+			hint != null and hint.text.contains("2 new"),
+			"%s key: the indicator counts two new messages" % label,
+		)
+		var standard_used := bool(e.turn_state["standard_used"])
+		await _probe_key(KEY_ENTER)
+		_probe_check(
+			bool(e.turn_state["standard_used"]) == standard_used,
+			"%s key: Enter on the log spent no action" % label,
+		)
+		await _probe_key(KEY_END)
+		for f in 4:
+			await get_tree().process_frame
+		_probe_check(
+			combat.log_label.text.contains(String(e.log_lines[e.log_lines.size() - 1])),
+			"%s key: End rendered the newest line" % label,
+		)
+		_probe_check(
+			hint != null and hint.text.begins_with("Combat log — Tab"),
+			"%s key: End resumed following" % label,
+		)
+
+	# 4. The grid keeps its Tab target and the log is one stop away from it.
+	combat._set_mode("attack", "Click an enemy within reach or range.")
+	for f in 3:
+		await get_tree().process_frame
+	_probe_check(
+		combat.log_label.focus_mode == Control.FOCUS_NONE,
+		"%s key: the log is not a focus stop while targeting" % label,
+	)
+	await _probe_key(KEY_TAB)
+	var grid_tab_owner := get_viewport().gui_get_focus_owner()
+	_probe_check(
+		grid_tab_owner is Button and combat.button_box.is_ancestor_of(grid_tab_owner),
+		"%s key: Tab from the grid still lands on the first sidebar control" % label,
+	)
+	for f in 3:
+		await get_tree().process_frame
+	_probe_check(
+		combat.log_label.focus_mode == Control.FOCUS_ALL,
+		"%s key: the log is focusable again once the grid released the ring" % label,
+	)
+	# Forward Tab from the control the grid leaves the player on is the route to the
+	# log. It is bounded and counted: this fixture has five enemies, so their target
+	# rows sit between that control and the log.
+	var route_steps := 0
+	while route_steps < 60 and get_viewport().gui_get_focus_owner() != combat.log_label:
+		await _probe_key(KEY_TAB)
+		route_steps += 1
+	_probe_check(
+		get_viewport().gui_get_focus_owner() == combat.log_label,
+		"%s key: Tab continued from the grid's landing control to the log (%d presses)" % [label, route_steps],
+	)
+
+	# 5. Layout after the reveal work: nothing interactive became unreachable.
 	var report: Array = await _layout_report(current_screen, "combat-info-%s" % label)
 	_probe_check(int(report[0]) == 0, "%s direct: no unreachable interactive control at this scale" % label)
 	print(

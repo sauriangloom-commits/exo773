@@ -43,6 +43,9 @@ static func build(base_size := 16) -> Theme:
 	t.set_stylebox("pressed", "Button", _box(Color("#33465a"), GOLD, 2, 6))
 	t.set_stylebox("disabled", "Button", _box(Color("#111821"), Color("#2a3540"), 1, 6))
 	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), GOLD, 2, 6))
+	# The combat log is a read-only RichTextLabel focus stop; it gets the same
+	# transparent GOLD ring the buttons use, with no fill of its own.
+	t.set_stylebox("focus", "RichTextLabel", _box(Color(0, 0, 0, 0), GOLD, 2, 6))
 	t.set_color("font_color", "Button", TEXT)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
 	t.set_color("font_pressed_color", "Button", GOLD)
