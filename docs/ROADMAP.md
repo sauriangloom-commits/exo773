@@ -1486,8 +1486,8 @@ save case and the seeded probe limits stay evidence work, not features.
 - **Deferred features.** Grapple 8b-2/8c/8d/8e/8f; overrun, disarm, sunder,
   concealment, terrain hard cover, AoE templates, encumbrance, disease; readied
   and delayed actions; full attacks and two-weapon fighting; levels 5 and above;
-  a save shortcut. Keyboard combat is closed (implemented 2026-11-24); combat-log
-  scrolling and sidebar focus reveal stay deferred.
+  a save shortcut. Keyboard combat and combat information access are closed
+  (2026-11-24); see the closure below.
 - **Maintenance debt.** The stale `Combat Casting` benefit text; the singular
   modal field; probe-heavy `main.gd`; source-text guards that cannot see a
   string-built call; shallow UI suite coverage; the placeholder renderer. None
@@ -1644,8 +1644,7 @@ content that rewards it, and the save shortcut stays a ride-along.
   `docs/OVERRUN_PLAN.md` §18; no implementation authorized); readied/delayed actions;
   further grapple
   (8b-2/8c/8f); disarm, sunder, concealment, terrain hard cover, AoE, encumbrance,
-  disease; levels 5+; a save shortcut; keyboard combat-log scrolling and sidebar focus
-  reveal.
+  disease; levels 5+; a save shortcut; reachable opposition (see the review below).
 - **Maintenance debt.** Unchanged: the stale `Combat Casting` benefit text, the singular
   modal field, the probe-heavy `main.gd`, shallow UI suite coverage and the placeholder
   renderer.
@@ -1711,3 +1710,185 @@ its focus owner. Suite 1011/1011, both validators, four existing probes plus the
 extended `--combat-info-probe` (62 checks, 31 per scale), layout 32 controls at both
 scales. Candidate 110,903,688 bytes, SHA-256 matched to `BUILD.txt` before and after
 acceptance. Overrun remains deferred.
+
+## Next bounded task - roadmap review after combat information access (2026-11-24)
+
+Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this
+section, and **no tests, probes, validators, builds or exports were run**. It reads
+`ROADMAP.md`, `PROGRAM_PROGRESS.md`, `SUPPORTED_FEATURES.md`, `TEST_REPORT.md`,
+`TRACEABILITY.md`, `FEATS_SKILLS_COVERAGE.md`, `COMBAT_INFO_ACCESS_PLAN.md`,
+`OVERRUN_PLAN.md`, the authored characters, monsters, spells and
+encounters, and the combat, exploration, modal, victory, defeat and level-up code.
+
+### Combat information access closed
+
+Both batches are closed within their recorded evidence. Nothing was rebuilt, re-run or
+re-exported for this closure.
+
+- **Batch 1 (sidebar and pending-decision reveal plus focus stability)** - implementation
+  `bad3a05c4488a4b4c5397d740b6ae2d1889375d4`, accepted on the `da95ed4` record,
+  candidate `2026-11-24_combat_info_batch1` (110,900,648 bytes, SHA-256
+  `0a4b83196b2158795b481a161365cc50018091684ffad979d9e47387fd417a53`). 9 focused tests
+  (7 red before the change, 56 asserts green), suite 1001/1001, both validators,
+  keyboard 31, grapple 160, level-up 349, advancement 228 and combat-info 38 checks,
+  layout 32 controls at 100 % and 160 %. The candidate's disclosed working-tree entry is
+  the uncommitted README quick-start removal, and its `.uid` anomaly is reconciled as a
+  stale status snapshot, not a wrong source binding.
+- **Batch 2 (log focus and scrolling)** - implementation
+  `4de76f1314c44125f6fd0f70eb378a9c4e5c5dee`, accepted on the `fbbbbeb` record,
+  candidate `2026-11-24_combat_log_focus_batch2` (110,903,688 bytes, SHA-256
+  `caf129b85b5ee2de71e431a79f39811e91f784db3c5ff43558aeafd361bfad42`). 10 focused tests
+  (2 red before the change, both engine pins; 42 asserts green), suite 1011/1011, both
+  validators, four existing probes plus combat-info at 62 checks (31 per scale), layout
+  32 controls at 100 % and 160 %, executable hash unchanged across acceptance. The
+  generated `.uid` was committed with the implementation, so no untracked file appeared.
+
+The acceptance remains automated input and geometry. It is not evidence of a rendered
+focus ring, a human keyboard-only playthrough or screen-reader use, and this review does
+not broaden it.
+
+### Keyboard play of one demo combat, start to victory
+
+Code reading only; **no run was made**. Each step below was checked for a keyboard path
+that does not require the mouse.
+
+| Step | Path | Verdict |
+| --- | --- | --- |
+| Explore to the encounter | `ExplorationScreen._unhandled_input` binds `move_forward/back`, `strafe_*`, `turn_*` and `interact` (`src/ui/exploration_screen.gd:311-352`) | Keyboard path exists |
+| Start the fight | Authored triggers, dialogue effects and `Game.start_encounter`; nothing waits on a grid click | **No mouse step found** |
+| Read the state | HUD labels, sidebar and the log, which is now a focus stop with its own scroll keys | Keyboard path exists |
+| Choose an action | Action buttons are ordinary focusable `Button`s; disabled ones are skipped by Tab | Keyboard path exists |
+| Pick a target | Grid cursor, arrows and Enter/Space through `_on_cell_clicked` (accepted in `072c15b`) | Keyboard path exists |
+| Resolve a pending decision | Decision buttons are focusable, revealed by follow focus and seated when no usable owner remains (batch 1) | Keyboard path exists |
+| End the turn | `End turn` is an action-grid button on a live player turn | Keyboard path exists |
+| Victory | Ordinary victory returns to exploration with narration and the autosave; a campaign-completion victory opens `_show_victory` through `open_modal`, whose focus trap and initial focus are the shared modal path (`src/main.gd:10247`) | Keyboard path exists |
+| Level-up, when the threshold is crossed | Opened from the sheet's `Level up` button; the level-up screen is keyboard-driven and probe-covered | Keyboard path exists |
+| Defeat | `_show_defeat` builds `Load a save` and `Main menu` but sets no initial focus, and `_set_screen` focuses nothing (`src/main.gd:10181`, `:5558`) | **Not blocked** - Tab starts from the first focusable control; a presentation gap, not a dead end |
+
+**Conclusion: no blocked step found.** What remains is untested behaviour (no continuous
+human or scripted start-to-victory run exists; the probes cover pieces), and presentation
+evidence (no rendered focus ring, no review of the log or hint, and the defeat screen's
+missing initial focus). Those are not the same as a blocked path, and this review does
+not propose work only to close them.
+
+### What content and the supported level range actually make reachable
+
+- **Three monsters exist and all three are undead** (`content/shared/monsters.json`:
+  Drowned Dead, Infected Zombie, Corvin the Gate-Warden, all `monster_type` Undead,
+  `equipment: {}`, natural weapons). The party's rogue carries `sneak_attack_dice: 2d6`
+  (`content/shared/characters.json`), and `Encounter._resolve_attack` grants it only when
+  the target is flanked, helpless or flat-footed **and not tagged `undead` or
+  `construct`** (`src/core/encounter.gd:3004-3013`). In every shipped encounter the
+  rogue's signature damage therefore never applies. That is a content gap, not a code
+  defect: the rule is implemented and correctly gated.
+- **No monster carries equipment or a manufactured weapon**, so disarm and sunder have no
+  player-reachable target even though bull rush, trip, grapple, pin and cover are live.
+- **No shipped spell is an area spell** (`content/shared/spells.json`: magic missile, mage
+  armor, scorching ray, cure light wounds, bless, aid), so AoE templates have no
+  authored user. Concealment and terrain hard cover have no terrain tags in the maps.
+- **Levels 5 and above stay unreachable**: 10,000 XP against about 4,850 on one ordinary
+  route, and no 3rd-level spell exists in content for the casters. The 4th-level step is
+  now reached in play through the bell milestone.
+- **At 4th level only the fighter gains a feat** (general levels [1, 3], class [1, 2, 4]).
+  Weapon Specialization shipped in batch 7. Quick Draw is legal (BAB +1) and absent from
+  `Feats.CATALOG`, but no shipped character can obtain a second weapon: Kaelen carries
+  one longsword, nothing grants a weapon, and there is no item transfer, so the feat
+  would be selectable and unusable. Rapid Reload is not a fighter bonus feat and no
+  character has a general feat slot at 4th, so it is not legally obtainable either.
+- Selectable, legally obtainable abilities were separated from raw hooks throughout:
+  Improved Grapple, Improved Bull Rush and Quick Draw are catalog-absent or
+  content-blocked; the feats that appear only as seeded text in tests and probes
+  (Improved Grapple's +4, Improved Turning and Extra Turning outside authored characters)
+  are hooks, not reachability.
+
+### Candidate 1 - reachable opposition: one living, armed opponent (recommended, planning only)
+
+- **Player benefit.** Sera's authored 2d6 sneak attack would apply for the first time in
+  ordinary play, through a rule that already exists; a living opponent also gives the
+  party a reason to use flanking and non-undead tactics, and it is the prerequisite
+  content for any later disarm or sunder batch.
+- **Repository evidence.** The three monsters above; the `undead` tag gate at
+  `src/core/encounter.gd:3004`; Sera's `sneak_attack_dice`; and the flanked, helpless and
+  flat-footed gates that already exist and are tested (no stealth or Hide mechanic is
+  modelled, so those gates are the reachable ones).
+- **Ordinary-play reachability.** Any encounter in any of the three campaigns; no feat,
+  level or fixture is needed.
+- **Unresolved decisions.** Which campaign and encounter hosts it; tone (the slice is
+  undead horror, so the opponent needs an authored reason to be alive); CR and stat
+  block; loot; and the XP ledger, because the bell milestone was sized to land a
+  completing route on exactly 6,000, so a new award moves that arithmetic and the
+  informational diagnostics line.
+- **Dependencies and boundary.** Content only (`monsters.json`, one `encounters.json`,
+  its trigger/effects), plus the XP totals and the diagnostics expectations. No rule,
+  schema, save or UI change is expected; no code is known to be missing.
+- **Acceptance needs.** Both validators, a focused test that the sneak gate applies to a
+  living target and still refuses undead, the suite, a probe pass over the encounter,
+  layout unchanged at both scales, and an exported candidate. The XP record must be
+  re-derived rather than asserted from the old inventory.
+
+### Candidate 2 - further grapple (8c/8d)
+
+Reachable (grapple and pin are ordinary actions) but the payoff is thin: the hold damage
+is nonlethal and every shipped monster is undead, so "damage by opposed check" would do
+nothing in content; "move the grapple at half speed" is a movement feature with its own
+decisions; "use the opponent's weapon" has no weapon to use. Casting from a grapple is
+unreachable because the AI never grapples. Six decisions are already recorded in
+`GRAPPLE_PLAN.md` and the 2026-11-24 review. **Not the next task.**
+
+### Candidate 3 - save shortcut
+
+Bounded (one input action and one handler), exploration-only, and the pause menu already
+exposes Save from the keyboard, so the gain is convenience. It stays a ride-along, as
+earlier reviews concluded. **Not a lead batch.**
+
+### Candidate 4 - party item handoff
+
+`use_potion_active` reads the active character's own inventory
+(`src/core/encounter.gd:3906-3925`), and `SUPPORTED_FEATURES.md` lists trading between
+characters as not supported. A found potion can therefore only be drunk by the character
+who picked it up. Handing an item to another party member is a printed move action, so
+the rules anchor exists, but the UI shape (inventory panel, recipient choice, whether
+in-combat handoff is included) is an unscoped decision. **Planning only if prioritised;
+not the recommendation.**
+
+### Candidate 5 - defeat screen initial focus
+
+`_show_defeat` sets no initial focus while every modal does. Bounded and harmless to fix,
+but Tab recovers today, so it is presentation polish and an evidence item, not a batch.
+**Do not schedule alone.**
+
+### Recommendation
+
+**Planning only: a short design note for reachable opposition (Candidate 1).** It is the
+strongest player-reachable gap the repository actually supports - an implemented class
+feature that no shipped encounter can exercise - and it is content work, not a rules
+rewrite. It is not implementable as written because the encounter's host, tone, CR, loot
+and XP arithmetic are design decisions, and the XP ledger is deliberately tuned. The note
+should settle those, name the encounter, state which rules become live (sneak attack;
+not disarm or sunder, which remain unimplemented), and define the acceptance above.
+
+**No implementation is recommended from this review.** Overrun stays deferred under
+`docs/OVERRUN_PLAN.md` §18; readied/delayed actions remain a subsystem needing their own
+plan; the opposed-check helper is unchanged. Do not start levels 5+, disarm, sunder,
+concealment, AoE or encumbrance to fill a schedule: content gives them no target.
+
+### Classification, kept separate
+
+- **Confirmed defects.** None open, and this review found no failing case. Turn Undead
+  stays closed as no product defect found; helpless attacks of opportunity, the
+  paralyzed-ally firing penalty and the ranged probe stay closed as recorded; the
+  keyboard targeting and both combat-information batches are closed above. Overrun stays
+  deferred and the opposed-check helper is unchanged.
+- **Deferred features.** Reachable opposition (this review's planning candidate); overrun;
+  readied and delayed actions; grapple 8b-2/8c/8d/8f; disarm, sunder, concealment,
+  terrain hard cover, AoE templates, encumbrance, disease; full attacks and two-weapon
+  fighting; levels 5 and above; a save shortcut; party item handoff.
+- **Maintenance debt.** Unchanged: the stale `Combat Casting` benefit text, the singular
+  `modal` field, the probe-heavy `main.gd`, shallow UI suite coverage, source-text guards
+  that cannot see a string-built call, the empty save-migration table and the placeholder
+  renderer. The stale "combat-log scrolling and sidebar focus reveal stay deferred" lines
+  in this file are corrected by this commit.
+- **Evidence gaps.** No rendered review of the focus ring, the log, the hint or the
+  defeat screen; no human keyboard-only start-to-victory run; the probes cover pieces.
+  The rogue's sneak attack has automated rules coverage but no ordinary-play instance.
+  None of these is a defect and none is proposed as work on its own.

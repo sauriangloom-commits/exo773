@@ -3706,3 +3706,25 @@ SHA-256 matched to `BUILD.txt` before and after acceptance). This is automated i
 and geometry evidence only: no rendered review of the log, its focus outline or the
 hint, no human keyboard-only playthrough and no screen-reader check. README remains
 untouched and no push was made.
+
+Reviewed the repository after closing combat information access (batches 1 and 2 on the
+`da95ed4` and `fbbbbeb` records; no checks, probes, validators, builds or exports were
+run). Keyboard play of one demo combat was traced step by step in code: exploration,
+trigger, action choice, grid targeting, pending decisions, end turn, victory modal,
+level-up and defeat all have a keyboard path, and **no blocked step was found**. What
+remains is untested continuous play and presentation evidence, not a dead end; the
+defeat screen sets no initial focus but Tab recovers.
+
+The reachability review found the largest live gap is content, not code: all three
+shipped monsters are undead, so the rogue's authored 2d6 sneak attack never applies.
+Disarm and sunder have no equipped target, no shipped spell is an area spell, concealment
+has no terrain tags, and levels 5+ stay out of XP range. At 4th level only the fighter
+gains a feat; Weapon Specialization already shipped, Quick Draw is legal but there is no
+second weapon to draw, and Rapid Reload is not a fighter bonus feat.
+
+Recommendation: **planning only** for reachable opposition - one living, armed opponent
+in a shipped encounter - with the host, tone, CR, loot and the XP ledger settled first,
+because the bell milestone was sized to land exactly on 6,000. Overrun stays deferred, the
+opposed-check helper is unchanged, and no implementation is recommended. The earlier
+closures (Turn Undead, helpless AoO, paralyzed-ally firing penalty, ranged probe) are
+carried forward unchanged. README remains untouched and no push was made.

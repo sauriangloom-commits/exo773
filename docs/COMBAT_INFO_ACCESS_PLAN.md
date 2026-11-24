@@ -360,6 +360,13 @@ Two independently acceptable batches, not one. **Batch 1 (sidebar and pending-de
 reveal plus focus stability) comes first; Batch 2 (log focus and scrolling) follows.**
 The numbering records that decision; it is not the note's section order.
 
+**Both batches are closed, 2026-11-24.** Batch 1 shipped in `bad3a05` and is accepted
+on the `da95ed4` record with candidate `2026-11-24_combat_info_batch1`. Batch 2 shipped
+in `4de76f1` and is accepted on the `fbbbbeb` record with candidate
+`2026-11-24_combat_log_focus_batch2`. The evidence is in `docs/TEST_REPORT.md`; the
+closure and the next-task review are in `docs/ROADMAP.md`. No checks were run for the
+closure or the review.
+
 ### Why batch 1 comes first
 
 - **Player benefit.** Batch 1 removes a hard stop. A focusable control can sit outside

@@ -246,6 +246,10 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   it. Grid keys are Godot's built-in `ui_*` actions, so rebinding those also moves
   the cursor.
 - Combat log with rolls, modifiers, DCs, damage, conditions and resource changes.
+  It is one keyboard focus stop: Up/Down/PageUp/PageDown/Home use the widget's own
+  scrolling, leaving the newest line freezes the rendered text and counts the lines
+  that arrive in a one-line hint, and End resumes following. Enter, Space, Escape
+  and Tab stay outside it; the grid cursor disables the stop while it is active.
 - Modals keep keyboard focus: Tab and Shift+Tab cycle only the modal's own controls and wrap, background actions stay blocked while one is open, and closing returns focus to the control that opened it (or the first usable control on the screen).
 - Refused exploration actions (a wall, a closed door, an NPC in the way, nothing
   in reach, no one who can pick a lock, a used-up or empty object) write one
