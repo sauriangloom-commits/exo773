@@ -6375,3 +6375,108 @@ attacked" reading, return to overrun planning; no fix is justified.
 No overrun implementation is authorized. Movement-continuation and tie-break
 remain unresolved. No executable, test, probe, content, schema or save change was
 made for this closure/review; no backup or GitHub push was touched.
+
+## Firing into melee corrected for helpless allies (2026-11-24)
+
+**Finding.** Confirmed product defect. `_into_melee_penalty` already skipped a
+helpless target but checked only `ally.can_act()` for the friendly creature beside
+it. `Character.can_act()` is true for a paralyzed character, and
+`_threatens_cell` still sees its melee capability, so a paralyzed adjacent ally
+was counted as engaged and imposed the -4 firing-into-melee penalty on another
+party member's ranged attack. This is player-reachable when ghoul paralysis or
+another helpless condition is present; the probe and focused test seed the
+condition rather than claiming a particular authored encounter produced it.
+
+**Rules reading.** PHB p.140 says an unconscious or otherwise immobilized
+character is not considered engaged unless actually being attacked. d20srd
+condition summary describes paralyzed as frozen in place, unable to move or act,
+and helpless; its helpless entry includes paralyzed. The existing project
+contract already treats a helpless target as not engaged. The clear eligibility
+defect is the ally-side omission. The broader question -- whether the target is
+actually attacking the ally -- is not tracked by the project and is recorded
+separately below rather than invented here.
+
+**Red evidence.** Before the guard, the current regression collected 18 tests and
+failed one (17 passed, 120/123 asserts, exit status 1):
+`[-4] expected to equal [0]: a paralyzed adjacent ally is immobilized and is not
+engaged` (line 231), `[1] expected to equal [5]: the paralyzed ally must not
+reach the roll` (line 243), and `the paralyzed case must not log an into-melee
+penalty` (line 253). The preserved log is
+`builds/qa/runs/2026-11-24_into_melee_paralyzed/focused_red_ea34d6a.log`,
+produced by copying the current regression test onto the pre-fix `ea34d6a`
+encounter in a disposable worktree. The first such worktree run was invalid
+because its Godot imports were absent; it is preserved as
+`focused_red_import_failure.log` and is not counted as product evidence.
+
+**Fix.** `src/core/encounter.gd::_into_melee_penalty` now skips a helpless ally
+with `or Rules.is_helpless(ally)`, matching the existing target-side helpless
+guard. No global `can_act()`, threat-capability, flanking, opportunity-attack,
+occupancy or general engagement-model behavior was changed. The prior helpless
+opportunity-attack closure (`aa06638`/`d14b7fc`) and the message-only
+classification of `_threatening_enemies` remain unchanged.
+
+**Tests.** `tests/test_ranged_melee.gd` adds
+`test_paralyzed_ally_is_not_engaged_for_firing_into_melee`, using the ordinary
+`Game.combat_attack` -> `Encounter.attack_active` path rather than the private
+helper. Four matched cases use Sera's loaded crossbow at 25 ft with clear line of
+sight, cover 0, no Precise Shot, no fighting defensively and no other
+attack-penalty effect: conscious adjacent ally; the same ally paralyzed; no
+adjacent ally; and paralyzed first ally plus a second conscious adjacent ally.
+Assertions cover applied `into_melee_penalty` and final `bonus`, the presence or
+absence of the penalty log line, the loaded shot being spent, the standard action
+being used, the target remaining alive, and target HP matching the resolved hit.
+Focused green: 18/18 tests, 123 asserts, exit 0 (`focused_green.log`).
+
+**Probe.** The existing `--demo-ranged --ranged-probe` now includes a separate
+seeded-paralysis scenario. It advances the first shooter to its second turn,
+seeds paralysis on the existing ally beside the main target, moves the other
+conscious allies away, loads the empty crossbow through the ordinary Load weapon
+control, then uses Attack and the target cell. It asserts the fixture conditions,
+that the shot uses the crossbow and resolves normally, and that there is no
+`shooting into melee -4` or engagement line naming the paralyzed ally. The
+condition and geometry are deterministic fixture seeding; this is not a replay of
+the authored ghoul slam/Fortitude sequence and does not use the private penalty
+helper.
+
+At `--probe-size=1280x900` the ranged probe passes, including all four seeded
+paralysis checks, from source and from the candidate. At 1280x720 the probe still
+reports the pre-existing three failures on the clear-target control: its enemy
+row is below the viewport (`control 'shoot the unengaged target' is on screen`
+fails), the click then has no log segment and reports `Click an enemy within reach
+or range`, and the control's no-penalty assertion consequently fails. The seeded
+paralysis checks themselves pass at 720. This is a probe/layout limitation, not
+product red, and is not folded into this defect.
+
+**Checks.** Source: full suite 992/992 tests, 9,957 asserts, 75 scripts, exit 0.
+Both validators PASS, with the existing eight accepted authored class-progression
+inconsistencies. Source probes: grapple 160 checks, keyboard 31, level-up 349,
+advancement 228, all PASS. Combat layout: 32 controls / 0 failures at 100 % and
+160 %. Existing suite warnings remain separate: one orphan in the existing
+keyboard-targeting test and the recorded deprecation/RID/ObjectDB leak warnings;
+they are not treated as passes or as new failures.
+
+**Candidate.** `2026-11-24_into_melee_paralyzed`, source
+`4c4296569c6d706442d524d2e33b0c7cb87304f6`, 110,891,080 bytes, SHA-256
+`2198ab2f827d0921e43eefb2800d255ccc049d6f0c321d7e70abe916f50fd4e0`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`, no
+untracked files. From that executable: both validators PASS; grapple 160,
+keyboard 31, level-up 349, advancement 228, both layout scales 32/0, and the
+900px ranged regression PASS. The executable hash was identical before and after
+acceptance.
+
+**Classification.** Confirmed defect: yes, the paralyzed-ally engagement
+eligibility; corrected. Maintenance debt: the 720 ranged-probe control row is
+offscreen, and the existing suite orphan/leak/deprecation notices remain.
+Deferred features: overrun is untouched, and its movement-continuation and
+tie-break decisions remain unresolved; occupancy pass-through/double-cost and the
+latent paralyzed-ally flanking path are also separate. Evidence gaps: no human
+playtest or rendered review; the probe seeds paralysis; the project does not
+track whether a target is actually attacking an immobilized ally, so the printed
+"unless actually being attacked" qualification remains an unmodelled engagement
+contract question. No content, schema, save, progression, award or XP change was
+made; no backup or GitHub push was touched. The README quick-start removal remains
+uncommitted, with file SHA-256
+`d7cd5f89815b3d7616c2a8abeccaacf309c9af4e6cf234e152b321eeb78b1b57` and diff
+SHA-256 `0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`
+unchanged before and after this work.

@@ -3590,3 +3590,35 @@ ranged attack path, before resuming overrun planning. If it shows no consequence
 under the project's "actually being attacked" reading, return to overrun with no
 fix. Overrun remains unimplemented; movement-continuation and tie-break are still
 unresolved. README is untouched; no push.
+
+### Firing into melee corrected for helpless allies (2026-11-24)
+
+Confirmed defect outside overrun: `_into_melee_penalty` checked the target's
+helplessness but not the adjacent ally's, so a paralyzed ally could add the -4
+penalty to a real ranged attack. The narrow fix adds `Rules.is_helpless(ally)` to
+the existing engagement eligibility guard; global threat, flanking,
+opportunity-attack, occupancy and engagement behavior are unchanged.
+`tests/test_ranged_melee.gd` covers conscious, paralyzed, no-ally and
+paralyzed-plus-second-conscious cases through `Game.combat_attack`, asserting the
+applied modifier, bonus, log, action and target state. The preserved pre-fix
+red log is `builds/qa/runs/2026-11-24_into_melee_paralyzed/focused_red_ea34d6a.log`
+(18 tests, 17 passed, one failed: -4 vs 0, bonus 1 vs 5, unwanted penalty log);
+the focused green is 18/18, 123 asserts.
+
+Source: suite 992/992 (9,957 asserts, 75 scripts), both validators, grapple 160,
+keyboard 31, level-up 349, advancement 228, and combat layout 32/0 at both scales.
+The seeded-paralysis ranged probe passes at 900; at 720 its pre-existing
+clear-target row is offscreen and produces three control failures, kept separate
+from the product result. Candidate `2026-11-24_into_melee_paralyzed` from
+`4c42965`, 110,891,080 bytes, SHA-256
+`2198ab2f827d0921e43eefb2800d255ccc049d6f0c321d7e70abe916f50fd4e0`,
+`worktree_entries=1` (README only), no untracked files, hash unchanged before and
+after; the same checks and the 900px ranged probe pass from the executable.
+
+Keep separate: no human playtest/rendered review; paralysis is seeded in the test
+and probe; the project still does not model "unless actually being attacked";
+the existing one-orphan and leak/deprecation warnings remain warnings. The prior
+helpless opportunity-attack closure and message-only `_threatening_enemies`
+classification are preserved. Overrun remains unimplemented; movement-continuation
+and tie-break are unresolved. README is untouched; no content, schema, save,
+progression, award or XP change and no push.
