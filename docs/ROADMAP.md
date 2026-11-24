@@ -2201,3 +2201,73 @@ and this batch did not measure that change: the only living opponent is `store_l
 every other monster is undead and immune to sneak attack, and no fight was replayed to
 compare outcomes. No balance testing, playthrough or human playtest was done. A later balance
 or content pass should treat this as an unmeasured rules change rather than a regression.
+
+## Ranged sneak limit implemented (2026-11-24)
+
+**Printed rules, recorded separately from the adaptation.** Verified on the d20srd
+Rogue page (<https://www.d20srd.org/srd/classes/rogue.htm>), PHB p. 50: "Ranged
+attacks can count as sneak attacks only if the target is within 30 feet." The
+sentence is a condition on ranged attacks as a class, not on one route into sneak
+attack, so it governs a ranged attack against a flat-footed or helpless target just
+as it would any other; flanking cannot interact with it because flanking needs melee
+threat and a ranged attacker never flanks. The SRD's neighbouring sentences also
+withhold sneak attacks against concealment and "the limbs of a creature whose vitals
+are beyond reach"; neither clause is modelled.
+
+**Measurement decision (no plan needed).** "Within 30 feet" is attacker-to-target,
+which the engine already measures with `BattleMap.distance_ft` (Chebyshev cells x 5
+ft., `src/core/battle_map.gd:56`) for range increments and the into-melee penalty.
+At 30 ft. the shot qualifies and at 35 ft. it does not; the grid cannot express a
+fraction between them.
+
+**Inspection.** The gate sat in `Encounter._resolve_attack`
+(`src/core/encounter.gd:2985`) and read only the target's state
+(`Rules.is_helpless(target) or flank_bonus > 0 or target_flat_footed`, `:3022-3025`)
+while the same function already held the distance it passes to `Rules.attack` for
+range modifiers. The ordinary ranged path is `Encounter.attack_active`
+(`:788`), which resolves the primary weapon (`_primary_weapon`, `:678`), checks
+range increments (`:891`) and then calls `_resolve_attack`; `Game.combat_attack`
+forwards to it. Nothing in the path compared the distance with 30 ft.
+
+**Defect status.** Recorded as suspected until reproduced. `tests/test_sneak_range.gd`
+ran red first (5 tests, 4 pass, 1 fail, 30/32 asserts, exit 1,
+`builds/qa/sneak_range_red/focused_red.log`): the 35-ft crossbow shot against a
+flat-footed looter carried `extra [4, 4]` damage dice. The three positive controls
+(25 ft., the 30-ft boundary, melee) and the non-rogue case passed in the same run,
+so the failure isolated the missing limit.
+
+**Correction** (commit `81b00f6`): `sneak_range_ok` in `_resolve_attack`
+(`:3015-3017`) is false only for a ranged attack beyond 30 ft., the gate requires it
+(`:3024`), and the encounter logs `no sneak attack beyond 30 ft. (PHB p.50).`
+(`:3077`) when it withholds dice. Flanking, range increments, cover, engagement, the
+opposed-check helper and the action economy are untouched: the shot still resolves
+and still spends the standard action.
+
+**Verification on `81b00f6`** (README quick-start removal left uncommitted and
+untouched; file hash and diff hash re-verified before and after):
+
+- Focused: `tests/test_sneak_range.gd` and `tests/test_flanking.gd`, 15 tests, 15
+  pass, 82 asserts (`builds/qa/sneak_range_green/focused_green.log`).
+- Full suite: 1032 tests, 1032 pass, 10,228 asserts, 80 scripts, exit 0, no script
+  errors (`builds/qa/sneak_range_green/suite_final.log`).
+- Validators: both PASS; diagnostics line unchanged (`authored=4500 ordinary=4350
+  qa=150 encounters=1500 effects=3000 start=3000 threshold=6000`).
+- Probes: keyboard 31, grapple 160, level-up 349, advancement 228, combat-info 62,
+  flanking 8 and the new `--sneak-range-probe` 9 checks, all PASS.
+- Combat layout at text 1.00 and 1.60: 32 controls, 0 failures at both scales.
+
+**Acceptance from the executable**
+(`builds/qa/candidates/2026-11-24_ranged_sneak_limit/RavenloftFoundationEdit.exe`):
+BUILD.txt records `source_head=81b00f68b89e5c474196a3ea866a4103256e5603`,
+`worktree_entries=1` (the README removal only),
+`worktree_diff_sha256=0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`,
+`untracked_files=0`,
+`exe_sha256=1788d811eb35a4f973b24e420e23a346a75fe2bbed7ab344a736d5f87e2e9026`
+and `exe_bytes=110914344`; the hash was identical before and after the acceptance
+runs (both validators, all seven probes, layout at both scales). Logs are in
+`builds/qa/ranged_sneak_limit_acceptance/`.
+
+**Evidence gaps and boundaries.** Automated rules behaviour only: no balance testing,
+no playthrough and no human playtest, and the new log line was not reviewed in a
+rendered window. Concealment and the vitals clause remain unimplemented; overrun
+stays deferred; no content, schema, save, award or XP change was made.

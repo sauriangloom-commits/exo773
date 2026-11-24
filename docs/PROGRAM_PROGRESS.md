@@ -3839,3 +3839,20 @@ printed rule and not a defect, but it changes the difficulty of any shipped figh
 produce a monster flank, and the change was not measured: no balance testing, playthrough or
 human playtest was done, and the living looter remains the only opponent that can be sneak
 attacked.
+
+Ranged sneak limit closed (2026-11-24). The printed rule - "Ranged attacks can count as
+sneak attacks only if the target is within 30 feet" (PHB p. 50) - was suspected, then
+reproduced by `tests/test_sneak_range.gd` (red: 5 tests, 4 pass, 1 fail, 30/32 asserts; the
+35-ft crossbow shot against a flat-footed looter carried extra dice) and corrected in the
+sneak gate (`sneak_range_ok`, `src/core/encounter.gd:3015-3025`) with a withheld-dice log
+line at `:3077`. Melee sneak attacks, flanking, range increments, cover, the engagement
+model and the action economy are unchanged. Green: focused 15/15 with 82 asserts, suite
+1032/1032 with 10,228 asserts and 80 scripts, both validators, keyboard 31, grapple 160,
+level-up 349, advancement 228, combat-info 62, flanking 8 and the new sneak-range probe's
+9 checks, combat layout 32 controls and 0 failures at 1.00 and 1.60. Candidate
+`2026-11-24_ranged_sneak_limit` (source `81b00f6`, exe sha256 `1788d811...`,
+110,914,344 bytes) repeated both validators, all seven probes and both layouts from the
+executable with its hash identical before and after. Concealment and the vitals clause
+remain unmodelled; overrun stays deferred; evidence gaps remain no balance testing, no
+playthrough, no human playtest and no rendered review of the new log line; no content,
+schema, save, award or XP change was made.

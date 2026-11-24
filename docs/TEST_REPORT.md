@@ -6854,3 +6854,51 @@ human playtest, and the new `flanking +2` log line was not reviewed in a rendere
 concealment clause remained unimplemented when this record was written and the 30-ft
 ranged limit was added afterwards; overrun stays deferred; no
 content, schema, save, award or XP change was made.
+
+## Ranged sneak limit (2026-11-24) - closed
+
+The printed limit ("Ranged attacks can count as sneak attacks only if the target is
+within 30 feet", PHB p. 50) was recorded as a suspected defect, reproduced first, then
+applied in the sneak gate of `Encounter._resolve_attack`
+(`src/core/encounter.gd:3015-3025`), with the withheld-dice line at `:3077`.
+
+**Red run** (`builds/qa/sneak_range_red/focused_red.log`, pre-implementation):
+`tests/test_sneak_range.gd` 5 tests, 4 pass, 1 fail, 30/32 asserts, exit 1. The failing
+case was the 35-ft crossbow shot against a flat-footed looter, whose damage rolls
+contained `extra [4, 4]`; the 25-ft, 30-ft and melee positive controls and the
+non-rogue case passed in the same run. No parse, import or fixture error appeared.
+
+**Green runs** (post-implementation, `81b00f6`):
+
+| Check | Result | Log |
+| --- | --- | --- |
+| `tests/test_sneak_range.gd` + `tests/test_flanking.gd` | 15 tests, 15 pass, 82 asserts | `builds/qa/sneak_range_green/focused_green.log` |
+| Full suite (`-gdir=res://tests -gexit`) | 1032 tests, 1032 pass, 10,228 asserts, 80 scripts, no script errors | `builds/qa/sneak_range_green/suite_final.log` |
+| `--validate-campaigns` | PASS | `builds/qa/sneak_range_green/validate_campaigns.log` |
+| `--validate-diagnostics` | PASS, line unchanged | `builds/qa/sneak_range_green/validate_diagnostics.log` |
+| `--keyboard-probe --demo-unarmed` | PASS, 31 checks | `builds/qa/sneak_range_green/keyboard_probe.log` |
+| `--grapple-probe --demo-unarmed` | PASS, 160 checks | `builds/qa/sneak_range_green/grapple_probe.log` |
+| `--level-up-probe` | PASS, 349 checks | `builds/qa/sneak_range_green/level_up_probe.log` |
+| `--advancement-probe` | PASS, 228 checks | `builds/qa/sneak_range_green/advancement_probe.log` |
+| `--combat-info-probe` | PASS, 62 checks | `builds/qa/sneak_range_green/combat_info_probe.log` |
+| `--flanking-probe` | PASS, 8 checks | `builds/qa/sneak_range_green/flanking_probe.log` |
+| `--sneak-range-probe` (new) | PASS, 9 checks | `builds/qa/sneak_range_green/sneak_range_probe.log` |
+| Combat layout, text 1.00 and 1.60 | 32 controls, 0 failures at both scales | `builds/qa/sneak_range_green/layout_1.0.log`, `layout_1.6.log` |
+
+**What the tests cover.** Each case reads the applied dice from the damage rolls (the
+`extra ...` entry), not hit or miss, and checks the standard action separately: a
+25-ft ranged sneak attack as the positive control, the same shot at 35 ft. with no
+dice but a resolved attack and spent action, the 30-ft boundary as inside the limit, an
+adjacent melee sneak attack unchanged, and a non-rogue crossbow shot unchanged.
+
+**Acceptance from the executable**
+(`builds/qa/candidates/2026-11-24_ranged_sneak_limit/RavenloftFoundationEdit.exe`,
+`exe_sha256=1788d811eb35a4f973b24e420e23a346a75fe2bbed7ab344a736d5f87e2e9026`,
+110,914,344 bytes): both validators, all seven probes and combat layout at both scales
+passed from the executable, with the executable's hash identical before and after.
+Logs are in `builds/qa/ranged_sneak_limit_acceptance/`.
+
+**Evidence gaps.** Automated rules behaviour only - no balance testing, no playthrough
+and no human playtest, and the new log line was not reviewed in a rendered window.
+Concealment and the vitals clause remain unimplemented; overrun stays deferred; no
+content, schema, save, award or XP change was made.
