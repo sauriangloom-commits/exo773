@@ -5,7 +5,11 @@ escape sections. Tests were written and run failing first, then the engine, the 
 wrappers and the two sidebar buttons were added. §3-§9 are what shipped; the notes below
 record where the code is more specific than the plan and where the acceptance evidence
 lives. Pin, the remaining printed actions, casting from a grapple, the feat catalog entry
-and multiple grapplers (§10, 8b-8f) remain unimplemented.
+and multiple grapplers (§10, 8b-8f) remain unimplemented. Batch 8a is **closed as
+accepted 2026-11-24** within the evidence recorded in `514ebc9`, including the exported
+98-check `--grapple-probe`; no checks were run for that closure. Candidate identity:
+`2026-11-24_batch8a_acceptance_b`, source `a71b942`, 110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`.
 
 **Implementation notes.** The automatic hold damage reuses a new `Rules.roll_damage`,
 extracted from `Rules.attack` so there is one damage path and the attack results are
@@ -146,8 +150,12 @@ Forbidden while grappled, each with a named refusal:
   attacks — printed action list is exhaustive and names only "attack your opponent".
 - `Pick up`, `Sheathe weapon`, `Load weapon` — not in the printed list; arms are
   occupied by the hold.
-- Spells, potions and `Turn undead` — scope in 8a (adaptation C); the printed spell
+- Spells and `Turn undead` — refused by scope in 8a (adaptation C); the printed spell
   path needs components and a DC 20 + level check the engine cannot yet express.
+  Potions stay permitted through the existing potion path, which spends the standard
+  action and provokes; 8c extends that path to the other magic items PHB p.156 lists.
+  An earlier version of this section said potions were refused; that was wrong and is
+  corrected here, with no code change (see `ROADMAP.md`, grapple follow-up review).
 
 Permitted:
 

@@ -1232,3 +1232,107 @@ change.
 **Not recommended now.** Disarm and sunder (no authored target), concealment, hard
 cover, AoE templates and encumbrance (no authored content), disease (no day-scale
 pressure), and a reload-then-reapply batch of its own (a test case, not a feature).
+
+## Grapple follow-up review (2026-11-24)
+
+Batch 8a is closed as accepted within `514ebc9`, including the exported 98-check
+`--grapple-probe`. Candidate `2026-11-24_batch8a_acceptance_b`: source `a71b942`,
+110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`; its disclosed
+working-tree difference is the uncommitted README quick-start removal (file
+`d7cd5f89…`, diff `0e8ff3e1…`). No checks were run for this review or the closure.
+
+Read for this review: `GRAPPLE_PLAN.md` (especially §4 and §10), `encounter.gd`'s
+grapple state and refusals, `Feats.CATALOG` and `LevelUp`/`ClassProgression`, the combat
+screen's action grid and potion path, and `content/shared/characters.json` /
+`monsters.json`.
+
+### Pin (8b)
+
+- **Printed requirements** (plan §10): opposed check in place of an attack, immobile for
+  1 round, -4 AC against everyone but the pinner, escape from the pin leaving the
+  creature still grappling, breaking another creature's pin, free release of a pin.
+- **Current code**: `grapples` records only `{holder, held}`; there is no pin state, no
+  pin action, and `Escape` covers release and escape from the hold only. The restrictions
+  that would carry over are movement, step, stand, pick up, sheathe, load, third-party and
+  ranged attacks, casting and turning; Dexterity denial already exists through
+  `denies_dex_to`.
+- **Player impact in shipped content**: one more round of control over a monster that is
+  already unable to act except to escape, with no damage (all three shipped monsters are
+  undead and ignore the nonlethal hold damage). Tactical, but small, and no shipped
+  encounter is built around it.
+- **Rules decisions needed**: action cost ("in place of an attack" cannot apply because
+  iteratives are not modelled, so a standard action must be chosen and recorded); whether
+  the pin lives on the existing pair or in a second array; what a pinned creature may
+  still do (the printed list is escape only, which interacts with the current cast,
+  potion and item paths); whether -4 AC and the existing Dexterity denial stack as
+  separate statements; how "escape from a pin leaves the grapple" is expressed without a
+  third state; who may break a pin and how the target is chosen; what the AI does after
+  escaping a pin but not the grapple; and how one stable `Escape` label explains two
+  different outcomes.
+- **Dependencies**: 8a only. **Boundary**: engine state and refusals, a `Pin` control and
+  the `Escape` semantics, AI branch, a focused test file, extension of
+  `--grapple-probe`, layout count 31 -> 32, export. **Acceptance**: the pin check, the
+  immobility, the AC and Dex statements, pin escape leaving the grapple, breaking a pin,
+  free release, AI behaviour, layout at both scales, and an exported probe.
+
+### Improved Unarmed Strike -> Improved Grapple (8e)
+
+- **Current code**: neither feat is in `Feats.CATALOG`. Only raw feat text works:
+  `_grapple_bonus` and the reaction gate call `Feats.has_feat("improved_grapple")`, and
+  `test_grapple.gd` / `--grapple-probe` seed that text. That is a hook, not reachability.
+- **Legality inside the supported range**: `LevelUp` supports exactly 3rd -> 4th level.
+  At 4th only the fighter gains a feat (`feat_levels` general [1,3], class [1,2,4]);
+  rogue, cleric, wizard and sorcerer gain none. Improved Unarmed Strike has no
+  prerequisites; Improved Grapple needs Dex 13 and Improved Unarmed Strike, i.e. two
+  feats. Kaelen (Dex 13) could take Improved Unarmed Strike at 4th and would need a
+  further feat at 6th, which the level-up step does not support. No shipped character can
+  therefore legally own Improved Grapple in the supported range.
+- **Player impact**: zero until a level-range batch exists; adding the catalog entries
+  alone would only add a selectable feat whose second half stays out of reach.
+- **Decision needed**: whether to extend level-up first (a separate feature, not 8e).
+  **Recommendation**: keep 8e deferred and record the reason rather than schedule it.
+
+### Deferred grapple attack and casting options (8c/8d)
+
+- **Casting and turning**: `cast_active_spell` and `turn_undead` refuse while grappling by
+  stated scope. That blocks every shipped caster's class feature in a hold: Aldric
+  (cleric), Ysolde (wizard), Mira (sorcerer) all have spells, and Aldric loses turning.
+  The printed path needs a component model and a Concentration DC 20 + spell level, so
+  this is a design decision, not a small patch.
+- **Monster natural weapon**: `attack_active` already permits a monster to attack its
+  partner with a natural weapon at -4, but `_run_monster_turn` returns after the escape
+  attempt, so a held ghoul never takes that attack and its paralysis cannot trigger from a
+  hold. Making it reachable is an AI decision (attack versus escape), with the paralysis
+  save exposed as a consequence.
+- **Potions**: `use_potion_active` spends the standard action and provokes but does not
+  refuse a grappled actor, and PHB p.156 lists activating a magic item in a grapple, so
+  the implementation is consistent with the printed list. Plan §4 previously claimed
+  potions were refused; that statement is corrected in this commit.
+- **Remaining 8c actions**: damage by opposed check (currently only the automatic hold
+  damage exists), use the opponent's weapon, move the grapple at half speed, draw a light
+  weapon, retrieve a spell component, and magic-item activation beyond potions.
+
+### Classification
+
+- **Confirmed defects**: none in executable grapple behaviour. One documentation defect:
+  plan §4 said potions were refused while `use_potion_active` permits them; corrected
+  here, no code change. The `Combat Casting` benefit text still says grappling is not
+  modelled, which is stale and is recorded as maintenance debt, not a defect (the bonus
+  stays unreachable because casting from a grapple is refused).
+- **Deferred features**: pin (8b), the remaining actions (8c), casting/monster natural
+  weapon (8d), the feat chain (8e), multiple grapplers/improved grab (8f).
+- **Maintenance debt**: the stale `Combat Casting` benefit string; the plan/implementation
+  wording drift corrected above.
+- **Evidence gaps**: exported grapple behaviour exists only through the 98-check probe at
+  1280x720 headless; no living shipped opponent; feat text seeded by tests and the probe
+  is not player reachability; nothing here is ordinary play or human testing.
+
+### Recommendation
+
+**Planning only for 8b (pin).** It is the next printed step and needs 8a alone, but it
+carries at least six decisions above - action cost without iteratives, state shape, the
+pinned action set, AC/Dex composition, break-pin targeting and the AI's post-escape turn -
+and those decide its tests and UI. A planning note should settle them before any
+implementation. Do not start 8e (no legal reach inside 3rd -> 4th level) and do not fold
+8c/8d in: casting needs a component/Concentration model and 8d needs an AI policy.

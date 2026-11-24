@@ -3379,3 +3379,20 @@ equal to `BUILD.txt`; from the exe the grapple probe, both validators, both prob
 both layout scales PASS. Exported grapple behaviour is recorded as exercised through that
 probe only; ordinary play, rendering and human testing remain outstanding. Pin and 8b-8f
 are untouched.
+
+### Batch 8a closed as accepted (2026-11-24)
+
+Closed within the evidence already recorded in `514ebc9`, including the exported 98-check
+`--grapple-probe`; no checks were run for the closure. Candidate
+`2026-11-24_batch8a_acceptance_b`, source `a71b942`, 110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`, with the disclosed
+uncommitted README quick-start removal as its only working-tree difference. Pin and 8b-8f
+stay unimplemented.
+
+The follow-up review in `ROADMAP.md` compares pin, the Improved Unarmed Strike ->
+Improved Grapple chain and the deferred attack/casting options. It finds no executable
+grapple defect, one documentation defect (plan §4 claimed potions were refused while the
+existing potion path permits them; corrected with no code change), the stale `Combat
+Casting` benefit text as maintenance debt, and confirms that no shipped character can
+legally own Improved Grapple inside the supported 3rd -> 4th level step. The recommended
+next task is a planning note for pin only.

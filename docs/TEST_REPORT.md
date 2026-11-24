@@ -5982,3 +5982,19 @@ synthesized viewport pointer events at 1280x720 headless - not an OS mouse, not 
 rendered read-through, and not ordinary combat feasibility. Shipped content has no living
 opponent, so the hold's nonlethal damage is reachable only through the disclosed QA
 brawler. No rendered appearance, ordinary combat outcome or human playtesting is claimed.
+
+## Batch 8a closure (2026-11-24)
+
+Batch 8a is closed as accepted within the evidence already recorded in `514ebc9` and the
+exported 98-check `--grapple-probe`. **No checks were run for this closure**, nothing was
+rebuilt or re-exported, and the candidate identity is unchanged:
+`2026-11-24_batch8a_acceptance_b`, source `a71b942e68400cf8fcf0c2d78245ddaef9923aa5`,
+110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`, `worktree_entries=1`
+(the uncommitted README quick-start removal only), no untracked files.
+
+The follow-up review (`ROADMAP.md`) is repository inspection only. It records no
+executable grapple defect, one corrected documentation claim (potions are permitted while
+grappling, contrary to plan §4), and the reachability gap for the feat chain: neither feat
+is selectable and the only supported level step is 3rd -> 4th, where only the fighter gains
+one feat.
