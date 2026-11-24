@@ -300,24 +300,89 @@ before the implementation and pass after:
      sha256 and byte size; the candidate is hash-bound, not merely named.
   6. No content, schema, save, award or XP change; the opposed-check helper is untouched.
 
-## Batches
+## Batches (amended 2026-11-24: one acceptance unit)
 
-Two independently acceptable batches, in this order:
+The earlier two-batch split — attack half first, defence half second — is **withdrawn**. Both
+bonus kinds ship as **one acceptance unit**. The printed action is a choice between +2 attack
+and +2 AC; shipping only one half would put the printed name on a partial action, and no
+migration path makes that honest. The unit therefore contains the whole melee assist: the
+position and engagement checks, the d20 against AC 10, both bonus kinds, their consumption and
+expiry, stacking, the button, mode, friend and bonus decisions, the keyboard and mouse paths,
+cleanup, tests, probe, layout evidence and one hash-bound candidate.
 
-1. **Aid Another — attack half.** Core action, position/engage checks, d20 vs AC 10, the
-   pending choice, the +2 attack bonus and its consumption, the button and mode, keyboard and
-   mouse paths, tests 1-5 and 9-14, probe checks for the attack side, layout measurement,
-   candidate. This is the recommended first batch: it is the printed action's primary use,
-   touches only the attack path that flanking already opened, and delivers a playable action.
-2. **Aid Another — defence half.** The +2 AC bonus, its consumption by monster attacks,
-   helpless/prone target behaviour, tests 6-8 and 11's AC cases, probe AC checks, docs.
+Stopping remains possible, but at the batch boundary before any of it: if the action is not
+wanted, the alternative is the stopping point recorded in `17abb5b`. There is no "attack-only"
+release.
 
-Each batch carries its own docs, tests, probe, layout evidence and hash-bound candidate, so
-either can stop the line without a half-finished feature: batch 1 alone is a complete,
-shippable attack-side action.
+## What "next attack" covers
 
-**Recommended first:** batch 1. The alternative remains the stopping point recorded in
-`17abb5b`: no open defect, and this action is a fidelity option rather than a balance need.
+The bonus attaches to one attack **roll**, whatever produced it, and is consumed by that roll
+whether it hits or misses. A full attack's later swings are separate rolls and receive nothing.
+
+| Attack roll | Friend's +2 attack | Foe's +2 AC |
+| --- | --- | --- |
+| Weapon attack through `attack_active` → `_resolve_attack` (`encounter.gd:788`, `:2985`) | applies, consumes | applies when that foe attacks the friend |
+| Cleave follow-up (`resolve_cleave_attack`, `:2642` → `_resolve_attack`) | applies, consumes | applies |
+| Improved Trip follow-up (`resolve_improved_trip_attack`, `:2489` → `_resolve_attack`) | applies, consumes | applies |
+| Trip touch attack (`Rules.attack`, `:1403`) | applies, consumes | applies if a foe's trip touch attacks the friend |
+| Grapple touch attack (`Rules.attack`, `:2021`) | applies, consumes | applies |
+| Opportunity attack (`_opportunity_attack`, `Rules.attack` `:3520`) | applies, consumes — reaction attacks are covered | applies |
+| Ranged touch spell (`_cast_scorching_ray`, `Rules.attack` `:3871`) | applies, consumes | applies |
+| Monster full attack (AI, `_monster_full_attack` `:4585`) | monsters never aid | first swing only; later swings are uncovered |
+| Charge | no charge action exists in this build (deferred), so nothing is claimed | — |
+| Attack refused before rolling (prone ranged, illegal target, dead foe) | does not apply and does not consume | does not apply |
+
+The printed "next attack" is read as the next attack roll, not the next attack action, so a
+full attack's first swing consumes it. If an attack is aborted before any roll, the grant
+survives.
+
+## Recomputed expected-damage comparison
+
+Stats from `content/shared/characters.json` and `content/shared/monsters.json`; damage is the
+average of the printed dice plus the ability modifier.
+
+| Combatant | Attack bonus | Average damage | AC |
+| --- | --- | --- | --- |
+| Kaelen | +8 = BAB 3 + Str +3 + Weapon Focus 1 + masterwork 1 | longsword 1d8+3 = 7.5 | 17 = 10 + chain shirt 4 + heavy shield 2 + Dex 1 |
+| Sera | +5 = BAB 2 + Dex +3 (Weapon Finesse, short sword) | short sword 1d6+1 = 4.5; flanking sneak 4.5 + 2d6 (7) = 11.5 | 15 = 10 + leather 2 + Dex 3 |
+| Aldric | +4 = BAB 2 + Str +2 | heavy mace 1d8+2 = 6.5 | 16 = 10 + scale 4 + shield 2 |
+| Soaked Looter | +2 = BAB 1 + Str 1 | longsword 1d8+1 = 5.5 | 15 = 10 + chain shirt 4 + Dex 1 |
+| Zombie | +1 | slam 1d6 = 3.5 | 11 |
+| Ghoul | +3 bite / +3 claw | bite 1d6 = 3.5 | 14 |
+| Infected Zombie | +2 | slam 1d6 = 3.5 | 16 |
+
+Hit chance is `(21 − AC + attack bonus) / 20`, floored at 5 % and capped at 95 %; Sera's
+flanking damage below assumes the flank is already established, so the aid is not paying for it.
+
+| Case | Helper's forgone damage | Gain from +2 | Net |
+| --- | --- | --- | --- |
+| Aldric aids Sera vs Infected Zombie (AC 16) | 0.45 × 6.5 = **2.925** | Sera 50 % → 60 %: 0.10 × 11.5 = **1.15** | **−1.775** |
+| Aldric aids Sera vs Ghoul (AC 14) | 0.55 × 6.5 = **3.575** | 60 % → 70 %: 0.10 × 11.5 = **1.15** | **−2.425** |
+| Aldric aids Sera vs Looter (AC 15) | 0.50 × 6.5 = **3.25** | 55 % → 65 %: 0.10 × 11.5 = **1.15** | **−2.10** |
+| Aldric aids Sera vs Zombie (AC 11) | 0.70 × 6.5 = **4.55** | 75 % → 85 %: 0.10 × 11.5 = **1.15** | **−3.40** |
+| +2 AC vs Looter attacking Sera (AC 15) | 3.25 (Aldric's attack) | 40 % → 30 %: 0.10 × 5.5 = **0.55** | **−2.70** |
+
+Correction: the earlier draft quoted Sera's short sword as 1d6+2 and a 1.25 gain with a 2.9
+cost. From the authored Str 12 the weapon is 1d6+1, so the gain is 1.15 and Aldric's cost is
+2.925. The conclusion does not change: in the shipped encounters aiding is worse than attacking
+unless the helper's own attack is impossible or penalised, or one prevented hit prevents a drop.
+
+## Eligibility (settled)
+
+- **Foe.** Enemy, alive, `can_act()`, not helpless (paralyzed, unconscious, dying, dead) and
+  not cowering; a flat-footed foe **is** eligible, because flat-footedness removes opportunity
+  attacks, not attacks. A grappled or pinned foe is eligible: it can still attack, and it is
+  engaged with the friend. The foe must be within the helper's melee reach
+  (`_threatens_cell`, `encounter.gd:753`) and engaged with the friend (either threatens the
+  other, `:3429-3437`).
+- **Ally.** Party, alive, not the helper; a flat-footed ally is fine. An ally who cannot act
+  (paralyzed, helpless, dying, stable) is offered **only the +2 AC**; the attack option is not
+  shown, because the bonus would expire unused, and the log says so.
+- **After the grant.** If the foe dies or becomes helpless, the grant stays but cannot be used
+  against it and is not re-targeted. Turning a foe to cowering does not clear a grant: the AC
+  half still applies if that foe attacks, and expiry is unchanged.
+- **Self, allies as foes, dead creatures, unengaged foes, out-of-reach foes and grappled or
+  pinned helpers** are refused before any action is spent.
 
 ## Out of scope
 
