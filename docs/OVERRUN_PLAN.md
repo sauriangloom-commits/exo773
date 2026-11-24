@@ -12,6 +12,12 @@ described in §7 was investigated and corrected separately in commit
 remains unimplemented, and this correction does not decide the movement-
 continuation or tie-break questions below.
 
+**Threat/engagement review (2026-11-24).** `_threatening_enemies` is only a
+provocation-candidate list; its paralyzed entry is message-only and does not feed
+flanking or engagement. A separate into-melee engagement hypothesis is recorded
+in `docs/TEST_REPORT.md` and needs a focused test before overrun resumes. This
+review does not authorize overrun and does not resolve §3.5 or §3 ties.
+
 Related documents: `docs/ROADMAP.md` candidate B, `docs/PROGRAM_PROGRESS.md`,
 `docs/ADAPTATION_LOG.md`, `docs/FEATS_SKILLS_COVERAGE.md`,
 `docs/SUPPORTED_FEATURES.md` and `docs/TRACEABILITY.md`.

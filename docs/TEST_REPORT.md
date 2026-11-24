@@ -6238,10 +6238,11 @@ made. The caller audit covered movement/crawl and bull-rush entry through
 `_provoke_attacks_of_opportunity`, and load, stand up, ranged/unarmed, trip, bull
 rush, grapple, pickup and spell casting through `_provoke_single_opportunity`;
 each passes a real threatening defender and otherwise eligible enemies are
-unchanged. Separate finding: `_threatening_enemies` still lists a paralyzed
-creature (it is `can_act()` true) for threat/engagement, so a caller may log a
-generic "provokes" line before the new guard refuses the reaction; threat and
-engagement semantics were not changed in this batch.
+unchanged. Separate finding: `_threatening_enemies` still lists a paralyzed creature
+(it is `can_act()` true) as a provocation candidate, so a caller may log a
+generic "provokes" line before the new guard refuses the reaction. It does not
+feed `_is_flanked` or `_into_melee_penalty`; those use `_threatens_cell`
+directly (see the closure review below).
 
 **Tests.** `tests/test_opportunity_attack_eligibility.gd` 6/6, 35 asserts:
 paralyzed movement and loading refusals, conscious positive controls for the same
@@ -6284,3 +6285,93 @@ removal remains uncommitted and its file/diff fingerprints are unchanged. No
 content, schema, save, progression, award or XP change was made; no backup or
 GitHub push was touched. Classification: confirmed shared opportunity-attack
 defect, corrected; overrun remains planning-only.
+
+## Helpless opportunity-attack fix closed; threat/engagement review (2026-11-24)
+
+**Closure.** The shared opportunity-attack correction is closed within the
+evidence already recorded in `aa06638` for implementation `d14b7fc` and candidate
+`2026-11-24_aoo_helpless_b`. **No checks were run for this closure**; nothing was
+rebuilt or re-exported and no test, probe, validator or layout run was repeated.
+The prior record stands: both helpers refuse `Rules.is_helpless`, `can_act()` is
+unchanged, and the seeded focused-test and real-action probe evidence is
+unchanged. Existing orphan/leak warnings remain recorded warnings, not work
+items in this review.
+
+**Helper trace (inspection only).** `_threatening_enemies` at
+`encounter.gd:3370` filters team, `can_act`, total defense, melee capability and
+range. It returns a **provocation-candidate** list, not a general "threatens"
+predicate. Its production consumers are `attack_active` ranged (`:894`),
+`load_weapon` (`:1236`), `stand_up_active` (`:1280`), `pick_up_active` (`:2746`),
+`cast_active_spell` (`:3622`) and `drink_potion` (`:3932`). Each uses the list only
+to emit a generic "provokes"/"threatened" line and call
+`_provoke_single_opportunity`, which returns early for a helpless attacker.
+`_threatened_by_enemy` (`:3389`) has no production consumer; it is used only by
+`test_melee_threat.gd`. `_provoke_attacks_of_opportunity` (`:3468`) does not call
+`_threatening_enemies`; it has the same helpless guard.
+
+Consequently a paralyzed entry in this list changes only the message before the
+guard: no action availability, targeting, movement, engagement, flanking,
+sneak-attack or reaction result changes. If another eligible enemy is present,
+that enemy still reacts; if only the paralyzed creature is present, the action
+proceeds without a reaction. This is **message-only, not a product defect**.
+
+**Printed distinctions verified.** d20srd threatened squares: "You threaten all
+squares into which you can make a melee attack, even when it is not your action."
+Paralyzed: "frozen in place and unable to move or act" and helpless; helpless
+includes paralyzed. Flanking requires an ally that threatens the defender.
+Total defense forbids opportunity attacks but does not remove threat, which the
+existing `test_defensive_actions.gd::test_total_defense_does_not_remove_flanking_or_engagement`
+pins. Flat-footed still threatens but cannot react, as `test_melee_threat.gd`
+pins. "Occupies a square" remains true for a helpless creature; "threatens" is
+the melee-attack capability; "can make an opportunity attack" adds reaction
+gates; "has a reaction remaining" is `aoo_used`. These are not interchangeable,
+and this review did not globally apply the reaction filter.
+
+**Separate paths (not consumers).** `_is_flanked` (`:3171`) and
+`_into_melee_penalty` (`:3330`) call `_threatens_cell` directly. Both check
+`can_act()` but not `Rules.is_helpless`, so inspection says they can count a
+paralyzed creature as a threatening ally.
+
+- **Flanking/sneak (latent).** `_is_flanked` feeds only the sneak-attack
+  condition at `:3008`; no +2 flanking attack bonus is implemented. Every shipped
+  monster is undead (`content/shared/monsters.json`) and immune to sneak attack;
+  `test_flat_footed.gd` notes that the living-target case is synthetic. No
+  shipped player action currently makes this consequential; a synthetic living
+  target would be needed. This is a latent gap, not a current defect.
+- **Into-melee (hypothesis requiring a reproducing test).**
+  `_into_melee_penalty` checks `Rules.is_helpless(target)` but not the friendly
+  ally; it uses `ally.can_act()` and `_threatens_cell`. A paralyzed human ally
+  (ghoul paralysis is authored and covered by `test_combat.gd`) adjacent to a
+  target could be counted as engaged, applying -4 to a ranged attack by another
+  party member. This is player-reachable in `ravenloft_demo`'s warden encounter
+  (ghoul; Sera carries a crossbow and has sneak-attack dice), but the printed
+  "not engaged unless actually being attacked" clause is not tracked. Existing
+  engagement tests (`test_ranged_melee.gd`, `test_melee_threat.gd`) do not seed
+  paralysis; the total-defense test covers a different state.
+- **Occupancy (separate movement adaptation).** `occupied_except` (`:516`)
+  excludes only dead, so a paralyzed creature still blocks movement. The SRD
+  instead allows movement through its space at double cost. This is not caused by
+  `_threatening_enemies`; it is recorded separately as a deferred/evidence gap and
+  is not part of the recommended task.
+
+**Classification.** No new confirmed defect is established by this review; the
+previously confirmed shared opportunity-attack defect remains closed. The
+misleading helper name and generic "provokes" message are maintenance debt,
+not a defect; no rename or message cleanup is proposed now. Occupancy
+pass-through/double-cost and overrun are deferred features. The paralyzed-ally
+engagement path and the absence of a shipped living flanking target are
+evidence gaps requiring a reproducing test or new content, not present defects.
+
+**Recommendation.** Close the `_threatening_enemies` finding as message-only; its
+message cleanup has low value and does not justify work. The one bounded next task
+is a failing-first investigation of the separate into-melee engagement path
+through a real player ranged attack: seed a paralyzed human ally adjacent to the
+target, use the ordinary ranged attack path (`Game.combat_attack`/`attack_active`),
+and assert the actual penalty, roll/log and target state before deciding whether a
+narrow ally-helplessness check is warranted. Do not change `threat_capability`
+globally. If that test shows no consequence under the project's "actually being
+attacked" reading, return to overrun planning; no fix is justified.
+
+No overrun implementation is authorized. Movement-continuation and tie-break
+remain unresolved. No executable, test, probe, content, schema or save change was
+made for this closure/review; no backup or GitHub push was touched.

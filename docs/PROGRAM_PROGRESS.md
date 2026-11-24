@@ -3562,3 +3562,31 @@ same executable hash but is not the acceptance candidate. No overrun button,
 mode, stub or feature was added; movement-continuation and tie-break decisions
 remain unresolved. The README removal is untouched; no content, schema, save,
 progression, award or XP change and no push.
+
+### Helpless opportunity-attack fix closed; threat/engagement review (2026-11-24)
+
+Closed within the evidence recorded in `aa06638` for implementation `d14b7fc` and
+candidate `2026-11-24_aoo_helpless_b`. **No checks were run**, nothing was
+rebuilt/re-exported, and no executable, test, probe, content, schema or save change
+was made.
+
+Inspection shows `_threatening_enemies` is a provocation-candidate list, not a
+general threat predicate. Its six production consumers only log a generic
+"provokes"/"threatened" message and call `_provoke_single_opportunity`, which
+refuses the helpless creature; `_threatened_by_enemy` has no production consumer,
+and the movement helper does not use the list. The paralyzed entry is therefore
+message-only, not a product defect. Flanking and engagement use a separate
+`_threatens_cell` path. `_is_flanked` can include a paralyzed ally, but all shipped
+monsters are undead and immune to sneak attack and no +2 flanking bonus is
+implemented, so that is a latent gap. `_into_melee_penalty` does not check ally
+helplessness; a paralyzed human ally adjacent to a target could impose the -4
+engagement penalty on a real ranged attack, so that is a hypothesis requiring a
+focused failing-first test. Occupancy is separate: paralyzed still blocks movement
+under `occupied_except`, while the SRD allows passage at double cost; this is not a
+consequence of the helper.
+
+Recommended next task: the bounded into-melee engagement test through the ordinary
+ranged attack path, before resuming overrun planning. If it shows no consequence
+under the project's "actually being attacked" reading, return to overrun with no
+fix. Overrun remains unimplemented; movement-continuation and tie-break are still
+unresolved. README is untouched; no push.
