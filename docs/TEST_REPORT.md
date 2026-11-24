@@ -6103,3 +6103,12 @@ debt: the stale `Combat Casting` benefit text only; the earlier wrapper item is
 withdrawn. Evidence gaps: the probe's pinned-monster wrapper call is seeded and not
 player reachable; valid Turn Undead attempts are covered by automated tests, not the
 exported probe; no rendered appearance, ordinary play or human testing is claimed.
+## Turn Undead investigation closed (2026-11-24)
+
+Closed as **no product defect found**, on the evidence already recorded in `a24243b`
+for implementation `5d0f54a` and candidate `2026-11-24_turn_undead_wrapper_b`.
+**No checks were run for this closure**, nothing was rebuilt or re-exported, and no
+executable behavior changed. The wrapper tests show the acting able party member keeps
+the turn after grappled/pinned/range/spent-action/holy-symbol refusals and after both a
+legal attempt that affects nothing and a successful turn; the seeded pinned-monster
+direct-call bypass remains a disclosed non-player path. No open issue is carried.

@@ -406,7 +406,7 @@ exe.
 opponent's weapon and moving a pin (8c); casting/Concentration (8d); the feat chain (8e);
 joining and multiple grapplers (8f). Maintenance debt: the stale `Combat Casting`
 benefit text only. The reported `Game.combat_turn_undead()` auto-advance was
-investigated on 2026-11-24 and is not a defect on the player path: the action is
+investigated and closed on 2026-11-24 as no product defect found: the action is
 offered only to an able party member, for whom `auto_advance()` returns without
 moving initiative (pinned by `tests/test_turn_undead_wrapper.gd`). The probe's direct
 `Encounter.turn_undead()` call covers the seeded non-player pin turn and remains a

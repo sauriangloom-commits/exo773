@@ -3446,3 +3446,12 @@ Source: suite 973/973 (9,810 asserts, 73 scripts), both validators, `--grapple-p
 `worktree_entries=1` (README only), no untracked files, hash equal to `BUILD.txt` and
 unchanged before and after; the probe, both validators, both other probes and both
 layout scales PASS from the exe. The 8b-1 closure remains accepted within `8c83144`.
+### Turn Undead investigation closed: no product defect found (2026-11-24)
+
+Closed as **no product defect found**, on the evidence recorded in `a24243b` for
+implementation `5d0f54a` and candidate `2026-11-24_turn_undead_wrapper_b`. No checks
+were run for this closure, nothing was rebuilt or re-exported, and no executable
+behavior changed. The wrapper's `auto_advance()` is a no-op for the acting able party
+member, so the player keeps the turn after both pre-action refusals and legal
+attempts; the seeded pinned-monster direct-call bypass stays disclosed and is not a
+player path. This item is resolved by investigation, not carried as open debt.

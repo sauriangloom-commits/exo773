@@ -1344,3 +1344,143 @@ tests), the extended `--grapple-probe` (147 checks), layout 32 controls and cand
 `8f9de152fa89b1c273eaf85208826c3645216170e759a925b1cf1a3b781aa2e0`). Break-pin (8b-2)
 and 8c-8f remain deferred; `PIN_PLAN.md` section 10 and `TEST_REPORT.md` carry the
 record.
+
+## Next bounded task - roadmap review after batch 8b-1 (2026-11-24)
+
+Review only. Nothing was implemented, rebuilt, re-exported or re-checked for this
+section, and no checks or manual testing were requested. It reads the current
+`ROADMAP.md`, `PROGRAM_PROGRESS.md`, `TEST_REPORT.md`, `SUPPORTED_FEATURES.md`,
+`TRACEABILITY.md`, `FEATS_SKILLS_COVERAGE.md`, `PIN_PLAN.md`, `GRAPPLE_PLAN.md`,
+`DEMO_ADVANCEMENT_PLAN.md`, the authored campaign and encounter files, and the
+combat UI/input code.
+
+### Turn Undead investigation closed
+
+Closed as **no product defect found**, on the evidence recorded in `a24243b` for
+`5d0f54a` and candidate `2026-11-24_turn_undead_wrapper_b`. The wrapper's
+`auto_advance()` returns at the acting able party member, so neither refusals nor
+legal attempts move initiative; the seeded pinned-monster wrapper call stays a
+disclosed non-player bypass. This is resolved, not open maintenance debt.
+
+### What shipped play can actually reach
+
+- Three campaigns ship authored encounters; every monster in shared content is
+  undead and fights with natural weapons. No monster has anything to disarm,
+  sunder, steal or use against the party, and the AI never initiates a grapple.
+- Grapple and pin are ordinary player actions in every fight and need no feat;
+  Improved Grapple is **not** legally acquirable in the supported 3rd -> 4th step,
+  because the fighter's one new feat cannot cover Improved Unarmed Strike and
+  Improved Grapple together. The feat's +4 and reaction skip remain seeded text.
+- The demo now reaches 4th level in play through the bell completion milestone:
+  the completing route lands on 6,000 and the named combat route on 6,550, so the
+  level-up is no longer fixture-only. Levels 5 and above remain out.
+- Combat maps are open rooms and short corridors. Trip, bull rush, grapple,
+  pin, cover from a creature, paralysis, turning and the level-up screen are
+  reachable; disarm, sunder, concealment, hard cover from terrain, AoE templates,
+  encumbrance and disease still have no authored target or pressure.
+
+### Candidate 1 - keyboard targeting on the battle grid (recommended)
+
+- **Player benefit.** A keyboard-only player cannot finish a fight today. The
+  action buttons are ordinary focusable buttons, but every mode they open ends in
+  a click on a grid cell: `CombatView._gui_input` handles only mouse motion and
+  the left button (`src/ui/combat_view.gd:54-65`), and `CombatScreen` has no
+  `_unhandled_input` at all (exploration does, `exploration_screen.gd:311`). This
+  blocks movement, stepping, attacking, spell and item targeting and every other
+  grid action for keyboard users, and it is the largest remaining item in P3's
+  accessibility line ("full keyboard-only coverage remains open").
+- **Reachability.** Every combat in all three campaigns; no content, feat or
+  fixture is needed. It also helps players who prefer the keyboard, not only
+  players who cannot use a mouse.
+- **Design decisions to settle in the batch.** Arrow keys move a visible cursor
+  (starting on the active creature); Enter or Space activates the same path as
+  `cell_clicked`; Escape leaves the current mode; the cursor is ignored while a
+  modal is open or it is not the player's turn; the mouse remains unchanged; no
+  new key bindings beyond the existing `ui_*` actions; no rule, range or target
+  validation moves out of the encounter.
+- **Implementation boundary.** One cursor field and highlight in `CombatView`,
+  one input handler in `CombatScreen` that routes to the existing
+  `_on_cell_clicked`/mode exit, and no change to the action grid's 32 controls or
+  to any resolution code.
+- **Acceptance cost.** Focused tests for cursor movement, activation and cancel
+  through the same path as a click, plus a real-key probe step in the combat
+  fixture; the suite, both validators, all three probes, both layout scales and
+  an exported candidate, because it is player-visible. No content, schema, save,
+  award, threshold or XP change.
+
+### Candidate 2 - further grapple (8c, then 8b-2/8f)
+
+- **Player benefit.** 8c would add grapple damage by opposed check and moving a
+  grapple at half speed. The player can already initiate a grapple and pin in
+  every fight, the entry already deals hold damage, and a grappled attacker can
+  already strike the partner at -4; the marginal choice is modest.
+- **Reachability.** Grapple and pin are ordinary play. Pin damage is not a
+  separate batch; break-another's-pin and multiple grapplers are not reachable at
+  all while the AI never grapples, so they would be probe-only.
+- **Design decisions.** Whether damage is a standard action, its base (unarmed or
+  light weapon), lethal/nonlethal handling, size, whether it is legal while
+  pinning, and how moving the pair interacts with reach, opportunity attacks and
+  the existing pair-clearing paths.
+- **Implementation boundary and cost.** Encounter plus at most one more control,
+  focused tests and probe checks, a candidate. Comparable to 8a/8b-1, but it
+  extends a just-finished batch rather than opening a new player capability.
+- **Verdict.** Not the next task. Extending grapple is reasonable later if play
+  shows the current options are used; numbering alone is not a reason to continue.
+
+### Candidate 3 - overrun
+
+- **Player benefit.** A standard-action way to move through an opponent and knock
+  it prone, useful in a corridor or when the party is body-blocked.
+- **Reachability.** Any monster is a legal target, so ordinary play can reach it.
+  The maps are largely open, and trip already produces prone and bull rush already
+  moves a defender, so the benefit overlaps both.
+- **Design decisions and cost.** Opposed check, size and stability, movement and
+  opportunity attacks, failure placement, prone timing, and whether the AI ever
+  uses it. Bull rush needed its own 268-line plan; overrun needs at least a short
+  plan, then an engine/UI batch and a candidate.
+
+### Candidate 4 - save shortcut
+
+- **Player benefit.** One key opens the existing Save modal instead of Escape ->
+  Save game.
+- **Reachability.** Exploration only; saving is deliberately disabled in combat,
+  and the pause menu already exposes Save. The benefit is convenience, not a new
+  capability.
+- **Boundary and cost.** One input action and one handler, plus a focus/modal test
+  and a probe key step; no save-policy change. Small enough to ride with a larger
+  input/accessibility batch rather than lead one.
+
+### Candidate 5 - readied/delayed actions
+
+- **Player benefit.** High tactical value: hold an attack for a trigger, or act
+  later in the round.
+- **Reachability.** Every fight. **But** it needs a trigger model, interrupt
+  ordering, pending-decision integration, AI use and UI; it is not a bounded
+  change and should get a planning note before any batch.
+
+### Recommendation
+
+**Implement keyboard targeting for the battle grid.** It is the only reviewed
+candidate that opens a capability ordinary play currently lacks, affects every
+combat without new content, and fits one bounded UI/input batch. Scope it to the
+cursor and activation path described above; do not add toolbar hotkeys, rebinding
+changes, rules changes or content in the same batch. Further grapple, overrun,
+the save shortcut and readied/delayed actions stay deferred; the reload-then-reapply
+save case and the seeded probe limits stay evidence work, not features.
+
+### Classification, kept separate
+
+- **Confirmed defects.** None open. The Turn Undead wrapper claim is closed as no
+  product defect found; no other failing case was found in this review.
+- **Deferred features.** Grapple 8b-2/8c/8d/8e/8f; overrun, disarm, sunder,
+  concealment, terrain hard cover, AoE templates, encumbrance, disease; readied
+  and delayed actions; full attacks and two-weapon fighting; levels 5 and above;
+  a save shortcut; keyboard combat (recommended next).
+- **Maintenance debt.** The stale `Combat Casting` benefit text; the singular
+  modal field; probe-heavy `main.gd`; source-text guards that cannot see a
+  string-built call; shallow UI suite coverage; the placeholder renderer. None
+  is promoted to a defect here.
+- **Evidence gaps.** Grapple, pin and AI-escape behaviour is exercised through
+  seeded probes, not ordinary recorded play; keyboard combat has no evidence at
+  all today; no rendered appearance or human playtesting is claimed. The
+  reload-then-reapply save case remains a test to fold into future save work.
