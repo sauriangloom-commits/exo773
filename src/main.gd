@@ -108,6 +108,7 @@ const APP_FLAGS: Array[String] = [
 	"--demo-weapons",
 	"--diagnostic-navigation-probe",
 	"--encounter-end-probe",
+	"--grapple-probe",
 	"--inspect-probe",
 	"--integration-probe",
 	"--intro-click",
@@ -361,6 +362,8 @@ func _ready() -> void:
 		_shield_probe()
 	if "--unarmed-probe" in args:
 		_unarmed_probe()
+	if "--grapple-probe" in args:
+		_grapple_probe()
 	if "--nonlethal-probe" in args:
 		_nonlethal_probe()
 	if "--encounter-end-probe" in args:
@@ -6871,6 +6874,298 @@ func _unarmed_probe() -> void:
 	_probe_check(zombie.nonlethal == 0, "state: no nonlethal damage is recorded on the undead")
 	await _probe_shot("unarmed", "02_undead_immune")
 	_probe_finish("unarmed")
+
+
+## QA-only (--grapple-probe, fixture --demo-unarmed): the grapple path through the
+## combat action surface. Initiation, the partner attack and the holder's release go
+## through the real buttons and a real pointer click on the board cell; the seed
+## moves the base attack and the grappler's AC so the reactions and the monsters'
+## attacks miss and the seeded opposed roll has a predictable shape. Everything
+## else is labelled in the check text: `direct call` for a Game method, `state:`
+## for an asserted field, and the scenarios that need a free standard action or raw
+## feat text say so. The living brawler is a disclosed QA fixture; the zombie is
+## the shipped undead and ignores the hold's nonlethal damage.
+func _grapple_probe() -> void:
+	probe_scenario = "grapple"
+	probe_started_ms = Time.get_ticks_msec()
+	_probe_watchdog(120.0)
+	get_window().size = probe_size
+	for i in 8:
+		await get_tree().process_frame
+	var combat := current_screen
+	var e := Game.encounter
+	if combat == null or e == null:
+		_probe_check(false, "the grapple fixture is running")
+		_probe_finish("grapple")
+		return
+	var sera: Character = null
+	var brawler: Character = null
+	var zombie: Character = null
+	for entry in e.combatants:
+		if String(entry["char"].id) == "sera":
+			sera = entry["char"]
+		elif String(entry["char"].id) == "qa_unarmed_brawler":
+			brawler = entry["char"]
+		elif String(entry["char"].id) == "qa_unarmed_zombie":
+			zombie = entry["char"]
+	if sera == null or brawler == null or zombie == null:
+		_probe_check(false, "the fixture has the grappler, a living enemy and the shipped undead")
+		_probe_finish("grapple")
+		return
+	var sera_index := int(e.entry_for(sera)["index"])
+	var brawler_index := int(e.entry_for(brawler)["index"])
+	var zombie_index := int(e.entry_for(zombie)["index"])
+	# Seeded fixture state, disclosed: a high base attack makes the touch attack and
+	# the opposed check land on the seeded dice, and a high AC makes the monsters'
+	# reactions and attacks miss so a scenario cannot be lost to an unrelated hit.
+	sera.base_attack = 20
+	sera.ac_misc = 30
+	e.rng.seed = 20261124
+	_probe_check(sera.equipment.get("weapon", {}).is_empty(), "state: the grappler is empty-handed")
+	_probe_check(not bool(e.turn_state["standard_used"]), "state: the standard action is free")
+	_probe_check(e.grapples.is_empty(), "state: no grapple is recorded at the start")
+	_probe_check(
+		e.grapple_check_modifier(sera)
+		== sera.base_attack + Rules.ability_modifier(sera, "str")
+		+ Rules.grapple_size_modifier(sera.size_category),
+		"state: the grapple check is base attack + Strength + size, without a feat",
+	)
+	# 1. Initiation: button activation, then a pointer click on the target's cell.
+	var attempt := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie")
+	var text := String(attempt.get("text", ""))
+	_probe_check(bool(attempt.get("held", false)), "button + pointer: the shipped undead is held")
+	_probe_check(text.contains("tries to grapple QA Unarmed Zombie"), "the attempt is declared against the clicked cell")
+	_probe_check(
+		text.contains("Grappling provokes an attack of opportunity from QA Unarmed Zombie"),
+		"the target gets its printed reaction (PHB p.155)",
+	)
+	_probe_check(text.contains("grapple touch attack"), "the unarmed melee touch attack is resolved")
+	_probe_check(text.contains("Grapple check:"), "the opposed grapple check is rolled and logged")
+	_probe_check(
+		text.contains(sera.display_name + " grapples QA Unarmed Zombie"),
+		"the won hold is announced",
+	)
+	_probe_check(
+		e.grapples.size() == 1
+		and e.grapple_partner(zombie_index) == sera_index
+		and e.grapple_role(sera_index) == "holder",
+		"state: the pair is recorded with the player as the holder",
+	)
+	_probe_check(bool(e.turn_state["standard_used"]), "state: the initiation spent the standard action")
+	_probe_check(not e.has_pending_decision(), "state: a resolved initiation needs no pending decision")
+	_probe_check(text.contains("immune to nonlethal"), "the undead ignore the hold's nonlethal damage")
+	# 2. The partner attack and the -4: seeded free standard action, then the real
+	# Attack button and a pointer click on the partner.
+	e.turn_state["standard_used"] = false
+	combat.refresh_screen()
+	var attack_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "Attack"), "Attack")
+	await _probe_click_cell(combat, e.cell_of(zombie), "attack the grappling partner")
+	for f in 20:
+		await get_tree().process_frame
+	var partner_text := _probe_ranged_new_lines(e, attack_lines)
+	_probe_check(
+		partner_text.contains("attacks while grappling: -4 on the attack roll"),
+		"button + pointer: the partner attack carries the printed -4 (PHB p.156)",
+	)
+	# 3. A third party is refused with the reason, through the same attack surface.
+	e.turn_state["standard_used"] = false
+	combat.refresh_screen()
+	var third_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "Attack"), "Attack")
+	await _probe_click_cell(combat, e.cell_of(brawler), "attack a third party")
+	for f in 20:
+		await get_tree().process_frame
+	var third_text := _probe_ranged_new_lines(e, third_lines)
+	_probe_check(
+		third_text.contains("can attack only QA Unarmed Zombie")
+		or String(Game.last_ui_message).contains("can attack only QA Unarmed Zombie"),
+		"a third-party attack is refused with its reason: " + String(Game.last_ui_message),
+	)
+	_probe_check(brawler.hp == brawler.max_hp, "state: the refused attack dealt nothing")
+	# 4. Movement through the Move button, then the item actions as direct calls.
+	var move_cell: Vector2i = e.cell_of(sera) + Vector2i(0, -1)
+	for offset in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+		var candidate: Vector2i = e.cell_of(sera) + offset
+		if (
+			e.map.in_bounds(candidate)
+			and not e.map.is_blocked(candidate)
+			and not e.occupied_except(sera_index).has(candidate)
+		):
+			move_cell = candidate
+			break
+	var move_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "Move"), "Move")
+	await _probe_click_cell(combat, move_cell, "move while held")
+	for f in 20:
+		await get_tree().process_frame
+	var move_text := _probe_ranged_new_lines(e, move_lines)
+	_probe_check(
+		move_text.contains("is grappling and cannot move")
+		or String(Game.last_ui_message).contains("is grappling and cannot move"),
+		"the Move button refuses with its reason: " + String(Game.last_ui_message),
+	)
+	var step := Game.combat_move(Vector2i(1, 2), true)
+	_probe_check(String(step.get("message", "")).contains("cannot move"), "direct call: the 5-ft. step is refused: " + String(step.get("message", "")))
+	var stand := Game.combat_stand_up()
+	_probe_check(String(stand.get("message", "")).contains("cannot stand up"), "direct call: standing up is refused: " + String(stand.get("message", "")))
+	var sheathe := Game.combat_sheathe_weapon()
+	_probe_check(String(sheathe.get("message", "")).contains("cannot put a weapon away"), "direct call: sheathing is refused: " + String(sheathe.get("message", "")))
+	var pickup := Game.combat_pick_up(0)
+	_probe_check(String(pickup.get("message", "")).contains("cannot pick anything up"), "direct call: picking up is refused: " + String(pickup.get("message", "")))
+	# 5. The holder's release through the shared Escape button: free, no roll.
+	var release_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (release)")
+	for f in 10:
+		await get_tree().process_frame
+	var release_text := _probe_ranged_new_lines(e, release_lines)
+	_probe_check(release_text.contains("lets go of QA Unarmed Zombie"), "button: the holder releases for free")
+	_probe_check(not release_text.contains("Escape check:"), "the release rolls nothing")
+	_probe_check(e.grapples.is_empty(), "state: the release clears the pair")
+	_probe_check(bool(e.turn_state["standard_used"]) == false, "state: the free release spends no standard action")
+	# 6. Improved Grapple as raw feat text (seeded): +4 on every check, no reaction.
+	var modifier_before := e.grapple_check_modifier(sera)
+	sera.feats.append("Improved Grapple")
+	_probe_check(e.grapple_check_modifier(sera) == modifier_before + 4, "state: raw Improved Grapple text adds +4 to the grapple check")
+	var improved_attempt := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple with Improved Grapple")
+	var improved_text := String(improved_attempt.get("text", ""))
+	_probe_check(bool(improved_attempt.get("held", false)), "the Improved Grapple attempt holds")
+	_probe_check(
+		not improved_text.contains("provokes an attack of opportunity"),
+		"Improved Grapple skips the target's reaction (PHB p.95)",
+	)
+	await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (release)")
+	for f in 10:
+		await get_tree().process_frame
+	_probe_check(e.grapples.is_empty(), "state: the pair is cleared before the living scenario")
+	# 7. Hold damage on the disclosed living fixture: nonlethal, hit points untouched.
+	var living_before := e.log_lines.size()
+	var living_attempt := await _probe_grapple_until_held(combat, e, sera, brawler, "grapple the living brawler")
+	_probe_check(bool(living_attempt.get("held", false)), "the living QA brawler is held")
+	var living_text := _probe_ranged_new_lines(e, living_before)
+	_probe_check(living_text.contains("The hold deals") and living_text.contains("nonlethal damage"), "the hold deals nonlethal damage to a living target")
+	_probe_check(brawler.hp == brawler.max_hp, "state: the living fixture's hit points are untouched")
+	_probe_check(brawler.nonlethal > 0, "state: the living fixture carries nonlethal damage")
+	await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (release)")
+	for f in 10:
+		await get_tree().process_frame
+	# 8. AI defender: a held monster spends its turn on one escape attempt.
+	var held_for_ai := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie for the AI turn")
+	_probe_check(bool(held_for_ai.get("held", false)), "the zombie is held before its turn")
+	var ai_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+	for f in 600:
+		await get_tree().process_frame
+		if e.finished or e.is_player_turn():
+			break
+	var ai_text := _probe_ranged_new_lines(e, ai_lines)
+	_probe_check(ai_text.contains("tries to break free of"), "the AI defender spends its turn on the escape attempt")
+	_probe_check(ai_text.contains("Escape check:"), "the AI escape uses the opposed check")
+	_probe_check(not ai_text.contains("QA Unarmed Zombie attacks"), "the held monster does not attack on its turn")
+	var zombie_free := e.grapple_partner(zombie_index) < 0
+	_probe_check(
+		e.grapples.is_empty() == zombie_free,
+		"state: the pair matches the AI escape outcome (" + ("escaped" if zombie_free else "still held") + ")",
+	)
+	# 9. Turning overrides a hold: the turned creature cannot drag its partner along.
+	if not zombie_free:
+		await _probe_click(_probe_button(current_screen.button_box, "Escape"), "Escape (release)")
+		for f in 10:
+			await get_tree().process_frame
+	var turn_attempt := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie for the turning scenario")
+	_probe_check(bool(turn_attempt.get("held", false)), "the zombie is held for the turning scenario")
+	zombie.add_effect("turned", "Turned", 10, "condition")
+	var turned_effect := zombie.get_effect("turned")
+	if not turned_effect.is_empty():
+		turned_effect["turner_id"] = sera.id
+	var turned_lines := e.log_lines.size()
+	await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+	for f in 600:
+		await get_tree().process_frame
+		if e.finished or e.is_player_turn():
+			break
+	var turned_text := _probe_ranged_new_lines(e, turned_lines)
+	_probe_check(turned_text.contains("is turned and cannot hold on."), "turning separates the pair with its reason")
+	_probe_check(e.grapples.is_empty(), "state: the turned creature holds nothing")
+	# 10. Death clears the pair for an undead (destroyed at 0 hit points).
+	var death_attempt := await _probe_grapple_until_held(combat, e, sera, zombie, "grapple the zombie before it is destroyed")
+	_probe_check(bool(death_attempt.get("held", false)), "the zombie is held before it is destroyed")
+	var death_lines := e.log_lines.size()
+	zombie.take_damage(zombie.hp + 100)
+	e._check_end()
+	var death_text := _probe_ranged_new_lines(e, death_lines)
+	_probe_check(death_text.contains("The grapple ends: QA Unarmed Zombie is dead."), "death clears the pair with its reason")
+	_probe_check(e.grapples.is_empty(), "state: no pair survives the holder's death")
+	# 11. Encounter finish releases any remaining hold.
+	var finish_attempt := await _probe_grapple_until_held(combat, e, sera, brawler, "grapple the brawler before the encounter ends")
+	_probe_check(bool(finish_attempt.get("held", false)), "the brawler is held before the encounter ends")
+	var finish_lines := e.log_lines.size()
+	e.finish("victory")
+	var finish_text := _probe_ranged_new_lines(e, finish_lines)
+	_probe_check(finish_text.contains("any grapple is released"), "the encounter end releases the hold with its reason")
+	_probe_check(e.grapples.is_empty(), "state: no pair survives the encounter end")
+	_probe_finish("grapple")
+
+
+## Scrolls a combat action button into view before a real click, the same way the
+## inspect helper does for the enemy list.
+func _probe_reveal(control: Control) -> void:
+	if control == null:
+		return
+	var container := control.get_parent()
+	while container != null and not (container is ScrollContainer):
+		container = container.get_parent()
+	if container is ScrollContainer:
+		(container as ScrollContainer).ensure_control_visible(control)
+
+
+## One attempt through the real Grapple button and a pointer click on the target.
+func _probe_grapple_attempt(combat: Control, e: Encounter, target: Character, label: String) -> Dictionary:
+	var before := e.log_lines.size()
+	var button := _probe_button(current_screen.button_box, "Grapple")
+	_probe_reveal(button)
+	await get_tree().process_frame
+	await _probe_click(button, "Grapple")
+	await _probe_click_cell(combat, e.cell_of(target), label)
+	for f in 20:
+		await get_tree().process_frame
+	var held := e.grapple_role(int(e.entry_for(target)["index"])) == "held"
+	return {"text": _probe_ranged_new_lines(e, before), "held": held}
+
+
+## Ends turns until the actor may take its standard action again.
+func _probe_grapple_ready(combat: Control, e: Encounter, actor: Character) -> bool:
+	for i in 10:
+		if e == null or e.finished:
+			return false
+		var active := e.active_character()
+		if e.is_player_turn() and active == actor:
+			if not bool(e.turn_state["standard_used"]):
+				return true
+			await _probe_click(_probe_button(current_screen.button_box, "End turn"), "End turn")
+			for f in 600:
+				await get_tree().process_frame
+				if e == null or e.finished or e.is_player_turn():
+					break
+			continue
+		if not await _probe_advance_to(combat, String(actor.id), e.round_number):
+			return false
+	return false
+
+
+## Retries the seeded initiation across turns; the declared action still spends
+## the standard action on every failed attempt and the turn really ends.
+func _probe_grapple_until_held(combat: Control, e: Encounter, actor: Character, target: Character, label: String, rounds := 6) -> Dictionary:
+	var last := {}
+	for i in rounds:
+		if not await _probe_grapple_ready(combat, e, actor):
+			return last
+		last = await _probe_grapple_attempt(combat, e, target, label)
+		if e == null or e.finished:
+			return last
+		if e.grapple_partner(int(e.entry_for(actor)["index"])) == int(e.entry_for(target)["index"]):
+			return last
+	return last
 
 
 ## QA-only nonlethal fixture (--demo-nonlethal): the shipped rogue, staggered by

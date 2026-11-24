@@ -652,6 +652,14 @@ malformed. Add a focused test when the content introduces a new branch or effect
   step, writes captures to `--trip-shots=<dir>`, and exits nonzero when a check
   fails. Run it in a window: a headless run lays controls out for a larger
   default viewport and cannot judge what a 1280x720 click reaches.
+- `--grapple-probe` pairs with `--demo-unarmed` (an empty-handed rogue, a living
+  brawler and the shipped zombie). It clicks the real Grapple, Attack, Move and
+  Escape buttons and the board squares through the viewport input pipeline, and
+  reads the release and the AI escape turn from the encounter log. The fixture
+  seeds the grappler's base attack and AC (stated in the check text) so the seeded
+  opposed roll lands and the monsters' reactions miss; the living brawler is a QA
+  fixture and only the zombie is shipped content. It exits nonzero when a check
+  fails; run it in a window for the pointer path.
 - `tools/qa/external_input.ps1` drives an exported build with OS mouse events for
   a narrow external-input check; it is not a substitute for the asserted probe.
 - Cleave is authored as the feat string `Cleave`; its prerequisites are STR 13
