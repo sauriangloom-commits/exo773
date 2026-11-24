@@ -16,6 +16,12 @@ standard action on the check. The AI escape attempt goes through the same wrappe
 failed escape ends the monster's turn with no attack. No save field exists: combat is not
 saved at all.
 
+**Acceptance probe (2026-11-24).** `--grapple-probe` confirms initiation resolves inside
+the turn and needs no pending decision, as section 4 specified, and exercises the printed
+sequence, the partner attack, the refusals, escape and release, the AI escape, and the
+turning, death and finish cleanup. It also confirms the living-target hold damage, which
+no shipped campaign can reach because all shipped monsters are undead.
+
 Scope: a player-initiated grapple against one defender, as a standard action, with the
 grappled state and an escape attempt for either participant. Pin, pin damage,
 constriction, multiple grapplers, joining a grapple, monster-initiated grapple,

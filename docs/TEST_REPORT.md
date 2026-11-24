@@ -5883,9 +5883,12 @@ state and escape only - no pin, no 8b-8f.
 `SCRIPT ERROR: Parse Error: Static function "grapple_size_modifier()" not found in base "Rules".`
 (repeated once per referencing test) and
 `Parse Error: Cannot infer the type of "expected" variable because the value doesn't have a set type.`
-The first red run also showed `25` tests, `22` passing and `3` failing while the three
-behaviour tests were repaired against the real implementation; the exit code was never
-used as evidence.
+That run collected nothing: after those errors it printed `[ERROR]:  Nothing was run.`,
+so it has 0 tests and 0 asserts and no pass/fail totals. A separate post-implementation
+run collected `25` tests with `22` passing and `3` failing; its log was overwritten by
+the later green rerun, so its totals survive but its per-failure text is not quoted here
+verbatim. Earlier wording in this section conflated the two runs; this paragraph
+replaces it. The exit code was never used as evidence.
 
 | Check (source, final) | Result |
 | --- | --- |
@@ -5922,3 +5925,60 @@ is no living opponent in shipped content for it. The exported binary's grapple o
 not tested - the probe shows layout, not rules. Nothing here claims a rendered appearance,
 an ordinary combat outcome, or human playtesting. No content, schema, save policy, award,
 threshold or XP value changed; the README edit was excluded from both commits.
+
+## Grapple behaviour acceptance (2026-11-24)
+
+Implementation `a71b942` adds only the QA probe `--grapple-probe` (`src/main.gd`) and its
+authoring note; no grapple rule changed. It runs on the existing `--demo-unarmed` fixture:
+empty-handed Sera Vane, the living QA Armed Brawler and the shipped zombie.
+
+**Genuine failing invocation first.** Before the flag was wired, the probe was invoked and
+refused: `Unknown application option: --grapple-probe` / `Nothing was started (exit status
+2).` with exit 2 (`builds/qa/runs_grapple_probe_missing.log`). Two probe defects then
+appeared and were fixed in the probe, not the product: seeding `standard_used = false` left
+the Attack button stale and disabled (4 failing checks), and the refusal text was read
+from `Encounter.log_lines` while `GameSession` keeps its own `log_lines` (2 failing
+checks). Logs `runs_grapple_probe_1.log` and `runs_grapple_probe_2.log` preserve both.
+No product defect appeared, so no regression test and no rule change were added.
+
+**What the executable exercised**, by input path:
+
+| Scenario | Path | Asserted |
+| --- | --- | --- |
+| Initiation, shipped zombie | Grapple button + pointer click on its cell | declared, printed reaction, `grapple touch attack`, `Grapple check:` with both totals, announced hold, `{holder, held}` recorded, standard spent, no pending decision, `immune to nonlethal` |
+| Partner attack | seeded free standard, Attack button + pointer | `attacks while grappling: -4 on the attack roll` |
+| Third party | Attack button + pointer on the brawler | `can attack only QA Unarmed Zombie`, no damage |
+| Movement | Move button + pointer on a walkable neighbour | `is grappling and cannot move` |
+| 5-ft. step, stand, sheathe, pick up | direct `Game.combat_*` calls | each refusal with its printed reason |
+| Holder's release | shared Escape button | `lets go of`, no `Escape check:`, pair cleared, standard untouched |
+| Improved Grapple | raw feat text seeded, Grapple button + pointer | `grapple_check_modifier` +4, no `provokes an attack of opportunity` |
+| Living hold damage | disclosed living brawler, Grapple button + pointer | `The hold deals` + `nonlethal damage`, hit points unchanged, nonlethal total > 0 |
+| AI defender | End turn button | `tries to break free of`, `Escape check:`, no zombie attack that turn |
+| Turning | seeded turned effect, End turn | `is turned and cannot hold on.`, pair cleared |
+| Death | seeded damage on the undead, `_check_end` | `The grapple ends: ... is dead.`, pair cleared |
+| Encounter finish | `finish("victory")` | `any grapple is released`, pair cleared |
+
+Seeded state, stated in the check labels: base attack 20 and AC +30 on Sera so the seeded
+opposed check lands and reactions and monster attacks miss, `standard_used = false` before
+the two Attack checks, raw `Improved Grapple` text, the turned effect, the killing damage
+and `finish()`. Button activation, pointer input, direct calls and seeded setup are
+labelled separately; the session is not a keyboard walk.
+
+**Source checks.** `test_grapple.gd` 25/25 (92 asserts), `test_save_recovery.gd` 14/14
+(80), full suite 936/936 (9,643 asserts, 71 scripts), both validators PASS, combat layout
+31 controls and 0 failures at 100 % and 160 %, `--level-up-probe` PASS (349 checks),
+`--advancement-probe` PASS, `--grapple-probe` PASS 98/98.
+
+**Candidate `2026-11-24_batch8a_acceptance_b`**, source
+`a71b942e68400cf8fcf0c2d78245ddaef9923aa5`, 110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`, equal to
+`BUILD.txt`; `worktree_entries=1` (README only), no untracked files, hash identical
+before and after every run. From the exe: `--grapple-probe` PASS (98 checks), both
+validators PASS, `--level-up-probe` PASS (349 checks), `--advancement-probe` PASS,
+combat layout PASS at 100 % and 160 % (31 controls, 0 failures).
+
+**Limits kept explicit.** The executable exercised these outcomes through the probe's
+synthesized viewport pointer events at 1280x720 headless - not an OS mouse, not a
+rendered read-through, and not ordinary combat feasibility. Shipped content has no living
+opponent, so the hold's nonlethal damage is reachable only through the disclosed QA
+brawler. No rendered appearance, ordinary combat outcome or human playtesting is claimed.

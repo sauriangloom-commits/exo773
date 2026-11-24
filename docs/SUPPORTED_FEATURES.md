@@ -328,6 +328,11 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   grapple, monster-initiated grapple, improved grab, swallow whole, casting or
   turning undead from a grapple (scope limits, stated as such in the refusal), and
   the remaining printed grapple actions scheduled for batch 8c.
+- Acceptance evidence (`--grapple-probe`, 2026-11-24): initiation against the shipped
+  zombie by button and pointer, the partner attack at -4, the third-party and movement
+  refusals, the holder's release, an AI escape turn, turning, death and finish cleanup,
+  and raw Improved Grapple text. Hold damage on a living target is shown with the
+  disclosed QA brawler only, because no shipped campaign contains a living opponent.
 
 ## Trip and prone (player-initiated)
 

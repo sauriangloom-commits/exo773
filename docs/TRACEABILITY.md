@@ -146,7 +146,7 @@ or explains why an action is unavailable rather than silently accepting input.
 | Hold ends on escape, release, death, turning or encounter finish; dying and paralyzed stay held | PHB p. 156; adaptations 67, 68 | `Encounter._prune_grapples`, `_clear_grapple_for`, `finish` | `test_grapple.gd` |
 | Improved Grapple: no reaction, +4 on every grapple check | PHB p. 95 | `Feats.has_feat("improved_grapple")` in `_grapple_bonus` and the Step-1 gate | `test_grapple.gd` (raw feat text; not selectable) |
 | AI never initiates; a grappled monster spends its turn on one escape attempt | Project scope, PHB p. 156 | `Encounter._run_monster_turn` | `test_grapple.gd` |
-| Combat-screen Grapple and Escape controls | — | `CombatScreen` action grid, `Game.combat_grapple`, `combat_grapple_exit` | `--layout-scenario=combat` (31 controls) |
+| Combat-screen Grapple and Escape controls | — | `CombatScreen` action grid, `Game.combat_grapple`, `combat_grapple_exit` | `--layout-scenario=combat` (31 controls), `--grapple-probe` (98 checks) |
 
 These rows describe the implemented player-initiated paths. The player-as-defender
 counter-trip prompt is unreachable because NPCs never initiate Trip. Improved Trip

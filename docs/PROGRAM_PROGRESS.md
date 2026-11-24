@@ -3354,3 +3354,28 @@ party-stat fixture only. The exported binary's grapple outcomes are not exercise
 probe shows layout. No rendered appearance was reviewed, no ordinary combat outcome is
 claimed, and no human playtesting was done or requested. No content, schema, save policy,
 award, threshold or XP value changed.
+
+### Batch 8a acceptance probe (2026-11-24)
+
+The batch is accepted within the limits recorded here. `--grapple-probe` (98 checks) was
+added on the existing `--demo-unarmed` fixture and driven through the real action
+surface: initiation, the partner attack and the holder's release by button and pointer,
+the movement refusal through the Move button, the step/stand/sheathe/pickup refusals as
+direct calls, and the AI escape, turning, death and finish cleanup. The first invocation
+was refused as an unknown option (exit 2); two probe defects - stale button state after
+seeding the standard action, and refusal text read from the wrong log - were fixed in the
+probe. No product defect appeared and no grapple rule changed.
+
+The run also settled the planning question: initiation resolves inside the turn and needs
+no pending decision, which is what `GRAPPLE_PLAN.md` section 4 already specified. The
+earlier test-report wording that merged the pre-implementation parse-error run with the
+22/25 run is corrected in `TEST_REPORT.md`; the parse-error run collected nothing.
+
+Source: suite 936/936 (9,643 asserts), both validators, layout 31/0 at both scales, both
+probes and `--grapple-probe` PASS. Candidate `2026-11-24_batch8a_acceptance_b` from
+`a71b942`, 110,874,840 bytes, SHA-256
+`6d7e0df7e071115c190a6ede40d965e6a28893fe92ce73f72e885f5438debd92`, hash unchanged and
+equal to `BUILD.txt`; from the exe the grapple probe, both validators, both probes and
+both layout scales PASS. Exported grapple behaviour is recorded as exercised through that
+probe only; ordinary play, rendering and human testing remain outstanding. Pin and 8b-8f
+are untouched.
