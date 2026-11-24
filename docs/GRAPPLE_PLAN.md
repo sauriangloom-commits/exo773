@@ -331,7 +331,8 @@ its catalog entry does not.
 **8b — pin.** Opposed check in place of an attack; "held immobile for 1 round"; -4 AC
 against everyone but the pinner; escape from the pin still leaves the creature
 grappling; break another's pin; voluntary release of a pin as a free action. No pin
-damage, no use-opponent's-weapon. Needs 8a.
+damage, no use-opponent's-weapon. Needs 8a. Planning note: `docs/PIN_PLAN.md`
+(2026-11-24).
 
 **8c — the remaining printed grapple actions.** Damage your opponent with an opposed
 check (nonlethal by default, -4 for lethal), use the opponent's light weapon, move the
