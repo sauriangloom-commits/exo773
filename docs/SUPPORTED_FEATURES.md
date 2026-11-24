@@ -337,7 +337,8 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   grapplers, joining a grapple, monster-initiated grapple, improved grab, swallow
   whole, casting or turning undead from a grapple (scope limits, stated as such in
   the refusal), and the remaining printed grapple actions scheduled for batch 8c.
-- Acceptance evidence (`--grapple-probe`, 147 checks, 2026-11-24): initiation against
+- Acceptance evidence (`--grapple-probe`, 154 checks after the Turn Undead wrapper check;
+  147 at pin acceptance): initiation against
   the shipped zombie by button and pointer, the partner attack at -4, the third-party
   and movement refusals, the holder's release, an AI escape turn, turning, death and
   finish cleanup, raw Improved Grapple text, and the pin scenarios P1-P7 (button pin,

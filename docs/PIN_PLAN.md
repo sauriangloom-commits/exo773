@@ -404,10 +404,14 @@ exe.
 
 **Classification.** Confirmed defects: none. Deferred: break-pin (8b-2), pin damage,
 opponent's weapon and moving a pin (8c); casting/Concentration (8d); the feat chain (8e);
-joining and multiple grapplers (8f). Maintenance debt: the stale `Combat Casting` benefit
-text; `Game.combat_turn_undead()` calls `auto_advance()` after a refusal, so the probe
-uses `Encounter.turn_undead()` for a pinned turn (no player-reachable difference, not
-changed here). Evidence gaps: the AI never pins and no pinned ally arises in play, so
-those states are seeded; exported behavior exists only through the 147-check probe at
+joining and multiple grapplers (8f). Maintenance debt: the stale `Combat Casting`
+benefit text only. The reported `Game.combat_turn_undead()` auto-advance was
+investigated on 2026-11-24 and is not a defect on the player path: the action is
+offered only to an able party member, for whom `auto_advance()` returns without
+moving initiative (pinned by `tests/test_turn_undead_wrapper.gd`). The probe's direct
+`Encounter.turn_undead()` call covers the seeded non-player pin turn and remains a
+disclosed bypass; follow-up candidate `2026-11-24_turn_undead_wrapper_b` records the
+wrapper check. Evidence gaps: the AI never pins and no pinned ally arises in play, so
+those states are seeded; exported behavior exists only through the 154-check probe at
 1280x720 headless; no rendered appearance, ordinary combat feasibility or human
 playtesting is claimed.

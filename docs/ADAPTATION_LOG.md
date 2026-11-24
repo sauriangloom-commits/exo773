@@ -953,3 +953,11 @@ presentation choices are omitted; nothing here changes a rule silently.
     stable `Pin` control and keeps one `Escape` label whose tooltip names the actor's
     role; no target mode, modal or new focus system, and combat layout moves from 31
     to 32 controls at both scales.
+78. **Turn Undead does not end the turn (2026-11-24).** PHB p. 159 makes turning
+    undead a standard action. `Game.combat_turn_undead()` still calls `auto_advance()`,
+    but that call returns immediately for the acting able party member, so a refusal
+    and a legal attempt both leave initiative and the remaining move action with the
+    player. A pre-action refusal spends nothing; a legal attempt spends the standard
+    action and one daily use even when the turning check affects no undead. The
+    wrapper contract is pinned by `tests/test_turn_undead_wrapper.gd` and the
+    player-path refusal by `--grapple-probe`.

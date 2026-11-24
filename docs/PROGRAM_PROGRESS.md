@@ -3423,3 +3423,26 @@ from `f149d1d`, 110,885,688 bytes, SHA-256
 exe the probe, both validators, both probes and both layout scales PASS. Exported pin
 behavior is exercised only through that probe. Break-pin (8b-2) and 8c-8f remain
 unimplemented; no content, schema, save, award, threshold or XP change.
+### Turn Undead wrapper finding investigated (2026-11-24)
+
+The batch 8b-1 note that `Game.combat_turn_undead()` might advance the turn after a
+refusal was checked before extending grapple. The wrapper does call `auto_advance()`
+after every outcome, but that call returns at the able party member, so the acting
+cleric keeps the turn after both refusals and legal attempts; Turn Undead is a
+standard action and the move action remains. The reported player-facing defect is
+therefore not confirmed and no executable behavior changed. `tests/test_turn_undead_wrapper.gd`
+(7 tests, 73 asserts) covers grappled and pinned clerics, out-of-range, spent-standard
+and missing-holy-symbol refusals, a legal attempt that affects no undead, and a
+successful turn; `--grapple-probe` now also checks the player-path refusal through
+the wrapper. The probe keeps its direct `Encounter.turn_undead()` call for the seeded
+pinned-monster turn, so that bypass remains disclosed rather than presented as a
+player path.
+
+Source: suite 973/973 (9,810 asserts, 73 scripts), both validators, `--grapple-probe`
+154 checks, layout 32/0 at both scales, `--level-up-probe` (349 checks) and
+`--advancement-probe` PASS. Candidate `2026-11-24_turn_undead_wrapper_b` from
+`5d0f54a`, 110,886,456 bytes, SHA-256
+`1fe120662668d86233e0abb7b3429f96a20605e3aeb881779c3d12ce225b398a`,
+`worktree_entries=1` (README only), no untracked files, hash equal to `BUILD.txt` and
+unchanged before and after; the probe, both validators, both other probes and both
+layout scales PASS from the exe. The 8b-1 closure remains accepted within `8c83144`.

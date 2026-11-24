@@ -6051,3 +6051,55 @@ break-pin and multiple grapplers do not exist, exported behavior is the seeded
 147-check probe at 1280x720 headless, the pinned-ally potion and P3b/P7 states are
 seeded, and no rendered appearance, ordinary combat feasibility or human playtesting
 is claimed.
+## Turn Undead wrapper investigation (2026-11-24)
+
+**Why.** The batch 8b-1 record listed `Game.combat_turn_undead()` calling
+`auto_advance()` after a refusal as maintenance debt. Because that could be a
+player-facing turn loss, it was traced before any further grapple work: the combat
+screen's `Turn undead` control calls `Game.combat_turn_undead()`, which calls
+`Encounter.turn_undead()` and then `Encounter.auto_advance()`. The encounter method
+refuses before spending anything for pending decisions, pins, grapples and the
+`can_active_turn_undead()` checks (not the party's turn, no cleric levels, no holy
+symbol, unable actor, spent standard, no remaining uses, no undead in 60 ft); a legal
+attempt spends the standard action and one daily use before rolling.
+
+**Result: no player-facing defect.** `auto_advance()` returns immediately when the
+active creature is an able party member, and the control is only available on that
+creature's turn, so neither a refusal nor a successful attempt moves initiative. The
+turn advance seen in the pin probe came from calling the wrapper while a seeded
+monster was active, a state the player cannot reach; that direct-call bypass is
+unchanged and remains disclosed. No executable behavior was altered.
+
+**Tests.** `tests/test_turn_undead_wrapper.gd` (7 tests, 73 asserts) exercises the
+Game wrapper, not only the encounter: grappled and pinned cleric refusals, no undead
+in range, spent standard, missing holy symbol, a legal attempt that affects no undead
+(standard action and one use still spent), and a successful turn. Each asserts the
+refusal or success message, current actor, turn pointer, round, standard-action state,
+daily uses, grapple state and encounter continuation. Two early red runs
+(`builds/qa/turn_wrapper_red_1.log`, `turn_wrapper_red_2.log`) failed on a malformed
+test map fixture, not on wrapper behavior; the corrected run is
+`builds/qa/turn_wrapper_green_1.log` (7/7).
+
+**Proof through the probe.** `--grapple-probe` now calls the wrapper on the player's
+turn for a non-cleric and asserts the unavailable control, the refusal message and an
+unchanged pointer, round, actor and standard action (154 checks total, PASS). The
+pinned-monster turn keeps the direct `Encounter.turn_undead()` call, because that
+actor and turn are seeded and not player reachable.
+
+**Checks.** Full suite 973/973 (9,810 asserts, 73 scripts), both validators,
+`--grapple-probe` 154 checks, layout 32 controls/0 failures at 100 % and 160 %,
+`--level-up-probe` 349 checks and `--advancement-probe` PASS. Candidate
+`2026-11-24_turn_undead_wrapper_b`, source
+`5d0f54a3f815bcea91788dd2a9852a8bcbc1c226`, 110,886,456 bytes, SHA-256
+`1fe120662668d86233e0abb7b3429f96a20605e3aeb881779c3d12ce225b398a`, equal to
+`BUILD.txt`, `worktree_entries=1` (README only), no untracked files, hash identical
+before and after. From the exe: grapple probe PASS (154 checks), both validators PASS,
+level-up PASS (349 checks), advancement PASS, both layout scales PASS. The README
+file and diff hashes were verified unchanged before and after.
+
+**Classification.** Confirmed defects: none; the reported wrapper defect is explicitly
+not confirmed. Deferred features remain those of batch 8b-2 and 8c-8f. Maintenance
+debt: the stale `Combat Casting` benefit text only; the earlier wrapper item is
+withdrawn. Evidence gaps: the probe's pinned-monster wrapper call is seeded and not
+player reachable; valid Turn Undead attempts are covered by automated tests, not the
+exported probe; no rendered appearance, ordinary play or human testing is claimed.
