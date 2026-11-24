@@ -1,9 +1,9 @@
 # Reachable opposition: one living, armed opponent (planning note)
 
-**Status: plan only. Nothing implemented; no content, schema, validator or code
-changed. No tests, probes, validators, builds or exports were run for this note.**
-It is the planning task recommended by the 2026-11-24 review in `docs/ROADMAP.md`
-(commit `8c8b3b8`), and it resolves the decisions that review listed, no more.
+**Status: batch A implemented 2026-11-24 (commit `6ff777a`, tests and their `.uid` in
+`7547797`); batches B and C are not implemented.** This note began as planning only and
+resolves the decisions the 2026-11-24 review in `docs/ROADMAP.md` (commit `8c8b3b8`)
+listed, no more. Section 9 records what the batch actually changed and what was run.
 
 ## 1. Why this exists
 
@@ -211,8 +211,11 @@ belongs in its own note with the route arithmetic re-derived.
 damage reduction, no immunities, one action per round. Against the zombie it
 replaces (16 hp, DR 5/slashing, one action), it dies faster and hits comparably,
 so the encounter stays in the same band for the 28/17/21/13/13 hp party. The two
-real changes are qualitative: Sera's 2d6 can drop it in one hit (an average sneak
-attack is about 13 damage against 8 hp), and it can be knocked out nonlethally.
+real changes are qualitative: Sera's sneak attack is 3d6+1 - short sword 1d6+1 plus
+2d6, range 4-19, average 11.5 - so it usually but not always drops the looter in one
+hit, and the looter can be knocked out nonlethally. (An earlier draft of this note said
+"about 13"; that figure was never derived from the authored attack and is corrected
+here.)
 **Recorded alternative:** CR 1 with about 12 hp if the author wants it to survive
 one sneak attack and act; that is a difficulty decision to take explicitly.
 
@@ -376,3 +379,48 @@ schematic or validator edit was made. No test, probe, validator, build or export
 was run. The checks performed were documentation-integrity ones: git status and
 hashes, file reads, greps for cited lines, JSON reads of the authored content, and
 one SRD lookup for the printed rule text. Those are not game checks.
+
+## 9. Implementation record (batch A, 2026-11-24)
+
+**Content.** `content/shared/monsters.json` gains one `store_looter` entry (+66 lines):
+Warrior 1, CR 1/2, 8 hp, AC 15 from a chain shirt and Dex 12, Str 13 for 1d8+1 with a
+longsword at +2, proficiencies simple/martial/light armor, `tags: ["human"]`, no
+immunities, `destroyed_at_zero: false`, and `equipment` holding only the armor. The
+weapon is the single `attacks` entry, as §3.1 and §3.2 require, and no item or loot is
+authored. `content/campaigns/ravenloft_demo/encounters.json` swaps `monsters[1]` to
+`store_looter` and rewrites the intro and victory narration so the room explains a
+living scavenger: he came down to rob the dead. `monster_cells`, `party_cells`, `rows`
+and `xp: 300` are untouched.
+
+**Tests, written and run first.** `tests/test_reachable_opposition.gd` covers the stat
+block's shape, `monsters`/`monster_cells` parity and the trigger, sneak damage on the
+living flat-footed looter, sneak refusal on the flat-footed zombie, the nonlethal
+knockout and its victory, and the unchanged encounter XP and award inventory.
+`builds/qa/reachable_opposition_red/` holds the red run: 2/6 tests, 37/42 asserts, the
+four content-dependent tests failing on the missing monster, the swapped roster and the
+absent living enemy. An earlier attempt that failed to parse was discarded and is not
+part of that evidence. The green run is 6/6, 82 asserts, exit 0. The full suite is
+**1017/1017 tests, 10,142 asserts, 78 scripts, exit 0**, against 1011/10,057/77 before.
+
+**Validators.** `--validate-campaigns` PASS; `--validate-diagnostics` PASS with the same
+eight accepted authored class-progression inconsistencies, and the recorded inventory is
+unchanged: `authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000
+threshold=6000`.
+
+**Probes and layout, from source.** `--keyboard-probe` 31, `--grapple-probe` 160,
+`--level-up-probe` 349 at 1.00 and 1.60, `--advancement-probe` 228, `--combat-info-probe`
+62 checks, all PASS; combat layout 32 controls and 0 failures at 1280x720 at 100 % and
+160 %.
+
+**Candidate.** `2026-11-24_living_opponent_batch_a`, source
+`7547797f85271cdcb5aa4bac72964a6da7ec5695`, 110,905,384 bytes, SHA-256
+`8a7925de98d805f5862bc78859987624581ed3a3eb1480adfd8d5f28ee092a8c`, equal to `BUILD.txt`;
+`worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`,
+`untracked_files=0`. From that executable: both validators PASS, keyboard 31, grapple
+160, level-up 349, advancement 228 and combat-info 62 checks PASS, layout 32/0 at both
+scales, and the executable's hash was identical before and after.
+
+**Not done, and not claimed.** No ordinary-play playthrough, no balance testing, no
+rendered review of the room or the new narration, and no human playtest. The evidence is
+automated content and rules behaviour plus the probes listed above.

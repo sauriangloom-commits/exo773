@@ -6728,3 +6728,68 @@ screen-reader check. The tests and probes check input, text equality and rects, 
 pixels, and plan §7.2 item 8's "grid rect unchanged" is covered by the layout run
 rather than by a dedicated rect comparison. No screenshot was taken and no manual
 testing is requested.
+## Reachable opposition, batch A - one living armed opponent (2026-11-24)
+
+Content-only batch A of [REACHABLE_OPPOSITION_PLAN.md](REACHABLE_OPPOSITION_PLAN.md).
+`content/shared/monsters.json` gains `store_looter` (living human warrior 1, CR 1/2, 8 hp,
+AC 15, longsword as its single `attacks` entry, chain shirt only, no loot, no immunities,
+not destroyed at 0); `storeroom_dead` replaces its second zombie with it at (7,1) and
+rewrites its intro and victory narration. Sources: implementation `6ff777a`, the new
+test's generated `.uid` in `7547797`. Nothing else changed: no XP, award total, threshold,
+schema, validator, engine or UI edit, and no weapon item or loot.
+
+**Arithmetic, derived not assumed.** Sera: short sword 1d6 plus Str 12 (+1) plus authored
+`2d6` sneak dice = **3d6+1, range 4-19, average 11.5**. The plan's earlier "about 13" was
+wrong and is corrected there. The seeded run's first hit rolled 1 + 1 + 6 = 8 and dropped
+the 8-hp looter, which is "usually, not always, one hit".
+
+**Red first.** `tests/test_reachable_opposition.gd` was written and run against unchanged
+content: **2/6 tests, 37/42 asserts**, failing on the missing `store_looter`, the still
+`["zombie", "zombie"]` roster and the absent living enemy
+(`builds/qa/reachable_opposition_red/focused_red.log`). That run's first attempt was a
+parse error (wrong argument type for `_enemy_defeated`); it was fixed before the recorded
+run, and parse, import and fixture errors are not counted as red evidence.
+
+**Green.** **6/6 tests, 82 asserts, exit 0**
+(`builds/qa/reachable_opposition_green/focused_green.log`). The tests pin the stat block
+(type, tags, hp, AC 15, +2 attack, +1 damage, longsword 19-20, armor reference, no
+equipment weapon, no inventory), `monsters`/`monster_cells` parity with both cells open
+floor and the trigger still naming the encounter, the sneak gate on a living flat-footed
+target with an `extra` damage entry, the refusal on a flat-footed zombie, the nonlethal
+knockout counting as defeat and victory, and the encounter's 300 XP with the whole award
+inventory unchanged.
+
+**Suite.** **1017/1017 tests, 10,142 asserts, 78 scripts, exit 0**
+(`builds/qa/reachable_opposition_batch_a/full_suite.log`), against 1011/10,057/77 before.
+Existing notices are separate and unchanged: the suite orphan, deprecation notices and
+RID/ObjectDB leak warnings. None is counted as a pass or as a new failure.
+
+**Validators.** `--validate-campaigns` PASS. `--validate-diagnostics` PASS with the same
+eight accepted authored class-progression inconsistencies, and the recorded inventory
+unchanged: `authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000
+threshold=6000`.
+
+**Probes and layout (source, then executable).** `--keyboard-probe` 31 PASS;
+`--grapple-probe` 160 PASS; `--level-up-probe` 349 at 1.00 and 1.60; `--advancement-probe`
+228 PASS; `--combat-info-probe` 62 PASS. Combat layout
+`--demo-combat --layout-probe --layout-scenario=combat`: **32 controls, 0 failures** at
+1280x720 at 100 % and 160 %. The candidate run repeated all of it from the executable with
+the same counts.
+
+**Candidate.** `2026-11-24_living_opponent_batch_a`, source
+`7547797f85271cdcb5aa4bac72964a6da7ec5695`, 110,905,384 bytes, SHA-256
+`8a7925de98d805f5862bc78859987624581ed3a3eb1480adfd8d5f28ee092a8c`, equal to `BUILD.txt`;
+`worktree_entries=1` (README only), worktree diff SHA-256
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`,
+`untracked_files=0`. From that executable: both validators PASS, keyboard 31, grapple 160,
+level-up 349, advancement 228 and combat-info 62 checks PASS, both layout scales 32/0. The
+executable hash was identical before and after acceptance.
+
+**Classification.** Confirmed product defects: none found by this batch. Deferred:
+disarm, sunder and equipment-driven monster attacks (plan batches B and C); overrun
+(`docs/OVERRUN_PLAN.md` section 18); readied and delayed actions; further grapple; levels 5
+and above; the save shortcut. Maintenance debt: unchanged, plus the plan's own corrected
+damage figure. Evidence gaps: no ordinary-play playthrough of the storeroom, no balance
+testing of the swapped fight, no rendered review of the room, the new narration or the
+stat block, and no human playtest; no screen reader or pixel check. The evidence is
+automated content, rules-state and probe behaviour. No manual testing is requested.

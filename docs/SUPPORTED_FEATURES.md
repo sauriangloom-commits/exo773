@@ -16,7 +16,7 @@ supported, it is not implemented, even if D&D 3.5 defines it.
 | Quest journal | Supported | Two quests, flag-driven objectives, authored facts and spoiler-gated open questions |
 | Dialogue | Supported | Miruna, Corvin and Ashlyn; narrator/creature/NPC speakers; branches, checks, effects |
 | DM narration | Supported | Intro, room descriptions, combat log, victory/defeat text |
-| Combat encounters | Supported | The Flooded Stores (2 zombies), The Gate-Warden's Crypt (ghoul + zombie), E3 Town Square (2 infected zombies) |
+| Combat encounters | Supported | The Flooded Stores (zombie + living looter), The Gate-Warden's Crypt (ghoul + zombie), E3 Town Square (2 infected zombies) |
 | Victory / defeat / recovery | Supported | Victory narration and autosave; defeat screen with load and main-menu recovery (no Restart button) |
 | Save / load / continue | Supported | Four slots (`auto`, `slot1`–`slot3`), versioned JSON |
 | Settings and remapping | Supported | Master/music/SFX/ambience volume, text size, action rebinding and confirmed Restore Default Controls |
@@ -39,7 +39,8 @@ supported, it is not implemented, even if D&D 3.5 defines it.
   bonus and still applies, and a zero modifier changes nothing (PHB p. 136: "If
   you don't have a Dexterity bonus, nothing happens"). A rogue can sneak attack
   a flat-footed target; undead and constructs remain immune to that sneak
-  attack. Awareness only removes a surprise round, so an all-aware battle still
+  attack. The storeroom's living looter is a legal target, so the rogue's sneak
+  attack is reachable by playing. Awareness only removes a surprise round, so an all-aware battle still
   starts flat-footed. PHB p. 134 says the state lasts "until he or she takes an
   action"; this project ends it at the start of that combatant's first turn and
   says so in the round-1 combat-log line, so the reading is visible rather than
@@ -318,8 +319,8 @@ counterspells, metamagic, rituals and spellbooks-as-copying are not implemented.
   may make an opportunity attack (damage fails the attempt), the grappler makes an
   unarmed melee touch attack, and both make opposed grapple checks built from base
   attack, Strength and the printed special size modifier. A win records the pair
-  and deals unarmed-strike damage, which is nonlethal and therefore ignored by the
-  undead in the shipped campaigns. A target two or more size categories larger
+  and deals unarmed-strike damage, which is nonlethal, so the undead the crypt and the
+  town square field ignore it while the storeroom's living looter does not. A target two or more size categories larger
   loses the hold automatically after the touch.
 - While grappled, a creature threatens nothing, cannot move or step, cannot attack
   a third party or use a ranged weapon, and loses its Dexterity bonus against

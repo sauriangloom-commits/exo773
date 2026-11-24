@@ -3748,3 +3748,38 @@ defined with failing-first tests, validators, probes, layout, and a hash-bound c
 No content, schema, validator or code change was made; no tests, probes, validators, builds
 or exports were run. Overrun stays deferred and the opposed-check helper is unchanged.
 README remains untouched and no push was made.
+Implemented batch A of `docs/REACHABLE_OPPOSITION_PLAN.md` (content only). The storeroom
+now holds one living opponent: `store_looter`, a human warrior 1 (CR 1/2, 8 hp, AC 15 from
+a chain shirt, longsword +2 for 1d8+1), authored with the weapon as its single `attacks`
+entry because the monster turn path reads `attacks` and never `equipment.weapon`. It
+replaces the second zombie in `storeroom_dead`; the roster keeps two combatants and the
+two cells, the encounter keeps `xp: 300`, and the intro and victory narration now explain
+why a living scavenger is down there robbing the dead. No weapon item, no loot, no schema,
+validator, engine or award change; batches B (equipment-driven monster attacks) and C
+(disarm) were not started.
+
+Sera's sneak attack was recomputed from her authored attack rather than assumed: short
+sword 1d6+1 plus 2d6 is 3d6+1, range 4-19, average 11.5. The plan's earlier "about 13"
+was wrong and is corrected in the plan itself.
+
+`tests/test_reachable_opposition.gd` was written and run before the content change. Red:
+2/6 tests, 37/42 asserts, failing on the missing monster, the un-swapped roster and the
+absent living enemy; a discarded parse-error attempt is not part of that evidence
+(`builds/qa/reachable_opposition_red/`). Green: 6/6, 82 asserts, exit 0. Full suite
+1017/1017 tests, 10,142 asserts, 78 scripts, exit 0, against 1011/10,057/77 before. Both
+validators PASS and the recorded advancement inventory is unchanged
+(`authored=4500 ordinary=4350 qa=150 encounters=1500 effects=3000 start=3000
+threshold=6000`). All five probes PASS from source and from the executable (keyboard 31,
+grapple 160, level-up 349, advancement 228, combat-info 62), and combat layout is 32
+controls with 0 failures at 1280x720 at 100 % and 160 %.
+
+Candidate `2026-11-24_living_opponent_batch_a`: source
+`7547797f85271cdcb5aa4bac72964a6da7ec5695`, 110,905,384 bytes, SHA-256
+`8a7925de98d805f5862bc78859987624581ed3a3eb1480adfd8d5f28ee092a8c`, equal to `BUILD.txt`,
+worktree entries 1 (README only) and no untracked files; the executable's hash was
+identical before and after its acceptance run.
+
+No ordinary-play playthrough, balance testing, rendered review or human playtest was done.
+The evidence is automated content and rules behaviour plus the probes above. Overrun stays
+deferred and the opposed-check helper is unchanged. README remains untouched and no push
+was made.

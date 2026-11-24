@@ -38,7 +38,7 @@ The player can:
 2. Explore an original 11×12 gatehouse in first-person grid movement.
 3. Talk to an NPC and a speech-capable ghoul, including skill-check branches.
 4. Accept and track *The Drowned Bell* quest.
-5. Fight two complete tactical encounters: two zombies, then a ghoul and a zombie.
+5. Fight two complete tactical encounters: a zombie and a living looter, then a ghoul and a zombie.
 6. Search for the bell clapper, unlock the crypt, parley or fight the warden, and
    ring the bell to complete the objective.
 7. Save, quit, load, continue, and recover from defeat.
@@ -510,6 +510,7 @@ is not enforced.
 | Id | Name | HP | AC | Attacks | Special |
 | --- | --- | ---: | ---: | --- | --- |
 | `zombie` | Drowned Dead | 16 | 11 | Slam +2, 1d6+1 | DR 5/slashing, undead, single action only, destroyed at 0 |
+| `store_looter` | Soaked Looter | 8 | 15 | Longsword +2, 1d8+1 | Living human, chain shirt, no immunities, no loot |
 | `ghoul` | Corvin, the Gate-Warden | 13 | 14 | Bite +3 (1d6+1), 2 claws +1 (1d3+1) | Paralysis DC 12 (1d4+1), undead, destroyed at 0 |
 
 The stat blocks are adaptations of MM pp. 118/265. Ghoul fever is noted but not
@@ -519,7 +520,7 @@ implemented. The ghoul is a named, dialogue-capable creature before combat.
 
 | Id | Name | Map | Monsters | XP |
 | --- | --- | --- | --- | ---: |
-| `storeroom_dead` | The Flooded Stores | 9×7, interior pillars | 2 zombies at (6,1), (7,1) | 300 |
+| `storeroom_dead` | The Flooded Stores | 9×7, interior pillars | zombie at (6,1), store_looter at (7,1) | 300 |
 | `crypt_warden` | The Gate-Warden's Crypt | 9×7, interior pillars | ghoul at (3,1), zombie at (6,1) | 450 |
 
 Party starting cells are row 5, columns 1–4. Victory effects set
@@ -959,7 +960,7 @@ light_wooden_shield, potion_of_cure_light_wounds, bell_clapper, gatehouse_key,
 trail_rations, torch, holy_symbol, spellbook.  
 **Spells:** magic_missile, mage_armor, scorching_ray, cure_light_wounds, bless,
 aid.  
-**Monsters:** zombie, ghoul.  
+**Monsters:** zombie, store_looter, ghoul.  
 **Encounters:** storeroom_dead, crypt_warden.  
 **Quest:** drowned_bell.  
 **Doors:** crypt_door, store_door.  

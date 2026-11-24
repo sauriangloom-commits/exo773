@@ -213,6 +213,11 @@ Consequences for every shipped monster (`content/shared/monsters.json`):
 | `infected_zombie` (6 HD, CR 2, Medium, Str 17, BAB +3) | +6 | Same as the zombie with a stronger check: one escape attempt per turn, no attack, immune to the hold's nonlethal damage. Its authored disease stays deferred and unused. |
 | `ghoul` (2 HD, CR 1, Medium, Str 13, BAB +1, Dex 15) | +2 | Never initiates. It is not single-action-only, but under this plan it still spends its turn escaping, so its bite/claw paralysis (DC 12, implemented) **cannot trigger from a grapple** — the natural-weapon attack from a grapple is deferred to §10, 8d. If turned while holding, the grapple clears and it flees. |
 
+`store_looter` (added 2026-11-24 by batch A of `REACHABLE_OPPOSITION_PLAN.md`) is a
+living Medium humanoid with Str 13 and BAB +1, so its grapple check is +2. It never
+initiates, spends its turn on one escape attempt, and - unlike the three undead - does
+take the hold's nonlethal damage.
+
 A player character grappling any of them deals no damage with the hold itself (all
 three are undead) and gains control of the monster's action for as long as it fails to
 escape, which is the real tactical value of the batch until content adds a living

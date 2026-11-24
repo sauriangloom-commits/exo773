@@ -227,8 +227,8 @@ rush, resolves the fight, and then reads `auto.json` and reloads it.
 - **Player impact.** It adds no play, but it protects the two most recent
   player-facing systems (stances that used to leak into the save, and the new
   bull rush) in the artefact players actually run. The alternative player-facing
-  rules work is blocked on content rather than code: every shipped monster uses
-  natural weapons, so disarm and sunder have no legal target; overrun needs
+  rules work is blocked on content rather than code: no shipped monster has an
+  equipped weapon item, so disarm and sunder have no legal target; overrun needs
   movement through an occupied square and a defender's avoid choice; grapple is a
   subsystem; concealment needs terrain tags; iterative attacks need a full-attack
   action model. A rules batch now would add little reachable play.
@@ -1159,8 +1159,8 @@ probe runs at one scale and without the sorcerer.
 
 | Area | Engine today | Authored content that would use it | Reachable by a player? |
 | --- | --- | --- | --- |
-| Grapple | Nothing: no grapple or pinned state, no opposed grapple check, no restricted-action path, no UI action | None. All three monsters (`zombie`, `infected_zombie`, `ghoul`) fight with natural attacks and none has a grab ability; Improved Grapple is cataloged as deferred | A player could initiate it against any monster if it existed, but no content initiates, rewards or teaches it, and no monster would grapple back |
-| Disarm | Nothing | None. Every monster has `equipment: {}` and attacks with a slam, bite or claw, so there is no weapon to disarm; no authored enemy ever disarms the party | No - only a test could reach it |
+| Grapple | Nothing: no grapple or pinned state, no opposed grapple check, no restricted-action path, no UI action | None. The four monsters (`zombie`, `infected_zombie`, `ghoul`, `store_looter`) carry no weapon item and none has a grab ability; the looter swings an authored longsword attack | A player could initiate it against any monster if it existed, but no content initiates, rewards or teaches it, and no monster would grapple back |
+| Disarm | Nothing | None. No monster has an equipped weapon and no attack is an item: the undead use natural attacks, and the looter's longsword is an authored `attacks` entry whose `equipment` holds only a chain shirt. So there is no weapon to disarm; no authored enemy ever disarms the party | No - only a test could reach it |
 | Sunder | Nothing | Nothing. No combatant carries a struck object and there is no object hit-point model | No |
 | Concealment | Nothing: no miss chance anywhere in the engine | None. No area, spell or monster authors darkness or concealment | No |
 | Hard cover | Soft cover only: `creature_cover` gives +4 when another creature is in the line (`encounter.gd:2503`, `BattleMap.creature_cover`), and `Rules.attack` accepts the `cover` term (`rules.gd:711`) | The three combat maps are open rooms; the town square's barricade is an exploration object, not a combat obstacle | Soft cover yes (and probed); hard or terrain cover no |
@@ -1836,13 +1836,28 @@ no loot), and the AI needs no change. It records grapple hold damage and critica
 consequences, states that disarm and sunder stay unreachable, and defines a content-only
 batch A with failing-first tests, checks and a hash-bound candidate. Batches B (monster
 equipment attacks) and C (disarm) are recorded as separate work. Nothing was implemented
-and no checks were run.
+and no checks were run at the time of that review.
+
+**Batch A implemented 2026-11-24 (content only).** `content/shared/monsters.json` now
+carries `store_looter` (living human warrior 1, CR 1/2, 8 hp, AC 15, longsword authored as
+an `attacks` entry, chain shirt only, no loot) and `storeroom_dead` fields it at (7,1) in
+place of the second zombie, with new intro and victory narration. The encounter keeps two
+combatants and its 300 XP; every award total and threshold is unchanged. New
+`tests/test_reachable_opposition.gd` (6 tests) pins the stat block, `monsters`/
+`monster_cells` parity and the trigger, sneak damage on the living flat-footed looter,
+sneak refusal on the flat-footed zombie, the nonlethal knockout and the unchanged ledger.
+Suite 1017/1017 (10,142 asserts, 78 scripts); both validators PASS; all five probes and
+combat layout 32/0 at both scales; candidate `2026-11-24_living_opponent_batch_a`
+(110,905,384 bytes, SHA-256 `8a7925de...092a8c`) accepted from the executable. Batches B
+and C were not started. No playthrough, balance test, rendered review or human playtest
+was done.
 
 ### Candidate 2 - further grapple (8c/8d)
 
 Reachable (grapple and pin are ordinary actions) but the payoff is thin: the hold damage
-is nonlethal and every shipped monster is undead, so "damage by opposed check" would do
-nothing in content; "move the grapple at half speed" is a movement feature with its own
+is nonlethal, so "damage by opposed check" does nothing against the undead the crypt and
+the town square field (the storeroom's living looter now takes it, which is batch A's
+gain, not this candidate's); "move the grapple at half speed" is a movement feature with its own
 decisions; "use the opponent's weapon" has no weapon to use. Casting from a grapple is
 unreachable because the AI never grapples. Six decisions are already recorded in
 `GRAPPLE_PLAN.md` and the 2026-11-24 review. **Not the next task.**
