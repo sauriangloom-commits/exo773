@@ -1654,3 +1654,33 @@ content that rewards it, and the save shortcut stays a ride-along.
   not key-tested; exported acceptance covers probes, not the suite; overrun has no
   implementation, tests or content pressure yet, and its continuation, tie and
   opportunity-geometry questions remain open by the §18 deferral.
+
+## Opposed-check tie audit and next feature (2026-11-24)
+
+Inspection only; **no tests, probes, validators, builds or exports were run**.
+`docs/OPPOSED_CHECK_TIE_AUDIT.md` enumerates all seven production callers of
+`Rules.opposed_ability_check`, their modifiers and tie behaviour.
+
+**Finding.** No current player-reachable maneuver is demonstrably wrong.
+Grapple, pin and escape match the explicit printed rule: the higher grapple check
+modifier wins, then reroll. Trip and bull rush coincide with the project's
+ability-check reading in shipped content because every character and monster is
+Medium, no actor has a stability bonus, and Kaelen cannot reach Improved Trip at
+the current level cap. The helper's use of size/stability/Improved Trip as tie
+breakers is a **latent contract mismatch**, not a confirmed defect. The ability-
+check interpretation itself is a project reading of PHB p. 64, not an explicit
+printed trip/bull-rush sentence. The earlier maneuver acceptances are not
+invalidated.
+
+**Future constraint.** If reachable non-ability bonuses are added, separate the
+total modifier from the tie modifier in the helper API; the default must preserve
+grapple/pin/escape. Overrun remains deferred under `docs/OVERRUN_PLAN.md` §18.
+
+**Selected next feature: Candidate A, keyboard-combat information access.** It is
+the strongest genuinely bounded roadmap item outside overrun: the combat log has
+no keyboard scrolling path, and focused pending-decision/target controls can stay
+outside the sidebar viewport. It changes no rule, content, save or schema. Its
+key/focus choices should be settled first; this audit authorizes no
+implementation. Readied/delayed actions have a higher tactical ceiling but are a
+subsystem; further grapple still lacks a content payoff; the save shortcut is a
+ride-along.
