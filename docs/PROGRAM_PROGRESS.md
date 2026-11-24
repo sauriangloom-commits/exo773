@@ -3890,3 +3890,30 @@ hash-bound acceptance and two batches with the attack half recommended first. No
 implemented and no game checks were run; only documentation-integrity checks were made. The
 action's control count is an expectation, not a measurement. Overrun stays deferred and the
 opposed-check helper is unchanged.
+
+**Aid Another implemented (2026-11-24).** The printed melee assist ships as one acceptance
+unit in `81a76e0`: a standard action, an attack roll against AC 10, and the ally's choice of
++2 on its next attack roll against that foe or +2 AC against that foe's next attack, until the
+start of the helper's next turn, stacking per helper. Fifteen failing-first tests were written
+through the planned encounter API before the implementation; the captured red run was 15 tests
+with 12 failing and 18/34 asserts, and every failure was an assertion (no parse, import or
+fixture error). The focused tests then passed 15/15 with 64 asserts; the full suite passed
+1047/1047 with 10,294 asserts across 81 scripts (the two focus tests now expect the deliberate
+20th action button). Both validators pass, `--validate-diagnostics` with the same eight
+accepted authored class-progression inconsistencies. Probes: `--keyboard-probe` 31,
+`--grapple-probe` 160, `--level-up-probe` 349 at 1.00 and 1.60, `--advancement-probe` PASS,
+`--combat-info-probe` 62 (31 per scale), `--flanking-probe` 8, `--sneak-range-probe` 9 and the
+new `--aid-another-probe` 17. Combat layout is **33 controls, 0 failures** at 1280x720 at 100 %
+and 160 %, the measured count matching the plan's expected 32 -> 33. Candidate
+`2026-11-24_aid_another` from `81a76e0` (worktree difference is the README removal only),
+`RavenloftFoundationEdit.exe` sha256
+`90afb671831586c717f32106888c63e3f0da5f37e937e718c156708e524b40ca`, 110,934,728 bytes,
+`BUILD.txt` matched; the hash was identical before and after every acceptance run.
+
+Claimed behavior is automated rules only: no playtest shows the action is ever chosen, and
+there was no balance testing, playthrough, rendered review or human playtest. Monsters never
+aid, so monster parity is unmeasured; the build has no charge action; `--keyboard-probe` and
+`--grapple-probe` need their `--demo-unarmed` fixture while every other probe runs without a
+demo flag. Existing suite warnings (deprecated `wait_frames`, one orphan control) are unchanged
+and are not new failures. Overrun stays deferred, the opposed-check helper is unchanged, and
+nothing was pushed or backed up.

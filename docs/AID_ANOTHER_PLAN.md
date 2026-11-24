@@ -407,3 +407,26 @@ awards, and the spell/skill-check forms of the printed action.
 - **Evidence gaps.** Carried forward, plus: no playtest showing the action is chosen in real
   play; no measured control count for the added button until batch 1 is implemented; monster
   parity for the action untested and out of scope. None of these is a reason to start a batch.
+
+## Implementation record (2026-11-24)
+
+Implemented in `81a76e0` as the single acceptance unit this note requires, so both bonus kinds
+shipped together. The failing-first tests were written against
+`Encounter.aid_active` / `resolve_aid_friend` / `resolve_aid_choice` before the action existed:
+the captured red run had 15 tests, 12 failing and 18/34 asserts, all assertion failures rather
+than parse, import or fixture errors. Green: 15/15 focused with 64 asserts, suite 1047/1047
+with 10,294 asserts across 81 scripts, both validators PASS, probes at their accepted counts
+(keyboard 31, grapple 160, level-up 349, advancement PASS, combat-info 62, flanking 8,
+sneak-range 9) plus the new `--aid-another-probe` at 17 checks, and combat layout at **33
+controls, 0 failures** at 1280x720 at 100 % and 160 %, matching the expected count.
+
+Candidate `2026-11-24_aid_another` (source `81a76e0`, `BUILD.txt` matched, exe sha256
+`90afb671831586c717f32106888c63e3f0da5f37e937e718c156708e524b40ca`, 110,934,728 bytes) was
+accepted from the executable with the hash identical before and after. Acceptance records are
+in `PROGRAM_PROGRESS.md`.
+
+Limits, kept explicit: automated rules behavior only - no playtest shows the action is chosen,
+and there was no balance testing, playthrough, rendered review or human playtest. Monsters
+never aid, so monster parity is unmeasured; no charge action exists in this build; the
+fine-grained +2 also reached trip and grapple touch attacks and ranged touch spells, as
+recorded above, but nothing in the shipped content forces those routes.
