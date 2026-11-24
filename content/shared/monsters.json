@@ -243,5 +243,67 @@
 		"portrait_hint": "ghoul",
 		"notes": "MM p.119 ghoul: 2d12 (13 hp), AC 14, bite +2 (1d6+1) and 2 claws +0 (1d3), paralysis DC 12 for 1d4+1 rounds (elves immune), ghoul fever. Special Qualities include +2 turn resistance, so turning treats the ghoul as 4 HD. The Multiattack feat is implemented, so the secondary claw penalty is applied by Rules.attack_bonus rather than authored into the attack data; ghoul fever is not implemented.",
 		"destroyed_at_zero": true
+	},
+	"store_looter": {
+		"id": "store_looter",
+		"name": "Soaked Looter",
+		"race": "Human",
+		"class": "Warrior",
+		"level": 1,
+		"hit_dice": 1,
+		"turn_resistance": 0,
+		"is_monster": true,
+		"monster_type": "Humanoid (human)",
+		"challenge_rating": "1/2",
+		"abilities": {
+			"str": 13,
+			"dex": 12,
+			"con": 12,
+			"int": 10,
+			"wis": 10,
+			"cha": 8
+		},
+		"base_attack": 1,
+		"base_saves": {
+			"fort": 2,
+			"ref": 1,
+			"will": 0
+		},
+		"max_hp": 8,
+		"hp": 8,
+		"speed_ft": 30,
+		"size_ac": 0,
+		"size_category": "medium",
+		"ac_misc": 0,
+		"natural_armor": 0,
+		"skill_ranks": {},
+		"feats": [],
+		"proficiencies": [
+			"simple",
+			"martial",
+			"light_armor"
+		],
+		"equipment": {
+			"armor": "chain_shirt"
+		},
+		"inventory": [],
+		"spells": {},
+		"attacks": [
+			{
+				"name": "longsword",
+				"damage": "1d8",
+				"crit_range": 19,
+				"crit_mult": 2,
+				"damage_type": "slashing"
+			}
+		],
+		"immunities": [],
+		"tags": [
+			"human"
+		],
+		"xp": 150,
+		"portrait_hint": "human",
+		"notes": "A living scavenger rather than a printed stat block: Warrior 1 (CR 1/2) with a longsword and a chain shirt, authored so the rogue's sneak attack has a legal target in the storeroom. The weapon is the attacks entry because the monster turn path reads attacks and never equipment.weapon; no weapon item is authored and nothing drops. Monster xp is decorative; the encounter's own xp is the award.",
+		"destroyed_at_zero": false
 	}
 }

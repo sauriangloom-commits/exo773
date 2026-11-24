@@ -31,7 +31,7 @@
 		],
 		"monsters": [
 			"zombie",
-			"zombie"
+			"store_looter"
 		],
 		"monster_cells": [
 			[
@@ -44,7 +44,7 @@
 			]
 		],
 		"xp": 300,
-		"intro": "(EXAMPLE ENCOUNTER) The drowned stores heave. Two bloated shapes rise from the floodwater, water pouring from their mouths.",
+		"intro": "(EXAMPLE ENCOUNTER) The drowned stores heave. A bloated shape rises from the floodwater, water pouring from its mouth - and behind it a living scavenger straightens, soaked to the chest, a stolen strongbox under one arm and a longsword in the other hand. He came down here to rob the dead, and he is not inclined to share.",
 		"victory_effects": [
 			{
 				"type": "set_flag",
@@ -53,7 +53,7 @@
 			},
 			{
 				"type": "narration",
-				"text": "The dead collapse into the flood. The storeroom is quiet, except for the drip of water and your own breathing."
+				"text": "The drowned thing collapses into the flood, and the looter goes down with it. The storeroom is quiet, except for the drip of water and your own breathing."
 			}
 		]
 	},
