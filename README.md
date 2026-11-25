@@ -27,20 +27,6 @@ prose are clearly labelled placeholders authored for this project.
 
 > Screenshots are QA evidence and were excluded from this editable copy.
 
-## Quick start (verified environment)
-
-The Godot executable is the installed 4.7.2 build in the original project folder:
-
-```bash
-cd "C:\Users\Noot Goblin\Downloads\Ravenloft\RL_Edit"
-"..\Project Ravenloft\Godot_v4.7.2-stable_win64.exe" --path .
-```
-
-Or open `project.godot` in Godot 4.7.2 and press **F5**. The entry scene is
-`scenes/Main.tscn`; the project starts at the main menu.
-
-No build step is required. GUT is vendored under `addons/gut`.
-
 ## Controls
 
 | Action | Keys |
