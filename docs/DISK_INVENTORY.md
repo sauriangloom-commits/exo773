@@ -294,3 +294,118 @@ are not tracked at all.
 No file or directory was deleted in phase 1. The proposed deletion list and its risks are given
 separately and require explicit approval before any path is touched. No tests, probes,
 validators, builds or exports were run for this inventory.
+
+## Deletion result (2026-11-24)
+
+The owner approved A, `.godot/` from B (not `builds/qa/appdata_export/`) and C with two keeps.
+No git gc was approved or run. The approved set was deleted after the exact paths and sizes were
+listed in the pre-deletion output below. No test, probe, validator, build or export was run.
+
+**Kept candidates.** `2026-11-24_aid_another` and the previous accepted candidate recorded from
+`builds/qa/sneak_range_green`, which is `2026-11-24_ranged_sneak_limit` (`ROADMAP.md:2260`,
+`PROGRAM_PROGRESS.md:3853`; there is no candidate directory literally named `sneak_range_green`).
+Both executable hashes are unchanged and match their `BUILD.txt`: `aid_another`
+`90afb671831586c717f32106888c63e3f0da5f37e937e718c156708e524b40ca` (110,934,728 bytes) and
+`ranged_sneak_limit` `1788d811eb35a4f973b24e420e23a346a75fe2bbed7ab344a736d5f87e2e9026`
+(110,914,344 bytes). Every `BUILD.txt` (79), every acceptance log, screenshot, `SUPERSEDED.txt`,
+campaign fixture and `.import` sidecar remains; only the 78 older executables were removed.
+
+**Removed candidates.** 78 files, 8,634,394,808 bytes (8,634.395 MB). Per-file MB below comes from
+each `BUILD.txt` `exe_bytes`; `ashwick_second_ring_2026-11-14` has no `BUILD.txt` and uses the
+pre-deletion listing size (110.611 MB), so the rounded rows sum to 8,634.343 MB while the exact
+deleted total is 8,634,394,808 bytes.
+
+| Removed path | MB |
+| --- | --- |
+| `builds/qa/candidates/2026-11-23_batch6a_advancement/RavenloftFoundationEdit.exe` | 110.839 |
+| `builds/qa/candidates/2026-11-23_batch7_weapon_specialization/RavenloftFoundationEdit.exe` | 110.853 |
+| `builds/qa/candidates/2026-11-23_batch7b_feat_display/RavenloftFoundationEdit.exe` | 110.853 |
+| `builds/qa/candidates/2026-11-23_batch8a_grapple/RavenloftFoundationEdit.exe` | 110.866 |
+| `builds/qa/candidates/2026-11-23_batch8a_grapple_b/RavenloftFoundationEdit.exe` | 110.866 |
+| `builds/qa/candidates/2026-11-24_aoo_helpless_a/RavenloftFoundationEdit.exe` | 110.889 |
+| `builds/qa/candidates/2026-11-24_aoo_helpless_b/RavenloftFoundationEdit.exe` | 110.889 |
+| `builds/qa/candidates/2026-11-24_batch8a_acceptance/RavenloftFoundationEdit.exe` | 110.875 |
+| `builds/qa/candidates/2026-11-24_batch8a_acceptance_b/RavenloftFoundationEdit.exe` | 110.875 |
+| `builds/qa/candidates/2026-11-24_batch8b1_acceptance_a/RavenloftFoundationEdit.exe` | 110.886 |
+| `builds/qa/candidates/2026-11-24_batch8b1_acceptance_b/RavenloftFoundationEdit.exe` | 110.886 |
+| `builds/qa/candidates/2026-11-24_batch8b1_acceptance_c/RavenloftFoundationEdit.exe` | 110.886 |
+| `builds/qa/candidates/2026-11-24_combat_info_batch1/RavenloftFoundationEdit.exe` | 110.901 |
+| `builds/qa/candidates/2026-11-24_combat_keyboard_a/RavenloftFoundationEdit.exe` | 110.888 |
+| `builds/qa/candidates/2026-11-24_combat_log_focus_batch2/RavenloftFoundationEdit.exe` | 110.904 |
+| `builds/qa/candidates/2026-11-24_flanking_attacker_specific/RavenloftFoundationEdit.exe` | 110.912 |
+| `builds/qa/candidates/2026-11-24_into_melee_paralyzed/RavenloftFoundationEdit.exe` | 110.891 |
+| `builds/qa/candidates/2026-11-24_living_opponent_batch_a/RavenloftFoundationEdit.exe` | 110.905 |
+| `builds/qa/candidates/2026-11-24_ranged_720_probe_a/RavenloftFoundationEdit.exe` | 110.892 |
+| `builds/qa/candidates/2026-11-24_turn_undead_wrapper_a/RavenloftFoundationEdit.exe` | 110.886 |
+| `builds/qa/candidates/2026-11-24_turn_undead_wrapper_b/RavenloftFoundationEdit.exe` | 110.886 |
+| `builds/qa/candidates/account_decision_2026-11-14/RavenloftFoundationEdit.exe` | 110.642 |
+| `builds/qa/candidates/ashwick_second_ring_2026-11-14/RavenloftFoundationEdit.exe` | 110.611 |
+| `builds/qa/candidates/bull_rush_2026-11-21/RavenloftFoundationEdit.exe` | 110.733 |
+| `builds/qa/candidates/bull_rush_2026-11-21b/RavenloftFoundationEdit.exe` | 110.733 |
+| `builds/qa/candidates/campaign_discovery_2026-11-13/RavenloftFoundationEdit.exe` | 110.556 |
+| `builds/qa/candidates/campaign_list_2026-11-13/RavenloftFoundationEdit.exe` | 110.578 |
+| `builds/qa/candidates/cli_args_2026-11-14/RavenloftFoundationEdit.exe` | 110.638 |
+| `builds/qa/candidates/combat_casting_2026-11-13/RavenloftFoundationEdit.exe` | 110.512 |
+| `builds/qa/candidates/concentration_2026-11-13/RavenloftFoundationEdit.exe` | 110.510 |
+| `builds/qa/candidates/creator_focus_2026-11-21a/RavenloftFoundationEdit.exe` | 110.748 |
+| `builds/qa/candidates/creator_probe_2026-11-20/RavenloftFoundationEdit.exe` | 110.684 |
+| `builds/qa/candidates/creature_cover_2026-11-21/RavenloftFoundationEdit.exe` | 110.694 |
+| `builds/qa/candidates/creature_cover_inspector_2026-11-21/RavenloftFoundationEdit.exe` | 110.698 |
+| `builds/qa/candidates/defensive_actions_2026-11-21/RavenloftFoundationEdit.exe` | 110.708 |
+| `builds/qa/candidates/defensive_actions_2026-11-21b/RavenloftFoundationEdit.exe` | 110.708 |
+| `builds/qa/candidates/defensive_actions_2026-11-21c/RavenloftFoundationEdit.exe` | 110.708 |
+| `builds/qa/candidates/dialogue_focus_2026-11-21/RavenloftFoundationEdit.exe` | 110.686 |
+| `builds/qa/candidates/dialogue_focus_2026-11-21b/RavenloftFoundationEdit.exe` | 110.686 |
+| `builds/qa/candidates/dialogue_geometry_2026-11-21/RavenloftFoundationEdit.exe` | 110.687 |
+| `builds/qa/candidates/dialogue_geometry_2026-11-21b/RavenloftFoundationEdit.exe` | 110.687 |
+| `builds/qa/candidates/dialogue_header_2026-11-21/RavenloftFoundationEdit.exe` | 110.689 |
+| `builds/qa/candidates/dialogue_hud_2026-11-21/RavenloftFoundationEdit.exe` | 110.690 |
+| `builds/qa/candidates/dialogue_page_2026-11-21/RavenloftFoundationEdit.exe` | 110.687 |
+| `builds/qa/candidates/edit_2026-11-09/RavenloftFoundationEdit.exe` | 110.482 |
+| `builds/qa/candidates/encounter_resolution_2026-11-13/RavenloftFoundationEdit.exe` | 110.555 |
+| `builds/qa/candidates/flat_footed_2026-11-13/RavenloftFoundationEdit.exe` | 110.483 |
+| `builds/qa/candidates/flat_footed_corrected_2026-11-13/RavenloftFoundationEdit.exe` | 110.491 |
+| `builds/qa/candidates/integration_2026-11-13/RavenloftFoundationEdit.exe` | 110.517 |
+| `builds/qa/candidates/interruption_2026-11-20/RavenloftFoundationEdit.exe` | 110.679 |
+| `builds/qa/candidates/intro_modal_2026-11-13/RavenloftFoundationEdit.exe` | 110.585 |
+| `builds/qa/candidates/journal_2026-11-20/RavenloftFoundationEdit.exe` | 110.663 |
+| `builds/qa/candidates/level_up_ui_2026-11-22/RavenloftFoundationEdit.exe` | 110.833 |
+| `builds/qa/candidates/migration_2026-11-20/RavenloftFoundationEdit.exe` | 110.671 |
+| `builds/qa/candidates/modal_focus_2026-11-20/RavenloftFoundationEdit.exe` | 110.668 |
+| `builds/qa/candidates/modal_held_repeat_2026-11-21/RavenloftFoundationEdit.exe` | 110.690 |
+| `builds/qa/candidates/modal_pane_2026-11-20/RavenloftFoundationEdit.exe` | 110.668 |
+| `builds/qa/candidates/modal_scroll_2026-11-20/RavenloftFoundationEdit.exe` | 110.667 |
+| `builds/qa/candidates/nonlethal_2026-11-13/RavenloftFoundationEdit.exe` | 110.554 |
+| `builds/qa/candidates/package_diagnostics_2026-11-13/RavenloftFoundationEdit.exe` | 110.556 |
+| `builds/qa/candidates/party_layout_2026-11-13/RavenloftFoundationEdit.exe` | 110.581 |
+| `builds/qa/candidates/party_min_2026-11-14/RavenloftFoundationEdit.exe` | 110.635 |
+| `builds/qa/candidates/pattern_2026-11-20/RavenloftFoundationEdit.exe` | 110.683 |
+| `builds/qa/candidates/probe_2026-11-20/RavenloftFoundationEdit.exe` | 110.684 |
+| `builds/qa/candidates/quest_log_idempotence_2026-11-13/RavenloftFoundationEdit.exe` | 110.586 |
+| `builds/qa/candidates/ranged_melee_2026-11-13/RavenloftFoundationEdit.exe` | 110.492 |
+| `builds/qa/candidates/ranged_windowed_2026-11-13/RavenloftFoundationEdit.exe` | 110.502 |
+| `builds/qa/candidates/recovery_2026-11-20/RavenloftFoundationEdit.exe` | 110.678 |
+| `builds/qa/candidates/refusals_2026-11-20/RavenloftFoundationEdit.exe` | 110.611 |
+| `builds/qa/candidates/resolution_smoke_2026-11-21a/RavenloftFoundationEdit.exe` | 110.741 |
+| `builds/qa/candidates/save_compat_2026-11-13/RavenloftFoundationEdit.exe` | 110.576 |
+| `builds/qa/candidates/story_diagnostics_2026-11-13/RavenloftFoundationEdit.exe` | 110.566 |
+| `builds/qa/candidates/ui_scaling_2026-11-20/RavenloftFoundationEdit.exe` | 110.647 |
+| `builds/qa/candidates/ui_scaling_2026-11-20b/RavenloftFoundationEdit.exe` | 110.647 |
+| `builds/qa/candidates/unarmed_2026-11-13/RavenloftFoundationEdit.exe` | 110.545 |
+| `builds/qa/candidates/unarmed_threat_2026-11-13/RavenloftFoundationEdit.exe` | 110.539 |
+| `builds/qa/candidates/weapon_state_2026-11-13/RavenloftFoundationEdit.exe` | 110.539 |
+| `builds/qa/candidates/weapons_2026-11-13/RavenloftFoundationEdit.exe` | 110.528 |
+
+**Removed with A and B.** `RL_Edit/.godot/` (187,027,503 bytes), `RL_Edit/builds/qa/rev_before/`
+(9,472,412 bytes) and the empty `RL_Edit/RavenloftFoundationEdit/` directory (0 bytes).
+`builds/qa/appdata_export/` was **not** removed.
+
+**Space recovered.** 8,830,894,723 bytes total (8,830.895 MB, about 8.83 GB decimal / 8.22 GiB).
+`du` now reports `RL_Edit` at 1,013 MiB, down from 9,868.5 MB in the inventory above. The two kept
+executables and all candidate evidence remain.
+
+**Verification.** `git status --short` shows only ` M README.md`; the README file hash
+`d7cd5f89815b3d7616c2a8abeccaacf309c9af4e6cf234e152b321eeb78b1b57` and diff hash
+`0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c` are unchanged. This is a
+documentation-only result; no tests, probes, validators, builds or exports were run, and no game
+check was made.
