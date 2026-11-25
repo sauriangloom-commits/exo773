@@ -3917,3 +3917,45 @@ aid, so monster parity is unmeasured; the build has no charge action; `--keyboar
 demo flag. Existing suite warnings (deprecated `wait_frames`, one orphan control) are unchanged
 and are not new failures. Overrun stays deferred, the opposed-check helper is unchanged, and
 nothing was pushed or backed up.
+
+## Aid Another closed (2026-11-24)
+
+Closed against the record in `b7c5bb9` for implementation `81a76e0`, plan amendment `6a32172`
+and the static audit note `67377f6`. No test, probe, validator, build or export was run for
+this closure; every figure below is read from the recorded logs and build metadata, not from
+a new run. Nothing executable, in content, schema, saves or project settings changed.
+
+| Check | Recorded result | Evidence |
+| --- | --- | --- |
+| Failing-first (red) | 15 tests, 3 passing, 12 failing, 18/34 asserts; every failure was an assertion, with no parse, import or fixture error | `builds/qa/aid_another_red/focused_red.log` |
+| Focused green | 15/15 tests, 64 asserts | `builds/qa/aid_another_green/focused_green.log` |
+| Full suite | 1,047/1,047 tests, 10,294 asserts, 81 scripts, exit 0; 1,272 deprecated uses, 1 orphan `Control`, 88.951 s | `builds/qa/aid_another_green/suite.log` |
+| Probes | keyboard 31, grapple 160, level-up 349 at both scales, advancement PASS, combat-info 62 (36 controls and 0 failures at each scale), flanking 8, sneak-range 9, Aid Another 17; all PASS | `builds/qa/aid_another_green/probe_*.log` |
+| Layout | 33 controls, 0 failures at 1280x720 at text 1.00 and 1.60; expected 33 from the plan's 32 -> 33 | `layout_1.0.log`, `layout_1.6.log` |
+| Validators | `--validate-campaigns` PASS and `--validate-diagnostics` PASS with the same eight accepted authored inconsistencies | `validate_campaigns.log`, `validate_diagnostics.log` |
+| Candidate | `2026-11-24_aid_another`, source `81a76e0bcece967df3106a04b72d34380eb0ebff`, 110,934,728 bytes, SHA-256 `90afb671831586c717f32106888c63e3f0da5f37e937e718c156708e524b40ca`; `BUILD.txt` matched, and the executable hash was identical before and after the acceptance runs | `builds/qa/candidates/2026-11-24_aid_another/` |
+
+`BUILD.txt` also records `worktree_entries=1`, `untracked_files=0` and
+`worktree_diff_sha256=0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c`, which
+is the README quick-start removal's diff hash; the candidate therefore carries no source
+change beyond that uncommitted removal.
+
+**"Next attack" in the record.** The plan reads the printed phrase as the next attack
+*roll*, so one roll consumes the grant whether it hits or misses. For full attacks, only the
+first swing can consume it and later swings receive nothing; the players have no full-attack
+action in this build, so the row describes the monsters' full attack, whose first swing is
+covered and whose later swings are not. Reaction attacks are covered: an opportunity attack
+rolls through the ordinary path, applies and consumes the grant. An attack refused or aborted
+before any roll neither applies nor consumes it. The full table is `AID_ANOTHER_PLAN.md`,
+"What 'next attack' covers".
+
+**Nothing is missing or only expected.** The red totals, focused totals, suite totals, every
+probe count, the 33-control layout result and the candidate's size and hash are all measured
+and recorded. The development attempts retained in the red folder (13/15 focused, then 15/15;
+a 16-check probe with one failure, then 17 checks with none) were superseded by the green logs
+the record cites; they are not acceptance results.
+
+Claimed behavior remains automated rules only: no playtest shows the action being chosen, and
+there was no balance testing, playthrough, rendered review or human playtest. Overrun stays
+deferred, the opposed-check helper is unchanged, and the earlier closures carry forward
+unchanged.

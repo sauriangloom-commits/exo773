@@ -2401,3 +2401,122 @@ count recorded as an evidence gap rather than assumed. Overrun stays deferred, t
 opposed-check helper is unchanged, and the earlier acceptance limits carry forward unchanged.
 
 Godot 4.7 EPUB audit (2026-11-24): static, documentation-only findings are recorded in [AUDIT_EPUB.md](AUDIT_EPUB.md); no priority above changed.
+
+## Next-task review after Aid Another (2026-11-24)
+
+Documentation only: nothing was implemented, and no test, probe, validator, build or export was
+run. This review reads the working tree at `67377f6` and updates the candidate set from the
+2026-11-24 input review after Aid Another's closure. Excluded by instruction: overrun, readied
+and delayed actions, movement continuation, the shared tie helper, equipment-driven monster
+attacks, and anything that depends on the owner decisions in
+[AUDIT_EPUB.md](AUDIT_EPUB.md) (license, copyright, version, PCK encryption).
+
+### Serious candidates
+
+**Party item handoff (usability).** Benefit: loot currently goes to the first conscious
+adventurer (`panels.gd:253-257`), and a potion or weapon one character finds cannot reach the
+character who can use it. Evidence: the inventory modal lists every party member but offers
+only Equip and Use (`panels.gd:247-310`), backed by `Game.equip_item` and `Game.use_item`
+(`game_state.gd:1526`, `:1558`); `Character.add_to_inventory`/`remove_from_inventory`
+(`character.gd:231`, `:239`) are the only primitives and `Game` has no transfer method; loot
+routing is at `game_state.gd:1379` and the encounter drop at `encounter.gd:3186`. Reachability:
+ordinary exploration, through the Inventory (I) screen, in every campaign. Decisions: transfer
+pack items only (equipped gear is changed through Equip), one whole stack per press with a
+recipient control, exploration only (combat feeding from the actor's own pack already works),
+and keyboard focus for the new control. Dependencies: none on content, schema or saves; each
+inventory already serializes per character. Boundary: one batch - a `Game.transfer_item`
+primitive, a recipient picker in the existing modal, tests and layout. Acceptance needs:
+failing-first tests for a single item and a stack, same-character and invalid-recipient
+refusals, and equipment/inventory consistency; the full suite; both validators; layout at
+100 % and 160 % with the new control count; the inventory documentation bullet. Verdict:
+**recommended**. If the owner does not consider loot routing a real problem, this is not worth
+a batch on its own.
+
+**`hold person` plus coup de grace (rules plus content).** Benefit: a cleric control spell that
+creates a helpless target, and a finisher that uses it. Evidence: Aldric is Cleric 3 with two
+2nd-level slots (`content/shared/characters.json`), and `hold person` is a 2nd-level cleric
+spell, but `content/shared/spells.json` holds six spells and not this one; the paralyzed
+condition already exists (`encounter.gd:226`, `:303`; `character.gd:519`), helpless is modelled
+(`rules.gd:219`), the spell DC helper exists (`encounter.gd:4264`), and no coup de grace action
+exists. Reachability: legally obtainable for Aldric only after the spell is added; the shipped
+monsters are three undead and one human (`content/shared/monsters.json`), and `hold person`
+affects humanoids, so the payoff is the single living looter and coup de grace on it. Decisions:
+spell list and level, Will save and DC, 1 round/level duration, humanoid-only targeting, coup
+de grace as a full-round automatic critical with a Fortitude save, and the provoking reaction.
+Dependencies: content, a spell, a condition application and a new action - two systems.
+Boundary: not one batch; plan first. Acceptance needs: a future plan, not this review.
+
+**Disarm (rules).** Benefit: strip a weapon in a fight. Evidence: no disarm action exists; the
+monsters' attacks are data entries, not equipped items, and only the living looter has a
+weapon-like attack; dropped-item recovery exists (`encounter.gd:1490`, `:3186`) but there is no
+monster weapon item; Improved Disarm is deferred (`FEATS_SKILLS_COVERAGE.md:169`). Reachability:
+the special attack is universal in the printed rules, but there is no player-visible payoff
+against these monsters, so it stays a raw hook. Dependencies: equipment-driven monster attacks,
+which this review excludes. Boundary: blocked. Acceptance needs: none until that dependency is
+taken deliberately.
+
+**Save shortcut (usability).** Benefit: one key opens the existing Save modal. Evidence: the
+input map has no save action, and the exploration menu already exposes Save; this has been
+deferred twice. Reachability: exploration. Boundary: one input action, one handler and one test;
+convenience only, no gameplay effect. Verdict: not the next batch.
+
+### Considered and not serious
+
+- **Defeat screen initial focus.** Presentation polish with no gameplay effect; do not schedule
+alone.
+- **Levels 5 and above.** Outside the supported 3rd-4th range (`SUPPORTED_FEATURES.md:51`,
+  with advancement past 4th listed as unsupported at `:472`); no award or content supports it.
+- **Two-weapon fighting and full attacks.** No full-attack action, and every two-weapon feat is
+  deferred (`FEATS_SKILLS_COVERAGE.md:240-243`); a combat-action rewrite, not a bounded batch.
+- **Area-of-effect templates.** None of the six spells is an area spell; needs targeting, saves
+  and map templates.
+- **Encumbrance.** Weight data exists, but there are no thresholds or UI and the bookkeeping has
+  no clear player benefit.
+- **Terrain hard cover.** Walls already block line of sight; no low-wall or terrain feature
+  exists, so the benefit is marginal.
+- **Disease.** No content, schema or reachable source.
+- **Concealment.** Still only a deferred comment (`encounter.gd:15`): no authored source, model
+  or target.
+
+### Legally obtainable, raw hooks and seeded fixtures
+
+- **Ordinary play, today.** Attack, trip, grapple and pin, bull rush, Aid Another, fighting
+defensively and total defence, Power Attack, Cleave and Combat Expertise for the characters
+that have them, sneak attack through flat-footed or flanking within the 30-ft ranged limit, and
+the six shipped spells.
+- **Legally obtainable only with content.** `hold person` for Aldric; coup de grace is a
+universal action but has no player-made helpless target today.
+- **Raw hooks without reachable content.** Disarm and sunder, equipment-driven monster attacks,
+two-weapon fighting and full attacks.
+- **Seeded fixtures and probes only.** The Turn Undead QA encounter, the level-up walk, the Aid
+Another probe scenarios and the combat-information five-enemy fixture. Their evidence is real
+but none is ordinary play.
+
+### Recommendation
+
+**Implement party item handoff as one bounded usability batch**, exploration-only and limited
+to pack items, with a recipient control and a single-inventory-item transfer primitive. It
+addresses a limitation the inventory screen states itself, has no rules dependency and touches
+none of the excluded subsystems. If the owner does not value that, the honest alternative is a
+**stopping point**: no confirmed defect is open, no bounded player-reachable rule remains, and
+every other rules candidate needs content or a system plan first. To continue after that, the
+owner would need to decide whether `hold person` plus coup de grace is wanted, whether levels 5
+and above or full attacks are roadmap direction, and the four packaging decisions in
+`AUDIT_EPUB.md`.
+
+### Classification, kept separate
+
+- **Confirmed defects.** None open. The Aid Another acceptance found none, and the EPUB audit
+  found none beyond documented guidance.
+- **Deferred features.** Unchanged except Aid Another: `hold person` and coup de grace, disarm
+  and sunder, further grapple, overrun, readied and delayed actions, movement continuation,
+  levels 5 and above, two-weapon fighting and full attacks, encumbrance, area templates, terrain
+  hard cover, disease, party item handoff (unless taken next) and the save shortcut.
+- **Maintenance debt.** Only that recorded in `AUDIT_EPUB.md` (parent walking, the `Game`
+  autoload, the probe-heavy `main.gd`, test-run warnings); this review and the closure add none.
+- **Evidence gaps.** Unchanged from the audit and the Aid Another record: no rendered or human
+  review, no playtest, no balance test, and layout measured at one resolution. The closure adds
+  no check and closes no gap.
+
+Earlier closures carry forward unchanged: flanking, the ranged sneak limit, combat information,
+bull rush, defensive stances, pin and grapple, and the EPUB audit itself.

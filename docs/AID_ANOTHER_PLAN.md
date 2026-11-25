@@ -430,3 +430,7 @@ and there was no balance testing, playthrough, rendered review or human playtest
 never aid, so monster parity is unmeasured; no charge action exists in this build; the
 fine-grained +2 also reached trip and grapple touch attacks and ranged touch spells, as
 recorded above, but nothing in the shipped content forces those routes.
+
+**Closed 2026-11-24.** Closed against `b7c5bb9` for `81a76e0`, with amendment `6a32172` and the
+static audit note `67377f6`. No check was rerun for closure; the ledger and the "next attack"
+reading are recorded in `PROGRAM_PROGRESS.md`. Nothing further is pending for this plan.
