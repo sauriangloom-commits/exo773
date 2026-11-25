@@ -409,3 +409,27 @@ executables and all candidate evidence remain.
 `0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c` are unchanged. This is a
 documentation-only result; no tests, probes, validators, builds or exports were run, and no game
 check was made.
+
+
+## Duplicate candidate removal (2026-11-24)
+
+The approved no-loss set was attempted. Only the duplicate executable was removed; the
+empty-directory condition failed, so `workspace/builds/` was left in place. No other
+candidate, `gut.zip`, archive, release, snapshot, backup, QA, restore copy or reference was
+touched. No test, probe, validator, build or export was run.
+
+- **Removed:** `workspace/candidates/creator_slice3_2026-11-05d/RavenloftFoundation.exe` —
+  110,376,216 bytes (110.376 MB). Its `BUILD.txt` remains in place.
+- **Kept:** `workspace/candidates/creator_slice3_2026-11-05e/RavenloftFoundation.exe` —
+  110,376,216 bytes, SHA-256
+  `57758c82c761362bccaa64f1ec8bc0e0619c5038bd7c0da03c07d8a2aea3565f`, unchanged and still
+  matching both `BUILD.txt` files. The two executables were byte-identical.
+- **Not removed:** `workspace/builds/`. The condition in the approval was that no doc or tool
+  names it as an export target; `workspace/README.md:19` names `builds/current/` as the
+  default single-build export target and `:24` names `workspace/builds/current/`. The
+  directory also contains `current`, so it is not empty. It was left untouched.
+- **Space recovered:** 110,376,216 bytes (110.376 MB, about 0.11 GB decimal / 0.103 GiB).
+- **Verification:** `git status --short` shows only ` M README.md`; README file hash
+  `d7cd5f89815b3d7616c2a8abeccaacf309c9af4e6cf234e152b321eeb78b1b57` and diff hash
+  `0e8ff3e146d889b0e942158f588ca92122c4eec62eaaa1bde349a91dc9d95e1c` are unchanged.
+  Documentation-integrity checks only; no game checks were made.
